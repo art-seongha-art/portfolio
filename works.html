@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Park Seong-Ha | Works Archive</title>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&amp;family=Manrope:wght@200..800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "inverse-primary": "#c8c6c5",
+              "surface-dim": "#dadada",
+              "surface-bright": "#f9f9f9",
+              "on-primary-fixed": "#ffffff",
+              "outline-variant": "#c6c6c6",
+              "primary-container": "#3c3b3b",
+              "on-secondary-fixed": "#1a1c1c",
+              "on-primary": "#e5e2e1",
+              "surface-variant": "#e2e2e2",
+              "tertiary-fixed-dim": "#464747",
+              "surface-container": "#eeeeee",
+              "secondary-container": "#d4d4d4",
+              "secondary-fixed-dim": "#aaabab",
+              "tertiary-fixed": "#5e5e5e",
+              "primary-fixed": "#5f5e5e",
+              "on-surface-variant": "#474747",
+              "inverse-surface": "#2f3131",
+              "tertiary-container": "#747474",
+              "on-error": "#ffffff",
+              "inverse-on-surface": "#f0f1f1",
+              "error": "#ba1a1a",
+              "surface-container-lowest": "#ffffff",
+              "primary-fixed-dim": "#474746",
+              "on-tertiary-fixed": "#ffffff",
+              "on-primary-container": "#ffffff",
+              "surface-container-high": "#e8e8e8",
+              "surface": "#f9f9f9",
+              "secondary-fixed": "#c6c6c7",
+              "on-tertiary": "#e3e2e2",
+              "surface-container-highest": "#e2e2e2",
+              "secondary": "#5d5f5f",
+              "primary": "#000000",
+              "on-error-container": "#410002",
+              "tertiary": "#3b3b3c",
+              "on-surface": "#1a1c1c",
+              "on-secondary-container": "#1a1c1c",
+              "background": "#f9f9f9",
+              "on-secondary-fixed-variant": "#3a3c3c",
+              "on-secondary": "#ffffff",
+              "on-tertiary-fixed-variant": "#e3e2e2",
+              "error-container": "#ffdad6",
+              "surface-tint": "#5f5e5e",
+              "outline": "#777777",
+              "on-primary-fixed-variant": "#e5e2e1",
+              "surface-container-low": "#f3f3f4",
+              "on-background": "#1a1c1c",
+              "on-tertiary-container": "#ffffff"
+            },
+            fontFamily: {
+              "headline": ["Newsreader", "serif"],
+              "body": ["Manrope", "sans-serif"],
+              "label": ["Manrope", "sans-serif"]
+            },
+            borderRadius: {"DEFAULT": "0px", "lg": "0px", "xl": "0px", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body class="font-body text-on-surface selection:bg-primary selection:text-white">
+<!-- TopAppBar -->
+<nav class="fixed top-0 w-full flex justify-between items-center px-[15%] py-8 bg-[#F9F9F9]/70 backdrop-blur-xl transition-colors duration-500 z-50">
+<a href="index.html" class="text-2xl font-light tracking-[0.1em] font-headline text-black uppercase no-underline">
+            PARK SEONG-HA
+        </a>
+<div class="hidden md:flex gap-12 items-center">
+<a class="text-black border-b border-black/10 pb-1 text-[10px] tracking-[0.2em] font-medium font-body uppercase transition-colors duration-500 no-underline" href="works.html">Works</a>
+<a class="text-gray-400 hover:text-black text-[10px] tracking-[0.2em] font-medium font-body uppercase transition-colors duration-500 no-underline" href="index.html#exhibitions">Exhibitions</a>
+<a class="text-gray-400 hover:text-black text-[10px] tracking-[0.2em] font-medium font-body uppercase transition-colors duration-500 no-underline" href="index.html#ai-immersive">AI Immersive</a>
+<a class="text-gray-400 hover:text-black text-[10px] tracking-[0.2em] font-medium font-body uppercase transition-colors duration-500 no-underline" href="cv.html">CV</a>
+</div>
+<button id="menu-toggle" class="md:hidden flex items-center opacity-80 hover:opacity-100 transition-all">
+<span class="material-symbols-outlined text-black">menu</span>
+</button>
+</nav>
+<!-- Mobile Menu Overlay -->
+<div id="mobile-menu" class="fixed inset-0 z-[100] bg-surface flex flex-col justify-center items-center gap-12 transition-all duration-500 opacity-0 pointer-events-none">
+<button id="menu-close" class="absolute top-6 right-[15%]">
+<span class="material-symbols-outlined text-black text-3xl">close</span>
+</button>
+<a class="text-black text-[11px] tracking-[0.3em] font-medium font-body uppercase no-underline" href="index.html">HOME</a>
+<a class="text-black text-[11px] tracking-[0.3em] font-medium font-body uppercase no-underline" href="works.html">WORKS</a>
+<a class="text-black text-[11px] tracking-[0.3em] font-medium font-body uppercase no-underline" href="index.html#exhibitions">EXHIBITIONS</a>
+<a class="text-black text-[11px] tracking-[0.3em] font-medium font-body uppercase no-underline" href="index.html#ai-immersive">AI IMMERSIVE</a>
+<a class="text-black text-[11px] tracking-[0.3em] font-medium font-body uppercase no-underline" href="cv.html">CV</a>
+</div>
+<!-- Main Content Canvas -->
+<main class="pt-48 pb-32 px-[15%]">
+<!-- Header Section -->
+<header class="mb-24">
+<h1 class="font-headline italic text-6xl md:text-8xl tracking-[0.05em] text-primary mb-12">
+                Works Archive
+            </h1>
+<!-- Minimalist Filtering -->
+<div class="flex flex-wrap gap-10 mt-16 border-b border-outline/10 pb-6">
+<button class="font-label text-[10px] uppercase tracking-[0.2em] text-primary border-b border-primary pb-1">All</button>
+<button class="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant hover:text-primary transition-colors">Sculpture</button>
+<button class="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant hover:text-primary transition-colors">Public Art</button>
+<button class="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant hover:text-primary transition-colors">AI Art</button>
+</div>
+</header>
+<!-- Editorial Grid Layout -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-y-32 md:gap-x-12">
+<!-- Row 1 -->
+<a href="work-detail.html" class="md:col-span-7 group no-underline block">
+<div class="aspect-[4/5] bg-surface-container-low overflow-hidden transition-transform duration-700 ease-out group-hover:scale-[1.02]">
+<img class="w-full h-full object-cover" alt="Healing — Pietà" src="images/006_slide_4_2.jpg"/>
+</div>
+<div class="mt-8 flex justify-between items-baseline">
+<h3 class="font-headline italic text-2xl text-primary">Healing — Pietà</h3>
+<span class="font-label text-[10px] tracking-widest text-on-surface-variant">2014</span>
+</div>
+</a>
+<a href="work-detail.html" class="md:col-span-4 md:col-start-9 mt-24 md:mt-48 group no-underline block">
+<div class="aspect-square bg-surface-container-low overflow-hidden transition-transform duration-700 ease-out group-hover:scale-[1.02]">
+<img class="w-full h-full object-cover" alt="Blue Moon A1" src="images/bluemoon_a1.png"/>
+</div>
+<div class="mt-8">
+<h3 class="font-headline italic text-2xl text-primary">Blue Moon A1</h3>
+<p class="font-label text-[10px] tracking-widest text-on-surface-variant uppercase mt-1">AI 생성 시리즈</p>
+<span class="font-label text-[10px] tracking-widest text-on-surface-variant block mt-4">2025</span>
+</div>
+</a>
+<!-- Row 2 (Asymmetric Shift) -->
+<a href="work-detail.html" class="md:col-span-5 md:mt-[-80px] group no-underline block">
+<div class="aspect-[3/4] bg-surface-container-low overflow-hidden transition-transform duration-700 ease-out group-hover:scale-[1.02]">
+<img class="w-full h-full object-cover" alt="Healing — I'll Pick Stars for You" src="images/045_치유하다_별을_따줄게_,사암,_검정_화강석,_스테인레스_스틸,_1100x_800x_2400mm,_2018_부_1.jpg"/>
+</div>
+<div class="mt-8">
+<h3 class="font-headline italic text-2xl text-primary">Healing — I'll Pick Stars for You</h3>
+<span class="font-label text-[10px] tracking-widest text-on-surface-variant block mt-2">2018</span>
+</div>
+</a>
+<a href="work-detail.html" class="md:col-span-6 md:col-start-7 group no-underline block">
+<div class="aspect-video bg-surface-container-low overflow-hidden transition-transform duration-700 ease-out group-hover:scale-[1.02]">
+<img class="w-full h-full object-cover" alt="Secret Garden" src="images/083_앞으로_앞으로_작품재료_사암,_화강석_,_스테인레스_스틸,_2.png"/>
+</div>
+<div class="mt-8 flex justify-between items-baseline">
+<h3 class="font-headline italic text-2xl text-primary">Secret Garden</h3>
+<span class="font-label text-[10px] tracking-widest text-on-surface-variant">2018</span>
+</div>
+</a>
+<!-- Row 3 (Focus Piece) -->
+<div class="md:col-span-10 md:col-start-2 group mt-24">
+<div class="aspect-[21/9] bg-surface-container-low overflow-hidden transition-transform duration-700 ease-out group-hover:scale-[1.01]">
+<img class="w-full h-full object-cover" alt="Healing: Coexistence" src="images/ningbo_main.png"/>
+</div>
+<div class="mt-12 max-w-xl">
+<p class="font-label text-[10px] tracking-[0.2em] text-on-surface-variant uppercase mb-4">주요 전시</p>
+<h3 class="font-headline italic text-4xl text-primary leading-tight">Healing: Coexistence</h3>
+<p class="font-body text-sm text-on-surface-variant mt-6 leading-relaxed">
+                        중국 닝보대학교 갤러리에서 열린 제5회 개인전 — 석조 조각을 통해 상처와 치유의 공존을 시각화하다.
+                    </p>
+<span class="font-label text-[10px] tracking-widest text-on-surface-variant block mt-6">2025</span>
+</div>
+</div>
+<!-- Row 4 -->
+<a href="work-detail.html" class="md:col-span-5 group no-underline block">
+<div class="aspect-square bg-surface-container-low overflow-hidden transition-transform duration-700 ease-out group-hover:scale-[1.02]">
+<img class="w-full h-full object-cover" alt="Healing — Dancing with Me" src="images/052_치유하다_댄싱위드_미,사암,_검정_화강석,_스테인레스_스틸,_400x_300x_450mm,_2018_1.jpg"/>
+</div>
+<div class="mt-8">
+<h3 class="font-headline italic text-2xl text-primary">Healing — Dancing with Me</h3>
+<span class="font-label text-[10px] tracking-widest text-on-surface-variant block mt-2">2018</span>
+</div>
+</a>
+<a href="work-detail.html" class="md:col-span-5 md:col-start-8 mt-[-40px] group no-underline block">
+<div class="aspect-[3/4] bg-surface-container-low overflow-hidden transition-transform duration-700 ease-out group-hover:scale-[1.02]">
+<img class="w-full h-full object-cover" alt="Healing — Just by Being There" src="images/012_slide_7_2.jpg"/>
+</div>
+<div class="mt-8">
+<h3 class="font-headline italic text-2xl text-primary">Healing — Just by Being There</h3>
+<span class="font-label text-[10px] tracking-widest text-on-surface-variant block mt-2">2014</span>
+</div>
+</a>
+</div>
+<!-- Pagination / Load More -->
+<div class="mt-48 flex flex-col items-center">
+<button class="group flex flex-col items-center gap-4">
+<span class="font-label text-[10px] uppercase tracking-[0.3em] text-primary">더 보기</span>
+<div class="w-px h-16 bg-primary/20 group-hover:h-24 transition-all duration-500"></div>
+</button>
+</div>
+</main>
+<!-- Footer -->
+<footer class="w-full flex flex-col md:flex-row justify-between items-start px-[15%] gap-10 py-20 mt-40 bg-[#F3F3F4] tonal-shift">
+<div class="flex flex-col gap-8">
+<a href="index.html" class="text-lg font-light tracking-[0.1em] font-headline text-black uppercase no-underline">
+                PARK SEONG-HA
+            </a>
+<p class="text-[10px] tracking-[0.2em] font-medium font-body uppercase text-neutral-500">
+                © 2026 PARK SEONG-HA. ALL RIGHTS RESERVED.
+            </p>
+</div>
+<div class="flex flex-wrap gap-x-12 gap-y-4">
+<a class="text-[10px] tracking-[0.2em] font-medium font-body uppercase text-neutral-500 hover:text-black transition-colors ease-in-out duration-300 no-underline" href="https://instagram.com" target="_blank">Instagram</a>
+<a class="text-[10px] tracking-[0.2em] font-medium font-body uppercase text-neutral-500 hover:text-black transition-colors ease-in-out duration-300 no-underline" href="mailto:seongha.art@gmail.com">Email</a>
+<a class="text-[10px] tracking-[0.2em] font-medium font-body uppercase text-neutral-500 hover:text-black transition-colors ease-in-out duration-300 no-underline" href="index.html#contact">Contact</a>
+</div>
+</footer>
+<script>
+const menuToggle = document.getElementById('menu-toggle');
+const menuClose = document.getElementById('menu-close');
+const mobileMenu = document.getElementById('mobile-menu');
+function openMenu() {
+  mobileMenu.classList.remove('opacity-0', 'pointer-events-none');
+  mobileMenu.classList.add('opacity-100', 'pointer-events-auto');
+  document.body.style.overflow = 'hidden';
+}
+function closeMenu() {
+  mobileMenu.classList.add('opacity-0', 'pointer-events-none');
+  mobileMenu.classList.remove('opacity-100', 'pointer-events-auto');
+  document.body.style.overflow = '';
+}
+menuToggle.addEventListener('click', openMenu);
+menuClose.addEventListener('click', closeMenu);
+mobileMenu.querySelectorAll('a').forEach(link => {
+  link.addEventListener('click', closeMenu);
+});
+</script>
+</body></html>

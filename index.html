@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Park Seong-Ha | Sculptor · AI Artist</title>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&amp;family=Manrope:wght@200..800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-error": "#ffffff",
+              "outline": "#777777",
+              "tertiary-fixed": "#5e5e5e",
+              "tertiary-container": "#747474",
+              "primary-fixed-dim": "#474746",
+              "error-container": "#ffdad6",
+              "secondary-container": "#d4d4d4",
+              "on-tertiary": "#e3e2e2",
+              "surface": "#f9f9f9",
+              "on-secondary": "#ffffff",
+              "on-secondary-fixed-variant": "#3a3c3c",
+              "surface-container-highest": "#e2e2e2",
+              "on-surface-variant": "#474747",
+              "surface-container-low": "#f3f3f4",
+              "secondary-fixed-dim": "#aaabab",
+              "surface-variant": "#e2e2e2",
+              "outline-variant": "#c6c6c6",
+              "secondary-fixed": "#c6c6c7",
+              "on-primary-container": "#ffffff",
+              "inverse-surface": "#2f3131",
+              "inverse-primary": "#c8c6c5",
+              "primary-fixed": "#5f5e5e",
+              "surface-container-lowest": "#ffffff",
+              "secondary": "#5d5f5f",
+              "surface-bright": "#f9f9f9",
+              "on-primary": "#e5e2e1",
+              "on-primary-fixed-variant": "#e5e2e1",
+              "on-surface": "#1a1c1c",
+              "inverse-on-surface": "#f0f1f1",
+              "primary": "#000000",
+              "surface-tint": "#5f5e5e",
+              "on-tertiary-container": "#ffffff",
+              "on-primary-fixed": "#ffffff",
+              "tertiary-fixed-dim": "#464747",
+              "surface-container-high": "#e8e8e8",
+              "on-background": "#1a1c1c",
+              "on-secondary-fixed": "#1a1c1c",
+              "background": "#f9f9f9",
+              "primary-container": "#3c3b3b",
+              "on-error-container": "#410002",
+              "surface-container": "#eeeeee",
+              "tertiary": "#3b3b3c",
+              "on-secondary-container": "#1a1c1c",
+              "on-tertiary-fixed": "#ffffff",
+              "error": "#ba1a1a",
+              "on-tertiary-fixed-variant": "#e3e2e2",
+              "surface-dim": "#dadada"
+            },
+            fontFamily: {
+              "headline": ["Newsreader", "serif"],
+              "body": ["Manrope", "sans-serif"],
+              "label": ["Manrope", "sans-serif"]
+            },
+            borderRadius: {"DEFAULT": "0px", "lg": "0px", "xl": "0px", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+        ::selection {
+            background: #000;
+            color: #fff;
+        }
+        body {
+            cursor: crosshair;
+        }
+        html { scroll-behavior: smooth; scroll-snap-type: y mandatory; overflow-y: scroll; }
+        .snap-section { scroll-snap-align: start; }
+        .snap-section-proximity { scroll-snap-align: start; scroll-snap-stop: normal; }
+        .hero-text { text-shadow: 0 2px 20px rgba(255,255,255,0.8), 0 0 40px rgba(255,255,255,0.5); }
+        .hero-sub { text-shadow: 0 1px 10px rgba(255,255,255,0.9), 0 0 20px rgba(255,255,255,0.6); }
+        /* Header nav color: default dark for light sections */
+        .nav-text { color: #000; transition: color 0.4s; }
+        .nav-text-dim { color: #999; transition: color 0.4s; }
+        header.header-light .nav-text { color: #fff; }
+        header.header-light .nav-text-dim { color: rgba(255,255,255,0.6); }
+        header.header-light { background: rgba(0,0,0,0.15); }
+        .gallery-item { overflow:hidden; position:relative; width:100%; height:100%; }
+        .gallery-item img { display:block; width:100% !important; height:100% !important; object-fit:cover !important; }
+        .gallery-grid { display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr); gap:4px; flex:1; overflow:hidden; }
+        /* Lightbox */
+        .lightbox-overlay { position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.92); display:none; flex-direction:column; align-items:center; justify-content:center; }
+        .lightbox-overlay.active { display:flex; }
+        .lightbox-overlay img { max-width:85vw; max-height:75vh; object-fit:contain; }
+        .lightbox-close { position:absolute; top:24px; right:32px; color:#fff; font-size:32px; cursor:pointer; z-index:210; background:none; border:none; font-family:sans-serif; }
+        .lightbox-nav { position:absolute; top:50%; transform:translateY(-50%); color:#fff; font-size:48px; cursor:pointer; background:none; border:none; padding:16px; opacity:0.5; transition:opacity 0.3s; user-select:none; }
+        .lightbox-nav:hover { opacity:1; }
+        .lightbox-nav.prev { left:16px; }
+        .lightbox-nav.next { right:16px; }
+        .lightbox-caption { color:#fff; text-align:center; margin-top:16px; }
+        .lightbox-caption .title { font-size:14px; font-weight:300; letter-spacing:0.05em; margin-bottom:4px; }
+        .lightbox-caption .medium { font-size:10px; color:rgba(255,255,255,0.5); letter-spacing:0.1em; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body selection:bg-primary selection:text-surface-container-lowest">
+<!-- TopAppBar -->
+<header class="bg-transparent backdrop-blur-md docked full-width top-0 z-50 flex justify-between items-baseline w-full px-[15%] py-4 max-w-none fixed">
+<a href="index.html" class="text-2xl font-light tracking-[0.1em] font-headline uppercase no-underline nav-text">
+        PARK SEONG-HA
+    </a>
+<nav class="hidden md:flex gap-12 items-baseline">
+<a class="nav-text border-b border-white/10 pb-1 text-[10px] tracking-[0.2em] font-medium font-body uppercase transition-colors duration-500" href="works.html">WORKS</a>
+<a class="nav-text-dim hover:text-white text-[10px] tracking-[0.2em] font-medium font-body uppercase transition-colors duration-500" href="#exhibitions">EXHIBITIONS</a>
+<a class="nav-text-dim hover:text-white text-[10px] tracking-[0.2em] font-medium font-body uppercase transition-colors duration-500" href="#ai-immersive">AI IMMERSIVE</a>
+<a class="nav-text-dim hover:text-white text-[10px] tracking-[0.2em] font-medium font-body uppercase transition-colors duration-500" href="cv.html">CV</a>
+</nav>
+<button id="menu-toggle" class="md:hidden flex items-center nav-text">
+<span class="material-symbols-outlined cursor-pointer opacity-70 transition-opacity duration-300">menu</span>
+</button>
+</header>
+<!-- Mobile Menu Overlay -->
+<div id="mobile-menu" class="fixed inset-0 z-[100] bg-surface flex flex-col justify-center items-center gap-12 transition-all duration-500 opacity-0 pointer-events-none">
+<button id="menu-close" class="absolute top-6 right-[15%]">
+<span class="material-symbols-outlined text-black text-3xl">close</span>
+</button>
+<a class="text-black text-[11px] tracking-[0.3em] font-medium font-body uppercase no-underline" href="index.html">HOME</a>
+<a class="text-black text-[11px] tracking-[0.3em] font-medium font-body uppercase no-underline" href="works.html">WORKS</a>
+<a class="text-black text-[11px] tracking-[0.3em] font-medium font-body uppercase no-underline" href="#exhibitions">EXHIBITIONS</a>
+<a class="text-black text-[11px] tracking-[0.3em] font-medium font-body uppercase no-underline" href="#ai-immersive">AI IMMERSIVE</a>
+<a class="text-black text-[11px] tracking-[0.3em] font-medium font-body uppercase no-underline" href="cv.html">CV</a>
+</div>
+<main>
+<!-- Hero Section -->
+<section class="snap-section relative h-screen w-full flex flex-col justify-center items-center bg-black overflow-hidden">
+<div class="absolute inset-0 z-0">
+<img alt="AI Generated Art" class="w-full h-full object-cover opacity-80" src="images/ningbo_main.png"/>
+</div>
+<div class="relative z-10 text-center">
+<h1 class="font-headline text-6xl md:text-8xl font-extralight tracking-[0.15em] text-white uppercase leading-none" style="text-shadow: 0 2px 30px rgba(0,0,0,0.6);">
+                PARK SEONG-HA
+            </h1>
+<p class="mt-6 text-[11px] tracking-[0.5em] font-medium uppercase text-white/70" style="text-shadow: 0 1px 10px rgba(0,0,0,0.8);">
+                Sculptor · AI Artist
+            </p>
+</div>
+</section>
+<!-- Artist Profile -->
+<section id="about" class="snap-section h-screen bg-surface flex items-center">
+<div class="max-w-6xl mx-auto flex flex-col md:flex-row gap-16 items-center px-8">
+<div class="w-full overflow-hidden" style="width:43%;flex-shrink:0">
+<img alt="Park Seong-Ha Portrait" class="w-full aspect-[3/4] object-cover object-[60%_center]" src="images/032_치유하다_안녕_,사암,_검정_화강석,_스테인레스_스틸,_1300x_700x_1700_mm,_2017_나는_곰.jpg"/>
+</div>
+<div class="w-full md:flex-1">
+<h2 class="font-headline text-4xl mb-12 tracking-wide font-light">About Me</h2>
+<p class="text-on-surface-variant/60 text-[13px] tracking-wider leading-relaxed max-w-md italic mb-8">I am a sculptor who visualizes and explores the healing of personal and societal wounds through stone sculpture, and I am currently expanding my work into AI and immersive media to create more realistic and immersive content.</p>
+<div class="space-y-6 text-on-surface-variant text-[13px] tracking-wide leading-relaxed max-w-md">
+<p>저는 입체예술 분야에서 활동하는 예술가로, 지난 10여년간 개인과 사회의 상처와 그 치유 과정을 인형 형상의 돌조각 작품으로 시각화해왔습니다. 이러한 작품들을 통해 다양한 국내외 전시와 공공미술 프로젝트에서 관객들과 깊이 있는 소통을 이어 왔습니다.</p>
+<p>현재는 표현의 영역을 AI, 실감 미디어 콘텐츠 분야로 확장하여 융합 예술가로 거듭나기 위한 연구를 하고 있습니다. 나아가 예술과 기술의 경계를 허물고자 하는 열정을 바탕으로, AI 엔진, 3D 모델링, 실시간 게임 엔진, VR, AR 등 첨단 기술을 활용하여 더욱 현실적이고 몰입감 있는 미디어 콘텐츠를 개발하고 있습니다.</p>
+<p>앞으로도 개인적 경험과 사회적 이슈를 예술로 승화시키며, 치유와 성찰의 시간을 제공하는 작품을 창작해 나가겠습니다.</p>
+</div>
+<div class="mt-8 pt-4 border-t border-outline-variant/20">
+<a href="cv.html" class="text-[10px] tracking-[0.25em] font-semibold uppercase text-primary no-underline hover:opacity-70 transition-opacity">전체 이력 보기</a>
+</div>
+</div>
+</div>
+</section>
+<!-- Selected Works (Gallery) -->
+<section class="snap-section h-screen bg-surface-container-low flex flex-col" style="padding:5rem 22vw 1.5rem 22vw;">
+<div class="flex justify-between items-baseline mb-3">
+<h2 class="text-[10px] tracking-[0.4em] font-medium text-primary uppercase">STONE SCULPTURE</h2>
+</div>
+<div class="gallery-grid">
+<!-- Row 1 -->
+<div class="gallery-item relative overflow-hidden cursor-pointer group">
+<img alt="치유하다 - 피에타" class="transition-transform duration-700 group-hover:scale-105" src="images/006_slide_4_2.jpg"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-400 flex items-end p-4">
+<div>
+<p class="font-body text-xs font-light text-white mb-0.5">치유하다 — 피에타</p>
+<p class="text-[8px] tracking-wider text-white/50">오석, 화강석, 스테인레스 스틸</p>
+</div>
+</div>
+</div>
+<div class="gallery-item relative overflow-hidden cursor-pointer group">
+<img alt="치유하다 - 별을 따줄게" class="transition-transform duration-700 group-hover:scale-105" src="images/045_치유하다_별을_따줄게_,사암,_검정_화강석,_스테인레스_스틸,_1100x_800x_2400mm,_2018_부_1.jpg"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-400 flex items-end p-4">
+<div>
+<p class="font-body text-xs font-light text-white mb-0.5">치유하다 — 별을 따줄게</p>
+<p class="text-[8px] tracking-wider text-white/50">사암, 검정 화강석, 스테인레스 스틸</p>
+</div>
+</div>
+</div>
+<div class="gallery-item relative overflow-hidden cursor-pointer group">
+<img alt="치유하다 - 댄싱 위드 미" class="transition-transform duration-700 group-hover:scale-105" src="images/052_치유하다_댄싱위드_미,사암,_검정_화강석,_스테인레스_스틸,_400x_300x_450mm,_2018_1.jpg"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-400 flex items-end p-4">
+<div>
+<p class="font-body text-xs font-light text-white mb-0.5">치유하다 — 댄싱 위드 미</p>
+<p class="text-[8px] tracking-wider text-white/50">사암, 검정 화강석, 스테인레스 스틸</p>
+</div>
+</div>
+</div>
+<!-- Row 2 -->
+<div class="gallery-item relative overflow-hidden cursor-pointer group">
+<img alt="치유하다 - 지나친 관심" class="transition-transform duration-700 group-hover:scale-105" src="images/008_slide_5_2.jpg"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-400 flex items-end p-4">
+<div>
+<p class="font-body text-xs font-light text-white mb-0.5">치유하다 — 지나친 관심</p>
+<p class="text-[8px] tracking-wider text-white/50">붉은사암, 오석, 알루미늄 와이어</p>
+</div>
+</div>
+</div>
+<div class="gallery-item relative overflow-hidden cursor-pointer group">
+<img alt="치유하다 - 안녕" class="transition-transform duration-700 group-hover:scale-105" src="images/032_치유하다_안녕_,사암,_검정_화강석,_스테인레스_스틸,_1300x_700x_1700_mm,_2017_나는_곰.jpg"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-400 flex items-end p-4">
+<div>
+<p class="font-body text-xs font-light text-white mb-0.5">치유하다 — 안녕</p>
+<p class="text-[8px] tracking-wider text-white/50">사암, 검정 화강석, 스테인레스 스틸</p>
+</div>
+</div>
+</div>
+<div class="gallery-item relative overflow-hidden cursor-pointer group">
+<img alt="치유하다 - 빨간리본" class="transition-transform duration-700 group-hover:scale-105" src="images/018_slide_10_2.jpg"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-400 flex items-end p-4">
+<div>
+<p class="font-body text-xs font-light text-white mb-0.5">치유하다 — 빨간리본</p>
+<p class="text-[8px] tracking-wider text-white/50">사암, 스테인레스 스틸, 우레탄도장</p>
+</div>
+</div>
+</div>
+<!-- Row 3: Public Art -->
+<div class="gallery-item relative overflow-hidden cursor-pointer group">
+<img alt="앞으로 앞으로" class="transition-transform duration-700 group-hover:scale-105" src="images/083_앞으로_앞으로_작품재료_사암,_화강석_,_스테인레스_스틸,_2.png"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-400 flex items-end p-4">
+<div>
+<p class="font-body text-xs font-light text-white mb-0.5">앞으로 앞으로</p>
+<p class="text-[8px] tracking-wider text-white/50">공공미술 · 사암, 화강석 · 세종시</p>
+</div>
+</div>
+</div>
+<div class="gallery-item relative overflow-hidden cursor-pointer group">
+<img alt="누군가를 위한 선물" class="transition-transform duration-700 group-hover:scale-105" src="images/076_누군가를_위한_선물_작품재료_붉은사암,화강석,스테인레스스틸,LED_조명_1.jpg"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-400 flex items-end p-4">
+<div>
+<p class="font-body text-xs font-light text-white mb-0.5">누군가를 위한 선물</p>
+<p class="text-[8px] tracking-wider text-white/50">공공미술 · 붉은사암, 화강석, LED · 서울</p>
+</div>
+</div>
+</div>
+<div class="gallery-item relative overflow-hidden cursor-pointer group">
+<img alt="행복쌓기" class="transition-transform duration-700 group-hover:scale-105" src="images/090_행복쌓기_작품재료_사암_(노란색_),_화강석_3.png"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-400 flex items-end p-4">
+<div>
+<p class="font-body text-xs font-light text-white mb-0.5">행복쌓기</p>
+<p class="text-[8px] tracking-wider text-white/50">공공미술 · 사암, 화강석</p>
+</div>
+</div>
+</div>
+</div>
+<div class="flex justify-end mt-2">
+<a href="works.html" class="text-[10px] tracking-[0.3em] font-medium uppercase text-on-surface-variant/60 no-underline hover:text-primary transition-colors">전체 작품 보기 →</a>
+</div>
+</section>
+<!-- AI Immersive Section -->
+<section id="ai-immersive" class="snap-section h-screen bg-primary px-[10%] flex flex-col items-center overflow-hidden" style="padding-top:clamp(3rem,8vh,5rem); padding-bottom:clamp(1.5rem,3vh,2.5rem);">
+<div class="mb-4 text-center shrink-0">
+<h2 class="text-surface font-headline text-5xl font-extralight tracking-[0.2em] mb-2">AI IMMERSIVE MEDIA</h2>
+<p class="text-on-primary-fixed-variant text-[10px] tracking-[0.4em] uppercase">디지털 번역을 통해 돌의 경계를 확장하다</p>
+</div>
+<div class="w-full flex-1 min-h-0 flex items-center justify-center">
+<div class="h-full bg-surface-container-low/10 flex items-center justify-center relative group cursor-pointer" style="aspect-ratio:16/9; max-width:100%;">
+<span class="material-symbols-outlined text-surface text-6xl font-extralight opacity-30 group-hover:opacity-100 transition-all duration-700">play_circle</span>
+<div class="absolute bottom-8 left-8">
+<p class="text-surface/50 text-[10px] tracking-[0.2em]">가우시안 스플래팅 미디어아트 / 손 제스처 인터랙션</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Digital Works Bento Grid -->
+<section class="snap-section h-screen bg-primary flex flex-col" style="padding:clamp(4.5rem,8vh,5.5rem) 5% clamp(1rem,2vh,2rem);">
+<div class="mb-4 px-[5%] shrink-0">
+<h2 class="text-[10px] tracking-[0.4em] font-semibold text-surface/80 uppercase">DIGITAL WORKS</h2>
+<p class="text-surface/40 text-[9px] tracking-[0.2em] mt-1">AI Video · Character · VR · Interactive Art</p>
+</div>
+<div class="flex-1 min-h-0 px-[5%]" style="display:grid; grid-template-columns:1.2fr 1fr 1fr; grid-template-rows:repeat(3,1fr); gap:4px;">
+<!-- 왼쪽 대형 이미지 (3행 차지) -->
+<div class="relative overflow-hidden group cursor-pointer" style="grid-row:1/4; grid-column:1;">
+<img src="images/ningbo_main.png" alt="가우시안 스플래팅 미디어아트" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-400 flex items-end p-6">
+<div>
+<p class="font-body text-sm font-light text-white mb-1">가우시안 스플래팅 미디어아트</p>
+<p class="text-[8px] tracking-wider text-white/50">인터랙티브 설치 / 2025</p>
+</div>
+</div>
+</div>
+<!-- 오른쪽 상단 2개 -->
+<div class="relative overflow-hidden group cursor-pointer">
+<img src="images/bluemoon_a1.png" alt="블루문" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-400 flex items-end p-3">
+<div>
+<p class="font-body text-xs font-light text-white mb-0.5">블루문</p>
+<p class="text-[7px] tracking-wider text-white/50">AI 영상 / 2025</p>
+</div>
+</div>
+</div>
+<div class="relative overflow-hidden group cursor-pointer">
+<img src="images/ningbo_a1.png" alt="치유하다: 공존" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-400 flex items-end p-3">
+<div>
+<p class="font-body text-xs font-light text-white mb-0.5">치유하다: 공존</p>
+<p class="text-[7px] tracking-wider text-white/50">닝보대학교 전시 / 2025</p>
+</div>
+</div>
+</div>
+<!-- 오른쪽 중간 2개 -->
+<div class="relative overflow-hidden group cursor-pointer">
+<img src="images/057_치유의_숲,스테인레스_스틸,우레탄도장,_LED_조명_500x_500x_50mm,_2018_1.jpg" alt="치유의 숲" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-400 flex items-end p-3">
+<div>
+<p class="font-body text-xs font-light text-white mb-0.5">치유의 숲</p>
+<p class="text-[7px] tracking-wider text-white/50">LED 인터랙티브 / 2018</p>
+</div>
+</div>
+</div>
+<div class="relative overflow-hidden group cursor-pointer">
+<img src="images/bluemoon_a2.png" alt="블루문 VR" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-400 flex items-end p-3">
+<div>
+<p class="font-body text-xs font-light text-white mb-0.5">블루문 VR</p>
+<p class="text-[7px] tracking-wider text-white/50">VR 콘텐츠 / 2025</p>
+</div>
+</div>
+</div>
+<!-- 오른쪽 하단 2개 -->
+<div class="relative overflow-hidden group cursor-pointer">
+<img src="images/062_치유의_숲,스테인레스_스틸,우레탄도장,_LED_조명_400x_600x_50mm,_2018_1.jpg" alt="치유의 숲 II" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-400 flex items-end p-3">
+<div>
+<p class="font-body text-xs font-light text-white mb-0.5">치유의 숲 II</p>
+<p class="text-[7px] tracking-wider text-white/50">LED 라이트박스 / 2018</p>
+</div>
+</div>
+</div>
+<div class="relative overflow-hidden group cursor-pointer">
+<img src="images/ningbo_a2.png" alt="캐릭터 디자인" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-400 flex items-end p-3">
+<div>
+<p class="font-body text-xs font-light text-white mb-0.5">캐릭터 조형</p>
+<p class="text-[7px] tracking-wider text-white/50">3D 캐릭터 / 2025</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Exhibition History -->
+<section id="exhibitions" class="snap-section h-screen bg-surface-container-low px-[15%] flex flex-col justify-center">
+<h2 class="text-[10px] tracking-[0.4em] font-semibold text-primary mb-10 uppercase border-b border-black/5 pb-4 inline-block">SELECTED EXHIBITIONS</h2>
+<div class="space-y-8 max-w-4xl">
+<div class="flex gap-12 md:gap-24 items-baseline group">
+<span class="text-[11px] font-medium tracking-widest text-on-surface-variant w-16">2025</span>
+<div>
+<h4 class="font-headline text-2xl italic font-light group-hover:translate-x-4 transition-transform duration-500">치유하다: 공존</h4>
+<p class="text-[10px] tracking-widest text-on-surface-variant uppercase mt-1">닝보대학교 갤러리, 중국</p>
+</div>
+</div>
+<div class="flex gap-12 md:gap-24 items-baseline group">
+<span class="text-[11px] font-medium tracking-widest text-on-surface-variant w-16">2025</span>
+<div>
+<h4 class="font-headline text-2xl italic font-light group-hover:translate-x-4 transition-transform duration-500">블루문</h4>
+<p class="text-[10px] tracking-widest text-on-surface-variant uppercase mt-1">단체전, 캐나다</p>
+</div>
+</div>
+<div class="flex gap-12 md:gap-24 items-baseline group">
+<span class="text-[11px] font-medium tracking-widest text-on-surface-variant w-16">2018</span>
+<div>
+<h4 class="font-headline text-2xl italic font-light group-hover:translate-x-4 transition-transform duration-500">치유하다</h4>
+<p class="text-[10px] tracking-widest text-on-surface-variant uppercase mt-1">유나이티드 갤러리, 서울</p>
+</div>
+</div>
+<div class="flex gap-12 md:gap-24 items-baseline group">
+<span class="text-[11px] font-medium tracking-widest text-on-surface-variant w-16">2018</span>
+<div>
+<h4 class="font-headline text-2xl italic font-light group-hover:translate-x-4 transition-transform duration-500">서울국제조각페스타</h4>
+<p class="text-[10px] tracking-widest text-on-surface-variant uppercase mt-1">한가람미술관, 예술의전당</p>
+</div>
+</div>
+<div class="flex gap-12 md:gap-24 items-baseline group">
+<span class="text-[11px] font-medium tracking-widest text-on-surface-variant w-16">2017</span>
+<div>
+<h4 class="font-headline text-2xl italic font-light group-hover:translate-x-4 transition-transform duration-500">서울국제조각페스타</h4>
+<p class="text-[10px] tracking-widest text-on-surface-variant uppercase mt-1">한가람미술관, 예술의전당</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Contact / Footer Section -->
+<section id="contact" class="snap-section h-screen bg-surface flex flex-col items-center justify-center text-center px-[15%]">
+<div>
+<h2 class="font-headline text-5xl md:text-7xl font-extralight tracking-[0.15em] uppercase mb-6">PARK SEONG-HA</h2>
+<p class="text-on-surface-variant/60 text-[11px] tracking-[0.3em] uppercase mb-12">Sculptor · AI Artist · Researcher</p>
+<div class="flex gap-10 justify-center items-center">
+<a class="text-[10px] tracking-[0.3em] font-medium font-body uppercase text-primary no-underline hover:opacity-60 transition-opacity border-b border-primary/30 pb-1" href="mailto:seongha.art@gmail.com">EMAIL</a>
+<a class="text-[10px] tracking-[0.3em] font-medium font-body uppercase text-primary no-underline hover:opacity-60 transition-opacity border-b border-primary/30 pb-1" href="https://instagram.com/seongha.art" target="_blank">INSTAGRAM</a>
+<a class="text-[10px] tracking-[0.3em] font-medium font-body uppercase text-primary no-underline hover:opacity-60 transition-opacity border-b border-primary/30 pb-1" href="https://art-psh.com" target="_blank">PORTFOLIO</a>
+</div>
+</div>
+<div class="absolute bottom-6 text-[9px] tracking-[0.2em] font-body uppercase text-gray-400">
+        © 2026 PARK SEONG-HA. ALL RIGHTS RESERVED.
+    </div>
+</section>
+</main>
+<script>
+// Header color based on current section background
+const headerEl = document.querySelector('header');
+const darkSections = new Set();
+document.querySelectorAll('section').forEach(s => {
+  if(s.classList.contains('bg-primary') || s.classList.contains('bg-black') || s.style.backgroundColor === 'black') {
+    darkSections.add(s);
+  }
+});
+function updateHeaderColor() {
+  const y = window.scrollY + 40;
+  let onDark = false;
+  document.querySelectorAll('section').forEach(s => {
+    const top = s.offsetTop;
+    const bottom = top + s.offsetHeight;
+    if(y >= top && y < bottom) {
+      onDark = darkSections.has(s) || s.classList.contains('bg-black');
+    }
+  });
+  headerEl.classList.toggle('header-light', onDark);
+}
+window.addEventListener('scroll', updateHeaderColor, {passive: true});
+updateHeaderColor();
+
+const menuToggle = document.getElementById('menu-toggle');
+const menuClose = document.getElementById('menu-close');
+const mobileMenu = document.getElementById('mobile-menu');
+function openMenu() {
+  mobileMenu.classList.remove('opacity-0', 'pointer-events-none');
+  mobileMenu.classList.add('opacity-100', 'pointer-events-auto');
+  document.body.style.overflow = 'hidden';
+}
+function closeMenu() {
+  mobileMenu.classList.add('opacity-0', 'pointer-events-none');
+  mobileMenu.classList.remove('opacity-100', 'pointer-events-auto');
+  document.body.style.overflow = '';
+}
+menuToggle.addEventListener('click', openMenu);
+menuClose.addEventListener('click', closeMenu);
+mobileMenu.querySelectorAll('a').forEach(link => {
+  link.addEventListener('click', closeMenu);
+});
+</script>
+<!-- Lightbox -->
+<div class="lightbox-overlay" id="lightbox">
+<button class="lightbox-close" id="lbClose">&times;</button>
+<button class="lightbox-nav prev" id="lbPrev">&#8249;</button>
+<button class="lightbox-nav next" id="lbNext">&#8250;</button>
+<img id="lbImage" src="" alt=""/>
+<div class="lightbox-caption">
+<p class="title" id="lbTitle"></p>
+<p class="medium" id="lbMedium"></p>
+</div>
+</div>
+<script>
+(function(){
+  const items = document.querySelectorAll('.gallery-item');
+  const lb = document.getElementById('lightbox');
+  const lbImg = document.getElementById('lbImage');
+  const lbTitle = document.getElementById('lbTitle');
+  const lbMedium = document.getElementById('lbMedium');
+  let current = 0;
+  const data = [];
+  items.forEach((item, i) => {
+    const img = item.querySelector('img');
+    const infoDiv = item.querySelector('.absolute');
+    const pTags = infoDiv ? infoDiv.querySelectorAll('p') : [];
+    data.push({
+      src: img.src,
+      title: pTags[0] ? pTags[0].textContent : '',
+      medium: pTags[1] ? pTags[1].textContent : ''
+    });
+    item.addEventListener('click', (e) => { e.preventDefault(); current = i; openLB(); });
+  });
+  function openLB() {
+    lbImg.src = data[current].src;
+    lbTitle.textContent = data[current].title;
+    lbMedium.textContent = data[current].medium;
+    lb.classList.add('active');
+    document.documentElement.style.overflow = 'hidden';
+  }
+  function closeLB() {
+    lb.classList.remove('active');
+    document.documentElement.style.overflow = '';
+  }
+  function prevImg() { current = (current - 1 + data.length) % data.length; openLB(); }
+  function nextImg() { current = (current + 1) % data.length; openLB(); }
+  document.getElementById('lbClose').addEventListener('click', closeLB);
+  document.getElementById('lbPrev').addEventListener('click', prevImg);
+  document.getElementById('lbNext').addEventListener('click', nextImg);
+  lb.addEventListener('click', (e) => { if(e.target === lb) closeLB(); });
+  document.addEventListener('keydown', (e) => {
+    if(!lb.classList.contains('active')) return;
+    if(e.key === 'Escape') closeLB();
+    if(e.key === 'ArrowLeft') prevImg();
+    if(e.key === 'ArrowRight') nextImg();
+  });
+  // Touch swipe for mobile
+  let touchStartX = 0;
+  lb.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; }, {passive:true});
+  lb.addEventListener('touchend', (e) => {
+    const diff = e.changedTouches[0].clientX - touchStartX;
+    if(Math.abs(diff) > 50) { diff > 0 ? prevImg() : nextImg(); }
+  });
+})();
+</script>
+</body></html>
