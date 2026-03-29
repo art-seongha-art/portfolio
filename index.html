@@ -108,6 +108,52 @@
         .lightbox-caption { color:#fff; text-align:center; margin-top:16px; }
         .lightbox-caption .title { font-size:14px; font-weight:300; letter-spacing:0.05em; margin-bottom:4px; }
         .lightbox-caption .medium { font-size:10px; color:rgba(255,255,255,0.5); letter-spacing:0.1em; }
+
+        /* ===== Mobile Responsive ===== */
+        @media (max-width: 767px) {
+            /* Disable scroll-snap on mobile — content overflows h-screen */
+            html { scroll-snap-type: none; }
+            .snap-section { scroll-snap-align: none; min-height: 100vh; height: auto; }
+
+            /* Header */
+            header { padding-left: 6%; padding-right: 6%; }
+
+            /* Hero: smaller text */
+            .hero-title-mobile { font-size: 2.5rem !important; letter-spacing: 0.08em !important; }
+
+            /* About: stack vertically, full-width image */
+            .about-layout { flex-direction: column !important; gap: 2rem !important; padding: 5rem 6% 2rem !important; }
+            .about-img-wrap { width: 100% !important; flex-shrink: 1 !important; }
+            .about-img-wrap img { aspect-ratio: 4/3 !important; }
+            .about-text { padding: 0 !important; }
+            .about-text h2 { font-size: 1.8rem !important; margin-bottom: 1.5rem !important; }
+
+            /* Sculpture gallery: reduce padding, 2 columns */
+            .sculpture-section { padding: 5rem 4% 1rem !important; }
+            .gallery-grid { grid-template-columns: repeat(2, 1fr) !important; grid-template-rows: auto !important; gap: 3px !important; }
+
+            /* AI Immersive */
+            .ai-immersive-section { padding: 5rem 5% 1.5rem !important; }
+
+            /* Digital Works bento: single column */
+            .digital-grid { grid-template-columns: 1fr !important; grid-template-rows: auto !important; gap: 3px !important; }
+            .digital-grid > div:first-child { grid-row: auto !important; }
+
+            /* Exhibitions */
+            .exhibitions-section { padding: 5rem 6% 2rem !important; }
+
+            /* Contact */
+            .contact-section { padding: 5rem 8% 2rem !important; }
+            .contact-section h2 { font-size: 2rem !important; }
+            .contact-links { gap: 1.5rem !important; flex-wrap: wrap !important; }
+        }
+
+        /* Galaxy Fold specific (very narrow) */
+        @media (max-width: 380px) {
+            .gallery-grid { grid-template-columns: repeat(2, 1fr) !important; }
+            .hero-title-mobile { font-size: 2rem !important; }
+            .sculpture-section { padding: 5rem 3% 1rem !important; }
+        }
     </style>
 </head>
 <body class="bg-surface text-on-surface font-body selection:bg-primary selection:text-surface-container-lowest">
@@ -144,7 +190,7 @@
 <img alt="AI Generated Art" class="w-full h-full object-cover opacity-80" src="images/ningbo_main.png"/>
 </div>
 <div class="relative z-10 text-center">
-<h1 class="font-headline text-6xl md:text-8xl font-extralight tracking-[0.15em] text-white uppercase leading-none" style="text-shadow: 0 2px 30px rgba(0,0,0,0.6);">
+<h1 class="font-headline text-6xl md:text-8xl font-extralight tracking-[0.15em] text-white uppercase leading-none hero-title-mobile" style="text-shadow: 0 2px 30px rgba(0,0,0,0.6);">
                 PARK SEONG-HA
             </h1>
 <p class="mt-6 text-[11px] tracking-[0.5em] font-medium uppercase text-white/70" style="text-shadow: 0 1px 10px rgba(0,0,0,0.8);">
@@ -154,11 +200,11 @@
 </section>
 <!-- Artist Profile -->
 <section id="about" class="snap-section h-screen bg-surface flex items-center">
-<div class="max-w-6xl mx-auto flex flex-col md:flex-row gap-16 items-center px-8">
-<div class="w-full overflow-hidden" style="width:43%;flex-shrink:0">
+<div class="about-layout max-w-6xl mx-auto flex flex-col md:flex-row gap-16 items-center px-8">
+<div class="about-img-wrap w-full overflow-hidden" style="width:43%;flex-shrink:0">
 <img alt="Park Seong-Ha Portrait" class="w-full aspect-[3/4] object-cover object-[60%_center]" src="images/healing_hello.jpg"/>
 </div>
-<div class="w-full md:flex-1">
+<div class="about-text w-full md:flex-1">
 <h2 class="font-headline text-4xl mb-12 tracking-wide font-light">About Me</h2>
 <p class="text-on-surface-variant/60 text-[13px] tracking-wider leading-relaxed max-w-md italic mb-8">I am a sculptor who visualizes and explores the healing of personal and societal wounds through stone sculpture, and I am currently expanding my work into AI and immersive media to create more realistic and immersive content.</p>
 <div class="space-y-6 text-on-surface-variant text-[13px] tracking-wide leading-relaxed max-w-md">
@@ -173,7 +219,7 @@
 </div>
 </section>
 <!-- Selected Works (Gallery) -->
-<section class="snap-section h-screen bg-surface-container-low flex flex-col" style="padding:5rem 22vw 1.5rem 22vw;">
+<section class="sculpture-section snap-section h-screen bg-surface-container-low flex flex-col" style="padding:5rem 22vw 1.5rem 22vw;">
 <div class="flex justify-between items-baseline mb-3">
 <h2 class="text-[10px] tracking-[0.4em] font-medium text-primary uppercase">STONE SCULPTURE</h2>
 </div>
@@ -268,7 +314,7 @@
 </div>
 </section>
 <!-- AI Immersive Section -->
-<section id="ai-immersive" class="snap-section h-screen bg-primary px-[10%] flex flex-col items-center overflow-hidden" style="padding-top:clamp(3rem,8vh,5rem); padding-bottom:clamp(1.5rem,3vh,2.5rem);">
+<section id="ai-immersive" class="ai-immersive-section snap-section h-screen bg-primary px-[10%] flex flex-col items-center overflow-hidden" style="padding-top:clamp(3rem,8vh,5rem); padding-bottom:clamp(1.5rem,3vh,2.5rem);">
 <div class="mb-4 text-center shrink-0">
 <h2 class="text-surface font-headline text-5xl font-extralight tracking-[0.2em] mb-2">AI IMMERSIVE MEDIA</h2>
 <p class="text-on-primary-fixed-variant text-[10px] tracking-[0.4em] uppercase">디지털 번역을 통해 돌의 경계를 확장하다</p>
@@ -288,7 +334,7 @@
 <h2 class="text-[10px] tracking-[0.4em] font-semibold text-surface/80 uppercase">DIGITAL WORKS</h2>
 <p class="text-surface/40 text-[9px] tracking-[0.2em] mt-1">AI Video · Character · VR · Interactive Art</p>
 </div>
-<div class="flex-1 min-h-0 px-[5%]" style="display:grid; grid-template-columns:1.2fr 1fr 1fr; grid-template-rows:repeat(3,1fr); gap:4px;">
+<div class="digital-grid flex-1 min-h-0 px-[5%]" style="display:grid; grid-template-columns:1.2fr 1fr 1fr; grid-template-rows:repeat(3,1fr); gap:4px;">
 <!-- 왼쪽 대형 이미지 (3행 차지) -->
 <div class="relative overflow-hidden group cursor-pointer" style="grid-row:1/4; grid-column:1;">
 <img src="images/ningbo_main.png" alt="가우시안 스플래팅 미디어아트" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"/>
@@ -359,7 +405,7 @@
 </div>
 </section>
 <!-- Exhibition History -->
-<section id="exhibitions" class="snap-section h-screen bg-surface-container-low px-[15%] flex flex-col justify-center">
+<section id="exhibitions" class="exhibitions-section snap-section h-screen bg-surface-container-low px-[15%] flex flex-col justify-center">
 <h2 class="text-[10px] tracking-[0.4em] font-semibold text-primary mb-10 uppercase border-b border-black/5 pb-4 inline-block">SELECTED EXHIBITIONS</h2>
 <div class="space-y-8 max-w-4xl">
 <div class="flex gap-12 md:gap-24 items-baseline group">
@@ -400,11 +446,11 @@
 </div>
 </section>
 <!-- Contact / Footer Section -->
-<section id="contact" class="snap-section h-screen bg-surface flex flex-col items-center justify-center text-center px-[15%]">
+<section id="contact" class="contact-section snap-section h-screen bg-surface flex flex-col items-center justify-center text-center px-[15%]">
 <div>
 <h2 class="font-headline text-5xl md:text-7xl font-extralight tracking-[0.15em] uppercase mb-6">PARK SEONG-HA</h2>
 <p class="text-on-surface-variant/60 text-[11px] tracking-[0.3em] uppercase mb-12">Sculptor · AI Artist · Researcher</p>
-<div class="flex gap-10 justify-center items-center">
+<div class="contact-links flex gap-10 justify-center items-center">
 <a class="text-[10px] tracking-[0.3em] font-medium font-body uppercase text-primary no-underline hover:opacity-60 transition-opacity border-b border-primary/30 pb-1" href="mailto:seongha.art@gmail.com">EMAIL</a>
 <a class="text-[10px] tracking-[0.3em] font-medium font-body uppercase text-primary no-underline hover:opacity-60 transition-opacity border-b border-primary/30 pb-1" href="https://instagram.com/seongha.art" target="_blank">INSTAGRAM</a>
 <a class="text-[10px] tracking-[0.3em] font-medium font-body uppercase text-primary no-underline hover:opacity-60 transition-opacity border-b border-primary/30 pb-1" href="https://art-psh.com" target="_blank">PORTFOLIO</a>
