@@ -135,7 +135,8 @@
             .about-inner {
                 flex-direction: column !important;
                 gap: 2rem !important;
-                padding: 5rem 6% 3rem !important;
+                padding: 5rem 5% 3rem !important;
+                max-width: 100% !important;
             }
             .about-img-wrap {
                 width: 100% !important;
@@ -147,15 +148,16 @@
             }
             .about-text h2 { font-size: 1.8rem !important; margin-bottom: 1rem !important; }
             .about-text { padding-bottom: 2rem !important; }
-            /* Sculpture Gallery */
+            .about-text .max-w-md { max-width: 100% !important; }
+            /* Sculpture Gallery — 3x3 유지 */
             .sculpture-section {
-                padding: 5rem 4% 2rem !important;
+                padding: 5rem 3% 2rem !important;
                 height: auto !important;
             }
             .gallery-grid {
-                grid-template-columns: repeat(2, 1fr) !important;
-                grid-template-rows: auto !important;
-                gap: 3px !important;
+                grid-template-columns: repeat(3, 1fr) !important;
+                grid-template-rows: repeat(3, 1fr) !important;
+                gap: 2px !important;
                 flex: none !important;
                 overflow: visible !important;
             }
@@ -178,15 +180,15 @@
                 height: auto !important;
                 width: 100% !important;
             }
-            /* Digital Works Bento */
+            /* Digital Works Bento — 3열 유지 */
             .digital-works-section {
-                padding: 5rem 4% 2rem !important;
+                padding: 5rem 3% 2rem !important;
                 height: auto !important;
             }
             .digital-grid {
-                grid-template-columns: 1fr 1fr !important;
-                grid-template-rows: auto !important;
-                gap: 3px !important;
+                grid-template-columns: 1.2fr 1fr 1fr !important;
+                grid-template-rows: repeat(3, auto) !important;
+                gap: 2px !important;
                 flex: none !important;
             }
             .digital-grid > div {
@@ -194,17 +196,16 @@
                 position: relative !important;
             }
             .digital-grid > div:first-child {
-                grid-row: auto !important;
-                grid-column: 1 / -1 !important;
+                grid-row: 1 / 4 !important;
+                grid-column: 1 !important;
             }
             .digital-grid > div img {
                 width: 100% !important;
-                height: auto !important;
-                aspect-ratio: 4/3 !important;
+                height: 100% !important;
                 object-fit: cover !important;
             }
             .digital-grid > div:first-child img {
-                aspect-ratio: 16/9 !important;
+                height: 100% !important;
             }
             /* Exhibitions */
             .exhibitions-section {
@@ -236,6 +237,7 @@
             .contact-section h2 { font-size: 1.5rem !important; }
         }
     </style>
+    <meta name="naver-site-verification" content="ae47f426a2792fd3b4715baa9fb5a97086351522" />
 </head>
 <body class="bg-surface text-on-surface font-body selection:bg-primary selection:text-surface-container-lowest">
 <!-- TopAppBar -->
@@ -267,10 +269,11 @@
 <main>
 <!-- Hero Section -->
 <section class="hero-section snap-section relative h-screen w-full flex flex-col justify-center items-center bg-black overflow-hidden">
-<div class="absolute inset-0 z-0">
+<div id="hero-bg" class="absolute inset-0 z-0 will-change-transform" style="top:-10%; bottom:-10%; height:120%;">
 <img alt="AI Generated Art" class="w-full h-full object-cover opacity-80" src="images/ningbo_main.webp"/>
 </div>
-<div class="relative z-10 text-center">
+<div id="hero-dim" class="absolute inset-0 z-[1] bg-black pointer-events-none" style="opacity:0;"></div>
+<div id="hero-text" class="relative z-10 text-center will-change-transform">
 <h1 class="font-headline text-6xl md:text-8xl font-extralight tracking-[0.15em] text-white uppercase leading-none" style="text-shadow: 0 2px 30px rgba(0,0,0,0.6);">
                 PARK SEONG-HA
             </h1>
@@ -566,6 +569,30 @@ function updateHeaderColor() {
 window.addEventListener('scroll', updateHeaderColor, {passive: true});
 updateHeaderColor();
 
+// ── Hero Parallax ────────────────────────────────────────
+const heroBg   = document.getElementById('hero-bg');
+const heroText = document.getElementById('hero-text');
+const heroDim  = document.getElementById('hero-dim');
+const heroH    = document.querySelector('.hero-section').offsetHeight;
+let ticking = false;
+
+function updateParallax() {
+  const y = window.scrollY;
+  if (y > heroH) { ticking = false; return; }
+  const ratio = y / heroH;                              // 0 → 1
+  // 배경: 천천히 위로 (스크롤의 30%)
+  heroBg.style.transform   = 'translate3d(0,' + (y * 0.3) + 'px,0)';
+  // 텍스트: 조금 더 빠르게 위로 + 서서히 사라짐
+  heroText.style.transform = 'translate3d(0,' + (y * 0.5) + 'px,0)';
+  heroText.style.opacity   = Math.max(1 - ratio * 1.8, 0);
+  // 이미지 서서히 어두워짐 (최대 60% 어둡게)
+  heroDim.style.opacity    = Math.min(ratio * 0.6, 0.6);
+  ticking = false;
+}
+window.addEventListener('scroll', () => {
+  if (!ticking) { requestAnimationFrame(updateParallax); ticking = true; }
+}, {passive: true});
+
 const menuToggle = document.getElementById('menu-toggle');
 const menuClose = document.getElementById('menu-close');
 const mobileMenu = document.getElementById('mobile-menu');
@@ -594,32 +621,54 @@ mobileMenu.querySelectorAll('a').forEach(link => {
 <div class="lightbox-caption">
 <p class="title" id="lbTitle"></p>
 <p class="medium" id="lbMedium"></p>
+<p class="counter" id="lbCounter" style="font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:0.2em;margin-top:8px;"></p>
 </div>
 </div>
 <script>
 (function(){
-  const items = document.querySelectorAll('.gallery-item');
   const lb = document.getElementById('lightbox');
   const lbImg = document.getElementById('lbImage');
   const lbTitle = document.getElementById('lbTitle');
   const lbMedium = document.getElementById('lbMedium');
+  const lbCounter = document.getElementById('lbCounter');
   let current = 0;
-  const data = [];
-  items.forEach((item, i) => {
+  let activeData = [];
+
+  // Stone Sculpture 이미지 수집
+  const sculptureData = [];
+  document.querySelectorAll('.gallery-item').forEach((item, i) => {
     const img = item.querySelector('img');
     const infoDiv = item.querySelector('.absolute');
     const pTags = infoDiv ? infoDiv.querySelectorAll('p') : [];
-    data.push({
+    sculptureData.push({
       src: img.src,
       title: pTags[0] ? pTags[0].textContent : '',
       medium: pTags[1] ? pTags[1].textContent : ''
     });
-    item.addEventListener('click', (e) => { e.preventDefault(); current = i; openLB(); });
+    item.addEventListener('click', (e) => { e.preventDefault(); activeData = sculptureData; current = i; openLB(); });
   });
+
+  // Digital Works 이미지 수집
+  const digitalData = [];
+  document.querySelectorAll('.digital-grid > div').forEach((item, i) => {
+    const img = item.querySelector('img');
+    if (!img) return;
+    const infoDiv = item.querySelector('.absolute');
+    const pTags = infoDiv ? infoDiv.querySelectorAll('p') : [];
+    const idx = digitalData.length;
+    digitalData.push({
+      src: img.src,
+      title: pTags[0] ? pTags[0].textContent : '',
+      medium: pTags[1] ? pTags[1].textContent : ''
+    });
+    item.addEventListener('click', (e) => { e.preventDefault(); activeData = digitalData; current = idx; openLB(); });
+  });
+
   function openLB() {
-    lbImg.src = data[current].src;
-    lbTitle.textContent = data[current].title;
-    lbMedium.textContent = data[current].medium;
+    lbImg.src = activeData[current].src;
+    lbTitle.textContent = activeData[current].title;
+    lbMedium.textContent = activeData[current].medium;
+    if (lbCounter) lbCounter.textContent = (current + 1) + ' / ' + activeData.length;
     lb.classList.add('active');
     document.documentElement.style.overflow = 'hidden';
   }
@@ -627,8 +676,21 @@ mobileMenu.querySelectorAll('a').forEach(link => {
     lb.classList.remove('active');
     document.documentElement.style.overflow = '';
   }
-  function prevImg() { current = (current - 1 + data.length) % data.length; openLB(); }
-  function nextImg() { current = (current + 1) % data.length; openLB(); }
+  function prevImg() {
+    if (current <= 0) { current = activeData.length - 1; }
+    else { current--; }
+    openLB();
+  }
+  function nextImg() {
+    if (current >= activeData.length - 1) {
+      // 마지막 이미지 → works.html 갤러리로 이동
+      closeLB();
+      window.location.href = 'works.html';
+      return;
+    }
+    current++;
+    openLB();
+  }
   document.getElementById('lbClose').addEventListener('click', closeLB);
   document.getElementById('lbPrev').addEventListener('click', prevImg);
   document.getElementById('lbNext').addEventListener('click', nextImg);
@@ -639,7 +701,7 @@ mobileMenu.querySelectorAll('a').forEach(link => {
     if(e.key === 'ArrowLeft') prevImg();
     if(e.key === 'ArrowRight') nextImg();
   });
-  // Touch swipe for mobile
+  // Touch swipe
   let touchStartX = 0;
   lb.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; }, {passive:true});
   lb.addEventListener('touchend', (e) => {
