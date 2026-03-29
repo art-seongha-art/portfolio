@@ -179,6 +179,16 @@
 </div>
 </div>
 </section>
+<!-- AI Immersive Video Section (영상이 있을 경우 data-video-id 설정) -->
+<section id="ai-video-section" class="px-[15%] mb-40" style="display:none" data-video-id="">
+<div class="mb-8">
+<p class="font-label text-[10px] uppercase tracking-[0.3em] text-on-surface-variant mb-2">AI Immersive Media</p>
+<h3 class="font-headline italic text-3xl text-primary">영상 작품</h3>
+</div>
+<div class="relative w-full" style="padding-bottom:56.25%;">
+<iframe id="ai-video-iframe" class="absolute inset-0 w-full h-full" src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+</div>
+</section>
 <!-- Back Navigation -->
 <section class="px-[15%] py-20 bg-surface-container-low tonal-shift">
 <div class="flex flex-col items-center gap-8">
@@ -223,5 +233,17 @@ menuClose.addEventListener('click', closeMenu);
 mobileMenu.querySelectorAll('a').forEach(link => {
   link.addEventListener('click', closeMenu);
 });
+</script>
+<script>
+// AI Immersive 영상 연결: data-video-id 에 YouTube 영상 ID를 넣으면 자동으로 표시됩니다.
+(function () {
+  const section = document.getElementById('ai-video-section');
+  if (!section) return;
+  const videoId = section.dataset.videoId;
+  if (!videoId) return;
+  const iframe = document.getElementById('ai-video-iframe');
+  iframe.src = 'https://www.youtube.com/embed/' + videoId + '?rel=0';
+  section.style.display = '';
+})();
 </script>
 </body></html>

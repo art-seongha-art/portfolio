@@ -90,6 +90,9 @@
         body {
             background-color: #f9f9f9;
         }
+        .is-more-hidden {
+            display: none;
+        }
     </style>
 </head>
 <body class="font-body text-on-surface selection:bg-primary selection:text-white">
@@ -128,16 +131,16 @@
             </h1>
 <!-- Minimalist Filtering -->
 <div class="flex flex-wrap gap-10 mt-16 border-b border-outline/10 pb-6">
-<button class="font-label text-[10px] uppercase tracking-[0.2em] text-primary border-b border-primary pb-1">All</button>
-<button class="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant hover:text-primary transition-colors">Sculpture</button>
-<button class="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant hover:text-primary transition-colors">Public Art</button>
-<button class="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant hover:text-primary transition-colors">AI Art</button>
+<button data-filter="all" class="font-label text-[10px] uppercase tracking-[0.2em] text-primary border-b border-primary pb-1">All</button>
+<button data-filter="sculpture" class="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant hover:text-primary transition-colors">Sculpture</button>
+<button data-filter="public-art" class="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant hover:text-primary transition-colors">Public Art</button>
+<button data-filter="ai-art" class="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant hover:text-primary transition-colors">AI Art</button>
 </div>
 </header>
 <!-- Editorial Grid Layout -->
 <div class="grid grid-cols-1 md:grid-cols-12 gap-y-32 md:gap-x-12">
 <!-- Row 1 -->
-<a href="work-detail.html" class="md:col-span-7 group no-underline block">
+<a href="work-detail.html" class="md:col-span-7 group no-underline block" data-category="sculpture">
 <div class="aspect-[4/5] bg-surface-container-low overflow-hidden transition-transform duration-700 ease-out group-hover:scale-[1.02]">
 <img loading="lazy" class="w-full h-full object-cover" alt="Healing — Pietà" src="images/006_slide_4_2.webp"/>
 </div>
@@ -146,7 +149,7 @@
 <span class="font-label text-[10px] tracking-widest text-on-surface-variant">2014</span>
 </div>
 </a>
-<a href="work-detail.html" class="md:col-span-4 md:col-start-9 mt-24 md:mt-48 group no-underline block">
+<a href="work-detail.html" class="md:col-span-4 md:col-start-9 mt-24 md:mt-48 group no-underline block" data-category="ai-art">
 <div class="aspect-square bg-surface-container-low overflow-hidden transition-transform duration-700 ease-out group-hover:scale-[1.02]">
 <img loading="lazy" class="w-full h-full object-cover" alt="Blue Moon A1" src="images/bluemoon_a1.webp"/>
 </div>
@@ -157,7 +160,7 @@
 </div>
 </a>
 <!-- Row 2 (Asymmetric Shift) -->
-<a href="work-detail.html" class="md:col-span-5 md:mt-[-80px] group no-underline block">
+<a href="work-detail.html" class="md:col-span-5 md:mt-[-80px] group no-underline block" data-category="sculpture">
 <div class="aspect-[3/4] bg-surface-container-low overflow-hidden transition-transform duration-700 ease-out group-hover:scale-[1.02]">
 <img loading="lazy" class="w-full h-full object-cover" alt="Healing — I'll Pick Stars for You" src="images/045_치유하다_별을_따줄게_,사암,_검정_화강석,_스테인레스_스틸,_1100x_800x_2400mm,_2018_부_1.webp"/>
 </div>
@@ -166,7 +169,7 @@
 <span class="font-label text-[10px] tracking-widest text-on-surface-variant block mt-2">2018</span>
 </div>
 </a>
-<a href="work-detail.html" class="md:col-span-6 md:col-start-7 group no-underline block">
+<a href="work-detail.html" class="md:col-span-6 md:col-start-7 group no-underline block" data-category="public-art">
 <div class="aspect-video bg-surface-container-low overflow-hidden transition-transform duration-700 ease-out group-hover:scale-[1.02]">
 <img loading="lazy" class="w-full h-full object-cover" alt="Secret Garden" src="images/083_앞으로_앞으로_작품재료_사암,_화강석_,_스테인레스_스틸,_2.webp"/>
 </div>
@@ -176,7 +179,7 @@
 </div>
 </a>
 <!-- Row 3 (Focus Piece) -->
-<div class="md:col-span-10 md:col-start-2 group mt-24">
+<div class="md:col-span-10 md:col-start-2 group mt-24" data-category="sculpture">
 <div class="aspect-[21/9] bg-surface-container-low overflow-hidden transition-transform duration-700 ease-out group-hover:scale-[1.01]">
 <img class="w-full h-full object-cover" alt="Healing: Coexistence" src="images/ningbo_main.webp"/>
 </div>
@@ -190,7 +193,7 @@
 </div>
 </div>
 <!-- Row 4 -->
-<a href="work-detail.html" class="md:col-span-5 group no-underline block">
+<a href="work-detail.html" class="md:col-span-5 group no-underline block is-more-hidden" data-category="sculpture" data-more>
 <div class="aspect-square bg-surface-container-low overflow-hidden transition-transform duration-700 ease-out group-hover:scale-[1.02]">
 <img loading="lazy" class="w-full h-full object-cover" alt="Healing — Dancing with Me" src="images/052_치유하다_댄싱위드_미,사암,_검정_화강석,_스테인레스_스틸,_400x_300x_450mm,_2018_1.webp"/>
 </div>
@@ -199,7 +202,7 @@
 <span class="font-label text-[10px] tracking-widest text-on-surface-variant block mt-2">2018</span>
 </div>
 </a>
-<a href="work-detail.html" class="md:col-span-5 md:col-start-8 mt-[-40px] group no-underline block">
+<a href="work-detail.html" class="md:col-span-5 md:col-start-8 mt-[-40px] group no-underline block is-more-hidden" data-category="sculpture" data-more>
 <div class="aspect-[3/4] bg-surface-container-low overflow-hidden transition-transform duration-700 ease-out group-hover:scale-[1.02]">
 <img loading="lazy" class="w-full h-full object-cover" alt="Healing — Just by Being There" src="images/012_slide_7_2.webp"/>
 </div>
@@ -210,8 +213,8 @@
 </a>
 </div>
 <!-- Pagination / Load More -->
-<div class="mt-48 flex flex-col items-center">
-<button class="group flex flex-col items-center gap-4">
+<div id="load-more-container" class="mt-48 flex flex-col items-center">
+<button id="load-more-btn" class="group flex flex-col items-center gap-4">
 <span class="font-label text-[10px] uppercase tracking-[0.3em] text-primary">더 보기</span>
 <div class="w-px h-16 bg-primary/20 group-hover:h-24 transition-all duration-500"></div>
 </button>
@@ -252,5 +255,62 @@ menuClose.addEventListener('click', closeMenu);
 mobileMenu.querySelectorAll('a').forEach(link => {
   link.addEventListener('click', closeMenu);
 });
+</script>
+<script>
+// ── 카테고리 필터 ─────────────────────────────────────────
+const filterBtns = document.querySelectorAll('[data-filter]');
+const workCards  = document.querySelectorAll('[data-category]');
+
+filterBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const filter = btn.dataset.filter;
+
+    // 활성 버튼 스타일 토글
+    filterBtns.forEach(b => {
+      b.classList.remove('text-primary', 'border-b', 'border-primary', 'pb-1');
+      b.classList.add('text-on-surface-variant');
+    });
+    btn.classList.remove('text-on-surface-variant');
+    btn.classList.add('text-primary', 'border-b', 'border-primary', 'pb-1');
+
+    // 카드 표시/비표시 (is-more-hidden 상태인 카드는 건너뜀)
+    workCards.forEach(card => {
+      if (card.classList.contains('is-more-hidden')) return;
+      const match = filter === 'all' || card.dataset.category === filter;
+      card.style.transition    = 'opacity 0.3s ease, transform 0.3s ease';
+      card.style.opacity       = match ? '1'       : '0.12';
+      card.style.transform     = match ? ''        : 'scale(0.98)';
+      card.style.pointerEvents = match ? ''        : 'none';
+    });
+  });
+});
+
+// ── 더 보기 ───────────────────────────────────────────────
+const loadMoreBtn  = document.getElementById('load-more-btn');
+const loadMoreCont = document.getElementById('load-more-container');
+const moreItems    = document.querySelectorAll('[data-more]');
+
+if (loadMoreBtn) {
+  loadMoreBtn.addEventListener('click', () => {
+    const activeBtn    = document.querySelector('[data-filter].text-primary');
+    const activeFilter = activeBtn ? activeBtn.dataset.filter : 'all';
+
+    moreItems.forEach((item, i) => {
+      setTimeout(() => {
+        item.classList.remove('is-more-hidden');
+        const match = activeFilter === 'all' || item.dataset.category === activeFilter;
+        item.style.opacity       = '0';
+        item.style.transition    = 'opacity 0.6s ease';
+        item.style.transform     = match ? ''        : 'scale(0.98)';
+        item.style.pointerEvents = match ? ''        : 'none';
+        requestAnimationFrame(() => {
+          item.style.opacity = match ? '1' : '0.12';
+        });
+      }, i * 200);
+    });
+
+    loadMoreCont.style.display = 'none';
+  });
+}
 </script>
 </body></html>
