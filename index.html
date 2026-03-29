@@ -150,9 +150,13 @@
                 flex: none !important;
                 overflow: visible !important;
             }
+            .gallery-item {
+                height: auto !important;
+            }
             .gallery-item img {
                 aspect-ratio: 1/1 !important;
                 height: auto !important;
+                width: 100% !important;
             }
             /* AI Immersive */
             .ai-immersive-section {
@@ -176,17 +180,22 @@
                 gap: 3px !important;
                 flex: none !important;
             }
+            .digital-grid > div {
+                height: auto !important;
+                position: relative !important;
+            }
             .digital-grid > div:first-child {
                 grid-row: auto !important;
                 grid-column: 1 / -1 !important;
             }
+            .digital-grid > div img {
+                width: 100% !important;
+                height: auto !important;
+                aspect-ratio: 4/3 !important;
+                object-fit: cover !important;
+            }
             .digital-grid > div:first-child img {
                 aspect-ratio: 16/9 !important;
-                height: auto !important;
-            }
-            .digital-grid > div:not(:first-child) img {
-                aspect-ratio: 1/1 !important;
-                height: auto !important;
             }
             /* Exhibitions */
             .exhibitions-section {
@@ -509,7 +518,7 @@
 </div>
 </section>
 <!-- Contact / Footer Section -->
-<section id="contact" class="contact-section snap-section h-screen bg-surface flex flex-col items-center justify-center text-center px-[15%]">
+<section id="contact" class="contact-section snap-section h-screen bg-surface flex flex-col items-center justify-center text-center px-[15%] relative">
 <div>
 <h2 class="font-headline text-5xl md:text-7xl font-extralight tracking-[0.15em] uppercase mb-6">PARK SEONG-HA</h2>
 <p class="text-on-surface-variant/60 text-[11px] tracking-[0.3em] uppercase mb-12">Sculptor · AI Artist · Researcher</p>
