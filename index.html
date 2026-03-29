@@ -109,50 +109,113 @@
         .lightbox-caption .title { font-size:14px; font-weight:300; letter-spacing:0.05em; margin-bottom:4px; }
         .lightbox-caption .medium { font-size:10px; color:rgba(255,255,255,0.5); letter-spacing:0.1em; }
 
-        /* ===== Mobile Responsive ===== */
+        /* ===== MOBILE RESPONSIVE ===== */
         @media (max-width: 767px) {
-            /* Disable scroll-snap on mobile — content overflows h-screen */
-            html { scroll-snap-type: none; }
-            .snap-section { scroll-snap-align: none; min-height: 100vh; height: auto; }
-
+            html { scroll-snap-type: none !important; }
+            .snap-section, .snap-section-proximity {
+                scroll-snap-align: none !important;
+                min-height: auto !important;
+                height: auto !important;
+            }
             /* Header */
-            header { padding-left: 6%; padding-right: 6%; }
-
-            /* Hero: smaller text */
-            .hero-title-mobile { font-size: 2.5rem !important; letter-spacing: 0.08em !important; }
-
-            /* About: stack vertically, full-width image */
-            .about-layout { flex-direction: column !important; gap: 2rem !important; padding: 5rem 6% 2rem !important; }
-            .about-img-wrap { width: 100% !important; flex-shrink: 1 !important; }
-            .about-img-wrap img { aspect-ratio: 4/3 !important; }
-            .about-text { padding: 0 !important; }
-            .about-text h2 { font-size: 1.8rem !important; margin-bottom: 1.5rem !important; }
-
-            /* Sculpture gallery: reduce padding, 2 columns */
-            .sculpture-section { padding: 5rem 4% 1rem !important; }
-            .gallery-grid { grid-template-columns: repeat(2, 1fr) !important; grid-template-rows: auto !important; gap: 3px !important; }
-
+            header { padding-left: 6% !important; padding-right: 6% !important; }
+            /* Hero — keep full viewport */
+            .hero-section { height: 100vh !important; min-height: 100svh !important; }
+            .hero-section h1 { font-size: 2.2rem !important; letter-spacing: 0.08em !important; }
+            /* About */
+            .about-inner {
+                flex-direction: column !important;
+                gap: 2rem !important;
+                padding: 5rem 6% 3rem !important;
+            }
+            .about-img-wrap {
+                width: 100% !important;
+                flex-shrink: 1 !important;
+            }
+            .about-img-wrap img {
+                aspect-ratio: 4/3 !important;
+                height: auto !important;
+            }
+            .about-text h2 { font-size: 1.8rem !important; margin-bottom: 1rem !important; }
+            .about-text { padding-bottom: 2rem !important; }
+            /* Sculpture Gallery */
+            .sculpture-section {
+                padding: 5rem 4% 2rem !important;
+                height: auto !important;
+            }
+            .gallery-grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+                grid-template-rows: auto !important;
+                gap: 3px !important;
+                flex: none !important;
+                overflow: visible !important;
+            }
+            .gallery-item img {
+                aspect-ratio: 1/1 !important;
+                height: auto !important;
+            }
             /* AI Immersive */
-            .ai-immersive-section { padding: 5rem 5% 1.5rem !important; }
-
-            /* Digital Works bento: single column */
-            .digital-grid { grid-template-columns: 1fr !important; grid-template-rows: auto !important; gap: 3px !important; }
-            .digital-grid > div:first-child { grid-row: auto !important; }
-
+            .ai-immersive-section {
+                padding: 5rem 5% 2rem !important;
+                height: auto !important;
+            }
+            .ai-immersive-section h2 { font-size: 1.5rem !important; }
+            .ai-immersive-section .video-placeholder {
+                aspect-ratio: 16/9 !important;
+                height: auto !important;
+                width: 100% !important;
+            }
+            /* Digital Works Bento */
+            .digital-works-section {
+                padding: 5rem 4% 2rem !important;
+                height: auto !important;
+            }
+            .digital-grid {
+                grid-template-columns: 1fr 1fr !important;
+                grid-template-rows: auto !important;
+                gap: 3px !important;
+                flex: none !important;
+            }
+            .digital-grid > div:first-child {
+                grid-row: auto !important;
+                grid-column: 1 / -1 !important;
+            }
+            .digital-grid > div:first-child img {
+                aspect-ratio: 16/9 !important;
+                height: auto !important;
+            }
+            .digital-grid > div:not(:first-child) img {
+                aspect-ratio: 1/1 !important;
+                height: auto !important;
+            }
             /* Exhibitions */
-            .exhibitions-section { padding: 5rem 6% 2rem !important; }
-
+            .exhibitions-section {
+                padding: 5rem 6% 3rem !important;
+                height: auto !important;
+            }
+            .exhibitions-section .flex.gap-12 { gap: 1.5rem !important; }
+            .exhibitions-section h4 { font-size: 1.2rem !important; }
             /* Contact */
-            .contact-section { padding: 5rem 8% 2rem !important; }
-            .contact-section h2 { font-size: 2rem !important; }
+            .contact-section {
+                padding: 4rem 8% 3rem !important;
+                height: auto !important;
+                min-height: 60vh !important;
+                position: relative !important;
+            }
+            .contact-section h2 { font-size: 1.8rem !important; }
             .contact-links { gap: 1.5rem !important; flex-wrap: wrap !important; }
+            .contact-copyright {
+                position: relative !important;
+                bottom: auto !important;
+                margin-top: 3rem !important;
+            }
         }
 
-        /* Galaxy Fold specific (very narrow) */
+        /* Galaxy Fold */
         @media (max-width: 380px) {
-            .gallery-grid { grid-template-columns: repeat(2, 1fr) !important; }
-            .hero-title-mobile { font-size: 2rem !important; }
-            .sculpture-section { padding: 5rem 3% 1rem !important; }
+            .hero-section h1 { font-size: 1.8rem !important; }
+            .sculpture-section { padding: 5rem 3% 2rem !important; }
+            .contact-section h2 { font-size: 1.5rem !important; }
         }
     </style>
 </head>
@@ -185,12 +248,12 @@
 </div>
 <main>
 <!-- Hero Section -->
-<section class="snap-section relative h-screen w-full flex flex-col justify-center items-center bg-black overflow-hidden">
+<section class="hero-section snap-section relative h-screen w-full flex flex-col justify-center items-center bg-black overflow-hidden">
 <div class="absolute inset-0 z-0">
 <img alt="AI Generated Art" class="w-full h-full object-cover opacity-80" src="images/ningbo_main.png"/>
 </div>
 <div class="relative z-10 text-center">
-<h1 class="font-headline text-6xl md:text-8xl font-extralight tracking-[0.15em] text-white uppercase leading-none hero-title-mobile" style="text-shadow: 0 2px 30px rgba(0,0,0,0.6);">
+<h1 class="font-headline text-6xl md:text-8xl font-extralight tracking-[0.15em] text-white uppercase leading-none" style="text-shadow: 0 2px 30px rgba(0,0,0,0.6);">
                 PARK SEONG-HA
             </h1>
 <p class="mt-6 text-[11px] tracking-[0.5em] font-medium uppercase text-white/70" style="text-shadow: 0 1px 10px rgba(0,0,0,0.8);">
@@ -200,7 +263,7 @@
 </section>
 <!-- Artist Profile -->
 <section id="about" class="snap-section h-screen bg-surface flex items-center">
-<div class="about-layout max-w-6xl mx-auto flex flex-col md:flex-row gap-16 items-center px-8">
+<div class="about-inner max-w-6xl mx-auto flex flex-col md:flex-row gap-16 items-center px-8">
 <div class="about-img-wrap w-full overflow-hidden" style="width:43%;flex-shrink:0">
 <img alt="Park Seong-Ha Portrait" class="w-full aspect-[3/4] object-cover object-[60%_center]" src="images/healing_hello.jpg"/>
 </div>
@@ -320,7 +383,7 @@
 <p class="text-on-primary-fixed-variant text-[10px] tracking-[0.4em] uppercase">디지털 번역을 통해 돌의 경계를 확장하다</p>
 </div>
 <div class="w-full flex-1 min-h-0 flex items-center justify-center">
-<div class="h-full bg-surface-container-low/10 flex items-center justify-center relative group cursor-pointer" style="aspect-ratio:16/9; max-width:100%;">
+<div class="video-placeholder h-full bg-surface-container-low/10 flex items-center justify-center relative group cursor-pointer" style="aspect-ratio:16/9; max-width:100%;">
 <span class="material-symbols-outlined text-surface text-6xl font-extralight opacity-30 group-hover:opacity-100 transition-all duration-700">play_circle</span>
 <div class="absolute bottom-8 left-8">
 <p class="text-surface/50 text-[10px] tracking-[0.2em]">가우시안 스플래팅 미디어아트 / 손 제스처 인터랙션</p>
@@ -329,7 +392,7 @@
 </div>
 </section>
 <!-- Digital Works Bento Grid -->
-<section class="snap-section h-screen bg-primary flex flex-col" style="padding:clamp(4.5rem,8vh,5.5rem) 5% clamp(1rem,2vh,2rem);">
+<section class="digital-works-section snap-section h-screen bg-primary flex flex-col" style="padding:clamp(4.5rem,8vh,5.5rem) 5% clamp(1rem,2vh,2rem);">
 <div class="mb-4 px-[5%] shrink-0">
 <h2 class="text-[10px] tracking-[0.4em] font-semibold text-surface/80 uppercase">DIGITAL WORKS</h2>
 <p class="text-surface/40 text-[9px] tracking-[0.2em] mt-1">AI Video · Character · VR · Interactive Art</p>
@@ -456,7 +519,7 @@
 <a class="text-[10px] tracking-[0.3em] font-medium font-body uppercase text-primary no-underline hover:opacity-60 transition-opacity border-b border-primary/30 pb-1" href="https://art-psh.com" target="_blank">PORTFOLIO</a>
 </div>
 </div>
-<div class="absolute bottom-6 text-[9px] tracking-[0.2em] font-body uppercase text-gray-400">
+<div class="contact-copyright absolute bottom-6 text-[9px] tracking-[0.2em] font-body uppercase text-gray-400">
         © 2026 PARK SEONG-HA. ALL RIGHTS RESERVED.
     </div>
 </section>
