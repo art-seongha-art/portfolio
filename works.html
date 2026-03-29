@@ -1,317 +1,401 @@
 <!DOCTYPE html>
-
 <html class="light" lang="ko"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<meta name="description" content="박성하의 전체 작품 아카이브. 석조 조각, 공공미술, AI 아트 시리즈를 연도별로 탐색합니다."/>
+<meta name="description" content="박성하 조각가 작품 아카이브 — 석조 봉합 조각, 곰인형 조각, 공공미술(건축물 미술작품·미술장식품), 디지털 아트, VR 실감미디어 작품을 탐색합니다."/>
+<meta name="keywords" content="박성하, 박성하 조각가, 공공미술, 건축물 미술작품, 미술장식품, 조각, 곰인형 조각, 석조 조각, 봉합 조각, 디지털 아트, VR 아트, 실감미디어, Park Seong-Ha, sculpture, public art"/>
 <meta name="author" content="Park Seong-Ha"/>
+<link rel="canonical" href="https://art-psh.com/works.html"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <meta property="og:type" content="website"/>
-<meta property="og:url" content="https://art-seongha-art.github.io/portfolio/works.html"/>
-<meta property="og:title" content="Park Seong-Ha | Works Archive"/>
-<meta property="og:description" content="박성하의 전체 작품 아카이브. 석조 조각, 공공미술, AI 아트 시리즈를 연도별로 탐색합니다."/>
-<meta property="og:image" content="https://art-seongha-art.github.io/portfolio/images/ningbo_main.webp"/>
+<meta property="og:url" content="https://art-psh.com/works.html"/>
+<meta property="og:title" content="박성하 작품 아카이브 | 조각·공공미술·디지털 아트"/>
+<meta property="og:description" content="석조 봉합 조각, 곰인형 조각, 공공미술, 디지털 아트, VR 실감미디어 작품 아카이브."/>
+<meta property="og:image" content="https://art-psh.com/images/works/healing_pieta.webp"/>
+<meta property="og:locale" content="ko_KR"/>
+<meta property="og:site_name" content="박성하 조각가 포트폴리오"/>
 <meta name="twitter:card" content="summary_large_image"/>
-<meta name="twitter:title" content="Park Seong-Ha | Works Archive"/>
-<meta name="twitter:description" content="박성하의 전체 작품 아카이브. 석조 조각, 공공미술, AI 아트 시리즈를 연도별로 탐색합니다."/>
-<meta name="twitter:image" content="https://art-seongha-art.github.io/portfolio/images/ningbo_main.webp"/>
+<meta name="twitter:title" content="박성하 작품 아카이브 | 조각·공공미술·디지털 아트"/>
+<meta name="twitter:description" content="석조 봉합 조각, 곰인형 조각, 공공미술, 디지털 아트, VR 실감미디어 작품 아카이브."/>
+<meta name="twitter:image" content="https://art-psh.com/images/works/healing_pieta.webp"/>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  "name": "박성하 작품 아카이브",
+  "description": "석조 봉합 조각, 곰인형 조각, 공공미술(건축물 미술작품·미술장식품), 디지털 아트, VR 실감미디어 작품 컬렉션",
+  "url": "https://art-psh.com/works.html",
+  "author": {
+    "@type": "Person",
+    "name": "박성하",
+    "alternateName": "Park Seong-Ha",
+    "url": "https://art-psh.com"
+  },
+  "about": ["공공미술", "건축물 미술작품", "미술장식품", "석조 조각", "봉합 조각", "곰인형 조각", "디지털 아트", "VR 실감미디어"]
+}
+</script>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='12' fill='%23111'/><text x='50' y='68' font-family='Georgia,serif' font-size='38' font-weight='bold' fill='white' text-anchor='middle' letter-spacing='2'>PSH</text></svg>">
 <title>Park Seong-Ha | Works Archive</title>
-<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&amp;family=Manrope:wght@200..800&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&family=Manrope:wght@200..800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <script id="tailwind-config">
-      tailwind.config = {
-        darkMode: "class",
-        theme: {
-          extend: {
-            colors: {
-              "inverse-primary": "#c8c6c5",
-              "surface-dim": "#dadada",
-              "surface-bright": "#f9f9f9",
-              "on-primary-fixed": "#ffffff",
-              "outline-variant": "#c6c6c6",
-              "primary-container": "#3c3b3b",
-              "on-secondary-fixed": "#1a1c1c",
-              "on-primary": "#e5e2e1",
-              "surface-variant": "#e2e2e2",
-              "tertiary-fixed-dim": "#464747",
-              "surface-container": "#eeeeee",
-              "secondary-container": "#d4d4d4",
-              "secondary-fixed-dim": "#aaabab",
-              "tertiary-fixed": "#5e5e5e",
-              "primary-fixed": "#5f5e5e",
-              "on-surface-variant": "#474747",
-              "inverse-surface": "#2f3131",
-              "tertiary-container": "#747474",
-              "on-error": "#ffffff",
-              "inverse-on-surface": "#f0f1f1",
-              "error": "#ba1a1a",
-              "surface-container-lowest": "#ffffff",
-              "primary-fixed-dim": "#474746",
-              "on-tertiary-fixed": "#ffffff",
-              "on-primary-container": "#ffffff",
-              "surface-container-high": "#e8e8e8",
-              "surface": "#f9f9f9",
-              "secondary-fixed": "#c6c6c7",
-              "on-tertiary": "#e3e2e2",
-              "surface-container-highest": "#e2e2e2",
-              "secondary": "#5d5f5f",
-              "primary": "#000000",
-              "on-error-container": "#410002",
-              "tertiary": "#3b3b3c",
-              "on-surface": "#1a1c1c",
-              "on-secondary-container": "#1a1c1c",
-              "background": "#f9f9f9",
-              "on-secondary-fixed-variant": "#3a3c3c",
-              "on-secondary": "#ffffff",
-              "on-tertiary-fixed-variant": "#e3e2e2",
-              "error-container": "#ffdad6",
-              "surface-tint": "#5f5e5e",
-              "outline": "#777777",
-              "on-primary-fixed-variant": "#e5e2e1",
-              "surface-container-low": "#f3f3f4",
-              "on-background": "#1a1c1c",
-              "on-tertiary-container": "#ffffff"
-            },
-            fontFamily: {
-              "headline": ["Newsreader", "serif"],
-              "body": ["Manrope", "sans-serif"],
-              "label": ["Manrope", "sans-serif"]
-            },
-            borderRadius: {"DEFAULT": "0px", "lg": "0px", "xl": "0px", "full": "9999px"},
-          },
-        },
-      }
-    </script>
+tailwind.config = {
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        "surface": "#f9f9f9",
+        "surface-dim": "#dadada",
+        "surface-container": "#eeeeee",
+        "surface-container-low": "#f3f3f4",
+        "surface-container-high": "#e8e8e8",
+        "on-surface": "#1a1c1c",
+        "on-surface-variant": "#474747",
+        "primary": "#000000",
+        "on-primary": "#e5e2e1",
+        "outline": "#777777",
+        "outline-variant": "#c6c6c6",
+      },
+      fontFamily: {
+        "headline": ["Newsreader", "serif"],
+        "body": ["Manrope", "sans-serif"],
+        "label": ["Manrope", "sans-serif"]
+      },
+    },
+  },
+}
+</script>
 <style>
-        .material-symbols-outlined {
-            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
-        }
-        body {
-            background-color: #f9f9f9;
-        }
-        .is-more-hidden {
-            display: none;
-        }
-    </style>
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+}
+body { background-color: #f9f9f9; }
+
+/* ── Grid Layout (row-first, year-sorted) ───────────── */
+.masonry {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 1024px) { .masonry { grid-template-columns: repeat(2, 1fr); gap: 16px; } }
+@media (max-width: 640px)  { .masonry { grid-template-columns: repeat(2, 1fr); gap: 10px; } }
+
+/* ── Card ────────────────────────────────────────────── */
+.masonry-card {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+.masonry-card.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.masonry-card.filtered-out {
+  display: none;
+}
+
+/* ── Image hover ─────────────────────────────────────── */
+.card-img-wrap {
+  position: relative;
+  overflow: hidden;
+  background: #eee;
+  aspect-ratio: 4 / 5;
+}
+.card-img-wrap img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 20%;
+  transition: transform 0.6s ease;
+}
+.card-img-wrap:hover img {
+  transform: scale(1.03);
+}
+/* Hover overlay */
+.card-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.card-img-wrap:hover .card-overlay {
+  opacity: 1;
+}
+
+/* ── Section header ──────────────────────────────────── */
+.section-header:first-child { margin-top: 0 !important; }
+
+/* ── Filter ──────────────────────────────────────────── */
+.filter-btn { cursor: pointer; background: none; border: none; }
+.filter-btn.active {
+  color: #000 !important;
+  border-bottom: 1px solid #000;
+  padding-bottom: 4px;
+}
+
+/* ── Lightbox ────────────────────────────────────────── */
+.lightbox { position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.92); display:none; align-items:center; justify-content:center; flex-direction:column; }
+.lightbox.active { display:flex; }
+.lightbox img { max-width:88vw; max-height:80vh; object-fit:contain; }
+.lightbox-close { position:absolute; top:20px; right:28px; color:#fff; font-size:28px; cursor:pointer; background:none; border:none; }
+.lightbox-caption { color:#fff; text-align:center; margin-top:16px; font-size:13px; font-weight:300; letter-spacing:0.03em; }
+.lightbox-sub { color:rgba(255,255,255,0.5); font-size:10px; letter-spacing:0.1em; margin-top:4px; }
+</style>
     <meta name="naver-site-verification" content="ae47f426a2792fd3b4715baa9fb5a97086351522" />
 </head>
 <body class="font-body text-on-surface selection:bg-primary selection:text-white">
+
 <!-- TopAppBar -->
-<nav class="fixed top-0 w-full flex justify-between items-center px-[15%] py-8 bg-[#F9F9F9]/70 backdrop-blur-xl transition-colors duration-500 z-50">
-<a href="index.html" class="text-2xl font-light tracking-[0.1em] font-headline text-black uppercase no-underline">
-            PARK SEONG-HA
-        </a>
-<div class="hidden md:flex gap-12 items-center">
-<a class="text-black border-b border-black/10 pb-1 text-[10px] tracking-[0.2em] font-medium font-body uppercase transition-colors duration-500 no-underline" href="works.html">Works</a>
-<a class="text-gray-400 hover:text-black text-[10px] tracking-[0.2em] font-medium font-body uppercase transition-colors duration-500 no-underline" href="index.html#exhibitions">Exhibitions</a>
-<a class="text-gray-400 hover:text-black text-[10px] tracking-[0.2em] font-medium font-body uppercase transition-colors duration-500 no-underline" href="index.html#ai-immersive">AI Immersive</a>
-<a class="text-gray-400 hover:text-black text-[10px] tracking-[0.2em] font-medium font-body uppercase transition-colors duration-500 no-underline" href="cv.html">CV</a>
-</div>
-<button id="menu-toggle" class="md:hidden flex items-center opacity-80 hover:opacity-100 transition-all">
-<span class="material-symbols-outlined text-black">menu</span>
-</button>
+<nav class="fixed top-0 w-full flex justify-between items-center px-[6%] md:px-[10%] py-8 bg-[#F9F9F9]/70 backdrop-blur-xl transition-colors duration-500 z-50">
+  <a href="index.html" class="text-2xl font-light tracking-[0.1em] font-headline text-black uppercase no-underline">
+    PARK SEONG-HA
+  </a>
+  <div class="hidden md:flex gap-12 items-center">
+    <a class="text-black border-b border-black/10 pb-1 text-[10px] tracking-[0.2em] font-medium font-body uppercase transition-colors duration-500 no-underline" href="works.html">Works</a>
+    <a class="text-gray-400 hover:text-black text-[10px] tracking-[0.2em] font-medium font-body uppercase transition-colors duration-500 no-underline" href="index.html#exhibitions">Exhibitions</a>
+    <a class="text-gray-400 hover:text-black text-[10px] tracking-[0.2em] font-medium font-body uppercase transition-colors duration-500 no-underline" href="index.html#ai-immersive">AI Immersive</a>
+    <a class="text-gray-400 hover:text-black text-[10px] tracking-[0.2em] font-medium font-body uppercase transition-colors duration-500 no-underline" href="cv.html">CV</a>
+  </div>
+  <button id="menu-toggle" class="md:hidden flex items-center opacity-80 hover:opacity-100 transition-all">
+    <span class="material-symbols-outlined text-black">menu</span>
+  </button>
 </nav>
+
 <!-- Mobile Menu Overlay -->
 <div id="mobile-menu" class="fixed inset-0 z-[100] bg-surface flex flex-col justify-center items-center gap-12 transition-all duration-500 opacity-0 pointer-events-none">
-<button id="menu-close" class="absolute top-6 right-[15%]">
-<span class="material-symbols-outlined text-black text-3xl">close</span>
-</button>
-<a class="text-black text-[11px] tracking-[0.3em] font-medium font-body uppercase no-underline" href="index.html">HOME</a>
-<a class="text-black text-[11px] tracking-[0.3em] font-medium font-body uppercase no-underline" href="works.html">WORKS</a>
-<a class="text-black text-[11px] tracking-[0.3em] font-medium font-body uppercase no-underline" href="index.html#exhibitions">EXHIBITIONS</a>
-<a class="text-black text-[11px] tracking-[0.3em] font-medium font-body uppercase no-underline" href="index.html#ai-immersive">AI IMMERSIVE</a>
-<a class="text-black text-[11px] tracking-[0.3em] font-medium font-body uppercase no-underline" href="cv.html">CV</a>
+  <button id="menu-close" class="absolute top-6 right-[6%]">
+    <span class="material-symbols-outlined text-black text-3xl">close</span>
+  </button>
+  <a class="text-black text-[11px] tracking-[0.3em] font-medium font-body uppercase no-underline" href="index.html">HOME</a>
+  <a class="text-black text-[11px] tracking-[0.3em] font-medium font-body uppercase no-underline" href="works.html">WORKS</a>
+  <a class="text-black text-[11px] tracking-[0.3em] font-medium font-body uppercase no-underline" href="index.html#exhibitions">EXHIBITIONS</a>
+  <a class="text-black text-[11px] tracking-[0.3em] font-medium font-body uppercase no-underline" href="index.html#ai-immersive">AI IMMERSIVE</a>
+  <a class="text-black text-[11px] tracking-[0.3em] font-medium font-body uppercase no-underline" href="cv.html">CV</a>
 </div>
-<!-- Main Content Canvas -->
-<main class="pt-48 pb-32 px-[15%]">
-<!-- Header Section -->
-<header class="mb-24">
-<h1 class="font-headline italic text-6xl md:text-8xl tracking-[0.05em] text-primary mb-12">
-                Works Archive
-            </h1>
-<!-- Minimalist Filtering -->
-<div class="flex flex-wrap gap-10 mt-16 border-b border-outline/10 pb-6">
-<button data-filter="all" class="font-label text-[10px] uppercase tracking-[0.2em] text-primary border-b border-primary pb-1">All</button>
-<button data-filter="sculpture" class="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant hover:text-primary transition-colors">Sculpture</button>
-<button data-filter="public-art" class="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant hover:text-primary transition-colors">Public Art</button>
-<button data-filter="ai-art" class="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant hover:text-primary transition-colors">AI Art</button>
-</div>
-</header>
-<!-- Editorial Grid Layout -->
-<div class="grid grid-cols-1 md:grid-cols-12 gap-y-32 md:gap-x-12">
-<!-- Row 1 -->
-<a href="work-detail.html" class="md:col-span-7 group no-underline block" data-category="sculpture">
-<div class="aspect-[4/5] bg-surface-container-low overflow-hidden transition-transform duration-700 ease-out group-hover:scale-[1.02]">
-<img loading="lazy" class="w-full h-full object-cover" alt="Healing — Pietà" src="images/006_slide_4_2.webp"/>
-</div>
-<div class="mt-8 flex justify-between items-baseline">
-<h3 class="font-headline italic text-2xl text-primary">Healing — Pietà</h3>
-<span class="font-label text-[10px] tracking-widest text-on-surface-variant">2014</span>
-</div>
-</a>
-<a href="work-detail.html" class="md:col-span-4 md:col-start-9 mt-24 md:mt-48 group no-underline block" data-category="ai-art">
-<div class="aspect-square bg-surface-container-low overflow-hidden transition-transform duration-700 ease-out group-hover:scale-[1.02]">
-<img loading="lazy" class="w-full h-full object-cover" alt="Blue Moon A1" src="images/bluemoon_a1.webp"/>
-</div>
-<div class="mt-8">
-<h3 class="font-headline italic text-2xl text-primary">Blue Moon A1</h3>
-<p class="font-label text-[10px] tracking-widest text-on-surface-variant uppercase mt-1">AI 생성 시리즈</p>
-<span class="font-label text-[10px] tracking-widest text-on-surface-variant block mt-4">2025</span>
-</div>
-</a>
-<!-- Row 2 (Asymmetric Shift) -->
-<a href="work-detail.html" class="md:col-span-5 md:mt-[-80px] group no-underline block" data-category="sculpture">
-<div class="aspect-[3/4] bg-surface-container-low overflow-hidden transition-transform duration-700 ease-out group-hover:scale-[1.02]">
-<img loading="lazy" class="w-full h-full object-cover" alt="Healing — I'll Pick Stars for You" src="images/healing_stars.webp"/>
-</div>
-<div class="mt-8">
-<h3 class="font-headline italic text-2xl text-primary">Healing — I'll Pick Stars for You</h3>
-<span class="font-label text-[10px] tracking-widest text-on-surface-variant block mt-2">2018</span>
-</div>
-</a>
-<a href="work-detail.html" class="md:col-span-6 md:col-start-7 group no-underline block" data-category="public-art">
-<div class="aspect-video bg-surface-container-low overflow-hidden transition-transform duration-700 ease-out group-hover:scale-[1.02]">
-<img loading="lazy" class="w-full h-full object-cover" alt="Secret Garden" src="images/forward_forward.webp"/>
-</div>
-<div class="mt-8 flex justify-between items-baseline">
-<h3 class="font-headline italic text-2xl text-primary">Secret Garden</h3>
-<span class="font-label text-[10px] tracking-widest text-on-surface-variant">2018</span>
-</div>
-</a>
-<!-- Row 3 (Focus Piece) -->
-<div class="md:col-span-10 md:col-start-2 group mt-24" data-category="sculpture">
-<div class="aspect-[21/9] bg-surface-container-low overflow-hidden transition-transform duration-700 ease-out group-hover:scale-[1.01]">
-<img class="w-full h-full object-cover" alt="Healing: Coexistence" src="images/ningbo_main.webp"/>
-</div>
-<div class="mt-12 max-w-xl">
-<p class="font-label text-[10px] tracking-[0.2em] text-on-surface-variant uppercase mb-4">주요 전시</p>
-<h3 class="font-headline italic text-4xl text-primary leading-tight">Healing: Coexistence</h3>
-<p class="font-body text-sm text-on-surface-variant mt-6 leading-relaxed">
-                        중국 닝보대학교 갤러리에서 열린 제5회 개인전 — 석조 조각을 통해 상처와 치유의 공존을 시각화하다.
-                    </p>
-<span class="font-label text-[10px] tracking-widest text-on-surface-variant block mt-6">2025</span>
-</div>
-</div>
-<!-- Row 4 -->
-<a href="work-detail.html" class="md:col-span-5 group no-underline block is-more-hidden" data-category="sculpture" data-more>
-<div class="aspect-square bg-surface-container-low overflow-hidden transition-transform duration-700 ease-out group-hover:scale-[1.02]">
-<img loading="lazy" class="w-full h-full object-cover" alt="Healing — Dancing with Me" src="images/healing_dancing.webp"/>
-</div>
-<div class="mt-8">
-<h3 class="font-headline italic text-2xl text-primary">Healing — Dancing with Me</h3>
-<span class="font-label text-[10px] tracking-widest text-on-surface-variant block mt-2">2018</span>
-</div>
-</a>
-<a href="work-detail.html" class="md:col-span-5 md:col-start-8 mt-[-40px] group no-underline block is-more-hidden" data-category="sculpture" data-more>
-<div class="aspect-[3/4] bg-surface-container-low overflow-hidden transition-transform duration-700 ease-out group-hover:scale-[1.02]">
-<img loading="lazy" class="w-full h-full object-cover" alt="Healing — Just by Being There" src="images/012_slide_7_2.webp"/>
-</div>
-<div class="mt-8">
-<h3 class="font-headline italic text-2xl text-primary">Healing — Just by Being There</h3>
-<span class="font-label text-[10px] tracking-widest text-on-surface-variant block mt-2">2014</span>
-</div>
-</a>
-</div>
-<!-- Pagination / Load More -->
-<div id="load-more-container" class="mt-48 flex flex-col items-center">
-<button id="load-more-btn" class="group flex flex-col items-center gap-4">
-<span class="font-label text-[10px] uppercase tracking-[0.3em] text-primary">더 보기</span>
-<div class="w-px h-16 bg-primary/20 group-hover:h-24 transition-all duration-500"></div>
-</button>
-</div>
+
+<!-- Main Content -->
+<main class="pt-36 md:pt-44 pb-32 px-[6%] md:px-[10%]">
+
+  <!-- Header -->
+  <header class="mb-12 md:mb-20">
+    <h1 class="font-headline italic text-4xl md:text-7xl tracking-[0.05em] text-primary mb-6 md:mb-10">
+      Works Archive
+    </h1>
+    <p class="font-body text-sm text-on-surface-variant max-w-xl leading-relaxed mb-10 md:mb-14">
+      2014년부터 이어온 '치유하다' 시리즈의 석조 조각, 전국에 설치된 공공미술, 그리고 AI 생성 이미지를 통한 디지털 아트까지 — 박성하의 전 작품을 탐색합니다.
+    </p>
+
+    <!-- Filter Tabs -->
+    <div class="flex flex-wrap gap-6 md:gap-10 border-b border-outline/10 pb-5">
+      <button data-filter="all" class="filter-btn active font-label text-[10px] uppercase tracking-[0.2em] text-primary transition-colors">All</button>
+      <button data-filter="sculpture" class="filter-btn font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant hover:text-primary transition-colors">Sculpture</button>
+      <button data-filter="digital-art" class="filter-btn font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant hover:text-primary transition-colors">Digital Art</button>
+      <button data-filter="vr" class="filter-btn font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant hover:text-primary transition-colors">VR/AR</button>
+      <button data-filter="public-art" class="filter-btn font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant hover:text-primary transition-colors">Public Art</button>
+    </div>
+  </header>
+
+  <!-- Masonry Gallery -->
+  <div id="masonry" class="masonry"></div>
+
 </main>
+
+<!-- Lightbox -->
+<div id="lightbox" class="lightbox">
+  <button class="lightbox-close" onclick="closeLightbox()">&times;</button>
+  <img id="lb-img" src="" alt=""/>
+  <p id="lb-caption" class="lightbox-caption"></p>
+  <p id="lb-sub" class="lightbox-sub"></p>
+</div>
+
 <!-- Footer -->
-<footer class="w-full flex flex-col md:flex-row justify-between items-start px-[15%] gap-10 py-20 mt-40 bg-[#F3F3F4] tonal-shift">
-<div class="flex flex-col gap-8">
-<a href="index.html" class="text-lg font-light tracking-[0.1em] font-headline text-black uppercase no-underline">
-                PARK SEONG-HA
-            </a>
-<p class="text-[10px] tracking-[0.2em] font-medium font-body uppercase text-neutral-500">
-                © 2026 PARK SEONG-HA. ALL RIGHTS RESERVED.
-            </p>
-</div>
-<div class="flex flex-wrap gap-x-12 gap-y-4">
-<a class="text-[10px] tracking-[0.2em] font-medium font-body uppercase text-neutral-500 hover:text-black transition-colors ease-in-out duration-300 no-underline" href="https://instagram.com/seongha.art" target="_blank">Instagram</a>
-<a class="text-[10px] tracking-[0.2em] font-medium font-body uppercase text-neutral-500 hover:text-black transition-colors ease-in-out duration-300 no-underline" href="mailto:seongha.art@gmail.com">Email</a>
-<a class="text-[10px] tracking-[0.2em] font-medium font-body uppercase text-neutral-500 hover:text-black transition-colors ease-in-out duration-300 no-underline" href="index.html#contact">Contact</a>
-</div>
+<footer class="w-full flex flex-col md:flex-row justify-between items-start px-[6%] md:px-[10%] gap-10 py-20 mt-20 bg-[#F3F3F4]">
+  <div class="flex flex-col gap-8">
+    <a href="index.html" class="text-lg font-light tracking-[0.1em] font-headline text-black uppercase no-underline">
+      PARK SEONG-HA
+    </a>
+    <p class="text-[10px] tracking-[0.2em] font-medium font-body uppercase text-neutral-500">
+      &copy; 2026 PARK SEONG-HA. ALL RIGHTS RESERVED.
+    </p>
+  </div>
+  <div class="flex flex-wrap gap-x-12 gap-y-4">
+    <a class="text-[10px] tracking-[0.2em] font-medium font-body uppercase text-neutral-500 hover:text-black transition-colors no-underline" href="https://instagram.com/seongha.art" target="_blank">Instagram</a>
+    <a class="text-[10px] tracking-[0.2em] font-medium font-body uppercase text-neutral-500 hover:text-black transition-colors no-underline" href="mailto:seongha.art@gmail.com">Email</a>
+    <a class="text-[10px] tracking-[0.2em] font-medium font-body uppercase text-neutral-500 hover:text-black transition-colors no-underline" href="index.html#contact">Contact</a>
+  </div>
 </footer>
+
+<!-- Scripts -->
+<script src="scripts/works-data.js?v=17"></script>
 <script>
+// ── Mobile Menu ──────────────────────────────────────────
 const menuToggle = document.getElementById('menu-toggle');
 const menuClose = document.getElementById('menu-close');
 const mobileMenu = document.getElementById('mobile-menu');
-function openMenu() {
+menuToggle.addEventListener('click', () => {
   mobileMenu.classList.remove('opacity-0', 'pointer-events-none');
   mobileMenu.classList.add('opacity-100', 'pointer-events-auto');
   document.body.style.overflow = 'hidden';
-}
-function closeMenu() {
+});
+menuClose.addEventListener('click', () => {
   mobileMenu.classList.add('opacity-0', 'pointer-events-none');
   mobileMenu.classList.remove('opacity-100', 'pointer-events-auto');
   document.body.style.overflow = '';
-}
-menuToggle.addEventListener('click', openMenu);
-menuClose.addEventListener('click', closeMenu);
-mobileMenu.querySelectorAll('a').forEach(link => {
-  link.addEventListener('click', closeMenu);
 });
-</script>
-<script>
-// ── 카테고리 필터 ─────────────────────────────────────────
-const filterBtns = document.querySelectorAll('[data-filter]');
-const workCards  = document.querySelectorAll('[data-category]');
+mobileMenu.querySelectorAll('a').forEach(l => l.addEventListener('click', () => {
+  mobileMenu.classList.add('opacity-0', 'pointer-events-none');
+  mobileMenu.classList.remove('opacity-100', 'pointer-events-auto');
+  document.body.style.overflow = '';
+}));
 
-filterBtns.forEach(btn => {
+// ── Collect works by category ────────────────────────────
+function collectByCategory(cat) {
+  const all = [];
+  WORKS_DATA.exhibitions.forEach(exh => {
+    if (exh.works) {
+      exh.works.forEach(w => {
+        const wCat = w.category || exh.category;
+        if (wCat === cat) {
+          all.push({ ...w, category: wCat, year: w.year || exh.year, exhibition: exh.title });
+        }
+      });
+    }
+  });
+  all.sort((a, b) => (parseInt(b.year)||0) - (parseInt(a.year)||0));
+  return all;
+}
+
+const sculptureWorks = collectByCategory('sculpture');
+const digitalArtWorks = collectByCategory('digital-art');
+const vrWorks = (WORKS_DATA.vrProjects || []).sort((a, b) => (parseInt(b.year)||0) - (parseInt(a.year)||0));
+const publicArtWorks = [...WORKS_DATA.publicArt].sort((a, b) => (parseInt(b.year)||0) - (parseInt(a.year)||0));
+
+// ── Render Masonry ───────────────────────────────────────
+const masonry = document.getElementById('masonry');
+
+function renderCard(work, cat) {
+  const mainImg = Array.isArray(work.images) ? work.images[0] : work.images;
+  const title = work.titleEn || work.title;
+  const titleKo = work.title || '';
+  const material = work.material || '';
+  const location = work.location || '';
+  const yr = String(work.year).substring(0, 4);
+
+  const subParts = [];
+  if (title !== titleKo) subParts.push(title);
+  if (material) subParts.push(material);
+  if (work.size) subParts.push(work.size);
+  if (location) subParts.push(location);
+  subParts.push(yr);
+  const subLine = subParts.join(' · ');
+
+  return `
+    <div class="masonry-card" data-category="${cat}">
+      <a href="work-detail.html?id=${work.id}" class="card-img-wrap" style="display:block; text-decoration:none;">
+        <img loading="lazy" alt="${title}" src="images/${mainImg}" onerror="this.closest('.masonry-card').style.display='none'"/>
+        <div class="card-overlay">
+          <span style="color:#fff; font-size:11px; font-weight:300; letter-spacing:0.15em; text-transform:uppercase;">자세히 보기</span>
+        </div>
+      </a>
+      <div style="padding:10px 0 0; text-align:right;">
+        <p style="font-size:13px; color:#1a1c1c; margin:0; font-weight:400;">${titleKo}</p>
+        <p style="font-size:9px; color:#999; letter-spacing:0.04em; margin-top:3px; line-height:1.5;">${subLine}</p>
+      </div>
+    </div>
+  `;
+}
+
+function sectionHeader(title, subtitle) {
+  return `
+    <div class="section-header" style="grid-column:1/-1; margin:56px 0 20px 0; padding-bottom:10px; border-bottom:1px solid rgba(0,0,0,0.06);">
+      <div style="display:flex; align-items:baseline; gap:16px;">
+        <span class="font-headline italic text-2xl md:text-3xl text-primary">${title}</span>
+        ${subtitle ? `<span style="font-size:11px; color:#999; letter-spacing:0.15em; text-transform:uppercase;">${subtitle}</span>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+function renderMasonry(filter) {
+  let html = '';
+  const isAll = filter === 'all';
+
+  // ── 1. Sculpture ──
+  if (isAll || filter === 'sculpture') {
+    if (isAll && sculptureWorks.length > 0) html += sectionHeader('Sculpture', '');
+    sculptureWorks.forEach(w => { html += renderCard(w, 'sculpture'); });
+  }
+
+  // ── 2. Digital Art ──
+  if (isAll || filter === 'digital-art') {
+    if (isAll && digitalArtWorks.length > 0) html += sectionHeader('Digital Art', `AI Generated · 2025`);
+    digitalArtWorks.forEach(w => { html += renderCard(w, 'digital-art'); });
+  }
+
+  // ── 3. VR/AR ──
+  if (isAll || filter === 'vr') {
+    if (isAll && vrWorks.length > 0) html += sectionHeader('VR / AR', '');
+    vrWorks.forEach(w => { html += renderCard(w, 'vr'); });
+  }
+
+  // ── 4. Public Art ──
+  if (isAll || filter === 'public-art') {
+    if (isAll && publicArtWorks.length > 0) html += sectionHeader('Public Art', `전국 ${publicArtWorks.length}곳 설치 · 2014–2024`);
+    publicArtWorks.forEach(w => { html += renderCard({...w, category: 'public-art'}, 'public-art'); });
+  }
+
+  masonry.innerHTML = html;
+
+  // Staggered fade-in — show cards earlier and faster
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const delay = Math.random() * 100;
+        setTimeout(() => entry.target.classList.add('visible'), delay);
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.01, rootMargin: '200px 0px 200px 0px' });
+
+  masonry.querySelectorAll('.masonry-card').forEach(el => observer.observe(el));
+}
+
+renderMasonry('all');
+
+// ── Filter ───────────────────────────────────────────────
+document.querySelectorAll('.filter-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    const filter = btn.dataset.filter;
-
-    // 활성 버튼 스타일 토글
-    filterBtns.forEach(b => {
-      b.classList.remove('text-primary', 'border-b', 'border-primary', 'pb-1');
-      b.classList.add('text-on-surface-variant');
-    });
-    btn.classList.remove('text-on-surface-variant');
-    btn.classList.add('text-primary', 'border-b', 'border-primary', 'pb-1');
-
-    // 카드 표시/비표시 (is-more-hidden 상태인 카드는 건너뜀)
-    workCards.forEach(card => {
-      if (card.classList.contains('is-more-hidden')) return;
-      const match = filter === 'all' || card.dataset.category === filter;
-      card.style.transition    = 'opacity 0.3s ease, transform 0.3s ease';
-      card.style.opacity       = match ? '1'       : '0.12';
-      card.style.transform     = match ? ''        : 'scale(0.98)';
-      card.style.pointerEvents = match ? ''        : 'none';
-    });
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active', 'text-primary'));
+    btn.classList.add('active', 'text-primary');
+    renderMasonry(btn.dataset.filter);
   });
 });
 
-// ── 더 보기 ───────────────────────────────────────────────
-const loadMoreBtn  = document.getElementById('load-more-btn');
-const loadMoreCont = document.getElementById('load-more-container');
-const moreItems    = document.querySelectorAll('[data-more]');
-
-if (loadMoreBtn) {
-  loadMoreBtn.addEventListener('click', () => {
-    const activeBtn    = document.querySelector('[data-filter].text-primary');
-    const activeFilter = activeBtn ? activeBtn.dataset.filter : 'all';
-
-    moreItems.forEach((item, i) => {
-      setTimeout(() => {
-        item.classList.remove('is-more-hidden');
-        const match = activeFilter === 'all' || item.dataset.category === activeFilter;
-        item.style.opacity       = '0';
-        item.style.transition    = 'opacity 0.6s ease';
-        item.style.transform     = match ? ''        : 'scale(0.98)';
-        item.style.pointerEvents = match ? ''        : 'none';
-        requestAnimationFrame(() => {
-          item.style.opacity = match ? '1' : '0.12';
-        });
-      }, i * 200);
-    });
-
-    loadMoreCont.style.display = 'none';
-  });
+// ── Lightbox ─────────────────────────────────────────────
+function openLightbox(src, title, sub) {
+  document.getElementById('lb-img').src = src;
+  document.getElementById('lb-caption').textContent = title;
+  document.getElementById('lb-sub').textContent = sub;
+  document.getElementById('lightbox').classList.add('active');
+  document.body.style.overflow = 'hidden';
 }
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('active');
+  document.body.style.overflow = '';
+}
+document.getElementById('lightbox').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeLightbox();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeLightbox();
+});
 </script>
 </body></html>
