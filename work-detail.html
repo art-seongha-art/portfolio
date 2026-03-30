@@ -2,8 +2,8 @@
 <html class="light" lang="ko"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<meta name="description" content="박성하 조각가 작품 상세 — 공공미술, 건축물 미술작품, 미술장식품, 석조 봉합 조각, 곰인형 조각, AI 디지털 아트"/>
-<meta name="keywords" content="박성하, 박성하 조각가, 공공미술, 건축물 미술작품, 미술장식품, 조각, 곰인형 조각, 석조 조각, 봉합 조각, 디지털 아트, Park Seong-Ha"/>
+<meta name="description" content="박성하 조각가 작품 상세 — 석조각, 돌조각, 석재 봉합 조각, 곰인형 테디베어 조각, 공공미술, 건축물 미술작품, 건축물 미술장식품, 미술장식품, 조형물, 인공지능 생성형 AI 디지털 아트"/>
+<meta name="keywords" content="박성하, 박성하 조각가, 조각가, 석조각, 돌조각, 돌 조각, 석재 봉합 조각, 봉합 조각, 사암 조각, 곰인형 조각, 테디베어 조각, 곰 조각, 공공미술, 건축물 미술작품, 건축물 미술장식품, 미술장식품, 미술작품, 조형물, 조형예술, 야외 조각, 치유 미술, 인공지능, 생성형 인공지능, AI 아트, 디지털 아트, 미디어아트, 실감미디어, VR 아트, Park Seong-Ha, sculptor, stone sculpture, public art, teddy bear sculpture"/>
 <meta name="author" content="Park Seong-Ha"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
@@ -169,11 +169,12 @@ if (!workId) {
     const categoryLabel = isPublicArt ? 'PUBLIC ART' : (work.category === 'digital-art' ? 'DIGITAL ART' : 'SCULPTURE');
 
     // Update page title & dynamic SEO meta
-    document.title = `${work.title} — 박성하 조각가 | ${categoryLabel === 'PUBLIC ART' ? '공공미술' : categoryLabel === 'DIGITAL ART' ? '디지털 아트' : '조각'}`;
+    const catKo = categoryLabel === 'PUBLIC ART' ? '공공미술 건축물 미술장식품 조형물' : categoryLabel === 'DIGITAL ART' ? '인공지능 생성형 AI 디지털 아트' : '석조각 돌조각 석재 봉합 조각';
+    document.title = `${work.title} — 박성하 조각가 | ${catKo}`;
     const baseUrl = 'https://art-psh.com';
     const pageUrl = `${baseUrl}/work-detail.html?id=${workId}`;
     const imgUrl = `${baseUrl}/images/${images[0]}`;
-    const desc = work.description ? work.description.slice(0, 120) : `${work.title} — 박성하 조각가의 ${categoryLabel === 'PUBLIC ART' ? '공공미술' : '조각'} 작품`;
+    const desc = work.description ? work.description.slice(0, 120) : `${work.title} — 박성하 조각가 ${catKo} 미술작품`;
 
     // Canonical
     const canon = document.createElement('link');
@@ -206,7 +207,7 @@ if (!workId) {
       'dateCreated': work.year,
       'artMedium': work.material || '',
       'artform': isPublicArt ? '공공미술' : (work.category === 'digital-art' ? '디지털 아트' : '조각'),
-      'keywords': '박성하, 박성하 조각가, 공공미술, 건축물 미술작품, 미술장식품, 조각, 곰인형 조각, 석조 조각'
+      'keywords': '박성하, 박성하 조각가, 조각가, 석조각, 돌조각, 석재 봉합 조각, 곰인형 조각, 테디베어 조각, 공공미술, 건축물 미술작품, 건축물 미술장식품, 미술장식품, 미술작품, 조형물, 조형예술, 인공지능, 생성형 인공지능, AI 아트, 치유 미술'
     };
     if (work.description) jsonLd.description = work.description;
     if (work.size) jsonLd.size = work.size;
@@ -229,7 +230,7 @@ if (!workId) {
       <section class="px-[5%] md:px-[10%] mb-10 md:mb-16 fade-in">
         <div class="relative w-full overflow-hidden bg-surface-container-low flex justify-center">
           <div class="skeleton-hero" id="hero-skeleton"></div>
-          <img class="w-full md:max-w-4xl h-auto object-contain hero-img" alt="${work.titleEn || work.title}" src="images/${images[0]}" onload="this.classList.add('loaded'); document.getElementById('hero-skeleton').style.display='none';" onerror="document.getElementById('hero-skeleton').style.display='none'; this.style.display='none';"/>
+          <img class="w-full md:max-w-4xl h-auto object-contain hero-img" alt="박성하 조각가 ${catKo} 미술작품 — ${work.title}${work.material ? ', ' + work.material : ''}" title="${work.title} — 박성하 조각가 미술작품" src="images/${images[0]}" onload="this.classList.add('loaded'); document.getElementById('hero-skeleton').style.display='none';" onerror="document.getElementById('hero-skeleton').style.display='none'; this.style.display='none';"/>
         </div>
       </section>
 
@@ -267,7 +268,7 @@ if (!workId) {
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10">
             ${images.slice(1).map((img, i) => `
               <div class="bg-surface-container-low ${i === 0 && images.length === 2 ? 'md:col-span-2' : ''} flex justify-center">
-                <img loading="lazy" class="w-full h-auto object-contain" alt="${work.titleEn || work.title} — Detail ${i+1}" src="images/${img}"/>
+                <img loading="lazy" class="w-full h-auto object-contain" alt="박성하 조각가 ${catKo} 미술작품 — ${work.title} 상세 ${i+1}" title="${work.title} 상세 이미지 ${i+1} — 박성하" src="images/${img}"/>
               </div>
             `).join('')}
           </div>
