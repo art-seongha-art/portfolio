@@ -297,10 +297,42 @@ function renderCard(work, cat) {
   subParts.push(yr);
   const subLine = subParts.join(' · ');
 
+  // Generate SEO-optimized alt text
+  let altText = '박성하 작품 — ' + titleKo;
+  let titleAttr = titleKo + ' — 박성하 미술작품';
+
+  if (cat === 'sculpture') {
+    altText = '박성하 돌조각 작품 — ' + titleKo;
+    if (material) {
+      altText += ', ' + material;
+    } else {
+      altText += ', 석재 봉합 조각';
+    }
+    titleAttr = titleKo + ' — 박성하 석조 조각';
+  } else if (cat === 'public-art') {
+    altText = '박성하 공공미술 작품 — ' + titleKo;
+    if (location) {
+      altText += ', ' + location + ' 설치';
+    }
+    if (material) {
+      altText += ', ' + material;
+    }
+    titleAttr = titleKo + ' — 박성하 공공미술';
+  } else if (cat === 'digital-art') {
+    altText = '박성하 AI 디지털 아트 작품 — ' + titleKo;
+    titleAttr = titleKo + ' — 박성하 AI 아트';
+  } else if (cat === 'vr') {
+    altText = '박성하 VR 실감미디어 작품 — ' + titleKo;
+    if (material) {
+      altText += ', ' + material;
+    }
+    titleAttr = titleKo + ' — 박성하 VR 미디어아트';
+  }
+
   return `
     <div class="masonry-card" data-category="${cat}">
       <a href="work-detail.html?id=${work.id}" class="card-img-wrap" style="display:block; text-decoration:none;">
-        <img loading="lazy" alt="${title}" src="images/${mainImg}" onerror="this.closest('.masonry-card').style.display='none'"/>
+        <img loading="lazy" alt="${altText}" title="${titleAttr}" src="images/${mainImg}" onerror="this.closest('.masonry-card').style.display='none'"/>
         <div class="card-overlay">
           <span style="color:#fff; font-size:11px; font-weight:300; letter-spacing:0.15em; text-transform:uppercase;">자세히 보기</span>
         </div>

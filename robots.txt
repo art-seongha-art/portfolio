@@ -2,3 +2,4 @@ User-agent: *
 Allow: /
 
 Sitemap: https://art-psh.com/sitemap.xml
+Sitemap: https://art-psh.com/sitemap-images.xml
