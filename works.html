@@ -297,35 +297,34 @@ function renderCard(work, cat) {
   subParts.push(yr);
   const subLine = subParts.join(' · ');
 
-  // Generate SEO-optimized alt text
+  // Generate SEO-optimized alt text with all required keywords
   let altText = '박성하 작품 — ' + titleKo;
   let titleAttr = titleKo + ' — 박성하 미술작품';
 
   if (cat === 'sculpture') {
-    altText = '박성하 돌조각 작품 — ' + titleKo;
+    // Sculpture: 박성하 조각가 석조각 테디베어 미술작품 조형물 — [title], [material] 석재 봉합 조각
+    altText = '박성하 조각가 석조각 테디베어 미술작품 조형물 — ' + titleKo;
     if (material) {
-      altText += ', ' + material;
+      altText += ', ' + material + ' 석재 봉합 조각';
     } else {
       altText += ', 석재 봉합 조각';
     }
     titleAttr = titleKo + ' — 박성하 석조 조각';
   } else if (cat === 'public-art') {
-    altText = '박성하 공공미술 작품 — ' + titleKo;
+    // Public Art: 박성하 조각가 공공미술 미술작품 조형물 건축물 미술장식품 — [title], [location] 석조각
+    altText = '박성하 조각가 공공미술 미술작품 조형물 건축물 미술장식품 — ' + titleKo;
     if (location) {
-      altText += ', ' + location + ' 설치';
+      altText += ', ' + location;
     }
-    if (material) {
-      altText += ', ' + material;
-    }
+    altText += ' 석조각';
     titleAttr = titleKo + ' — 박성하 공공미술';
   } else if (cat === 'digital-art') {
-    altText = '박성하 AI 디지털 아트 작품 — ' + titleKo;
+    // Digital Art: 박성하 조각가 인공지능 생성형 인공지능 미술작품 — [title], 석조각 디지털 아트
+    altText = '박성하 조각가 인공지능 생성형 인공지능 미술작품 — ' + titleKo + ', 석조각 디지털 아트';
     titleAttr = titleKo + ' — 박성하 AI 아트';
   } else if (cat === 'vr') {
-    altText = '박성하 VR 실감미디어 작품 — ' + titleKo;
-    if (material) {
-      altText += ', ' + material;
-    }
+    // VR/AR: 박성하 조각가 인공지능 생성형 인공지능 미술작품 — [title], VR 실감미디어 석조각
+    altText = '박성하 조각가 인공지능 생성형 인공지능 미술작품 — ' + titleKo + ', VR 실감미디어 석조각';
     titleAttr = titleKo + ' — 박성하 VR 미디어아트';
   }
 
