@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js?v=bottom_strip_20260619"></script>
+</head>
+<body>
+<!-- Content review revision 20260619 -->
+<!-- Content review second pass 20260619 -->
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<script src="./image-slot.js?v=bottom_strip_20260619"></script>
+<script>
+  (function(){
+    var ticks = 0;
+    var t = setInterval(function(){
+      document.querySelectorAll('deck-stage[data-fonts-pending]').forEach(function(d){ d.removeAttribute('data-fonts-pending'); });
+      if (++ticks > 16) clearInterval(t);
+    }, 250);
+  })();
+</script>
+<style>
+  html,body{margin:0;padding:0;background:#888;}
+  *{box-sizing:border-box;}
+</style>
+</helmet>
+
+<x-import no-rail component-from-global-scope="deck-stage" from="./deck-stage-bottom.js" width="1920" height="1080" hint-size="100%,100%">
+
+  <!-- 01 COVER -->
+  <section data-label="표지" data-screen-label="01" data-speaker-notes="인사 및 발표 제목 소개. 인공지능을 활용한 입체조형작품의 유형과 표현 특성을 다룹니다." style="background:#fff;padding:110px 120px 100px;display:flex;flex-direction:column;color:#1a1a1a;font-family:Pretendard,sans-serif;">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:30px;border-bottom:1px solid #1a1a1a;">
+      <div style="font-size:24px;font-weight:600;letter-spacing:0.2em;color:#888;">KCI 논문 발표</div>
+      <div style="font-size:24px;font-weight:600;letter-spacing:0.08em;color:#bbb;">2026</div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center;">
+      <div style="font-size:26px;font-weight:600;letter-spacing:0.18em;color:#999;margin-bottom:38px;">AI · 입체조형</div>
+      <h1 style="font-size:92px;font-weight:800;line-height:1.12;letter-spacing:-0.025em;margin:0;">인공지능 활용 입체조형작품의<br>유형과 표현 특성</h1>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;padding-top:28px;border-top:1px solid #1a1a1a;">
+      <div style="font-size:28px;font-weight:600;">박성하 <span style="font-weight:400;color:#999;">제1저자</span> · 한정엽 <span style="font-weight:400;color:#999;">교신저자</span></div>
+      <div style="font-size:24px;font-weight:400;color:#777;">홍익대학교 대학원 AI·실감미디어콘텐츠학</div>
+    </div>
+  </section>
+
+  <!-- 02 연구 배경 -->
+  <section data-label="연구 배경" data-screen-label="02" data-speaker-notes="AI 활용이 평면을 넘어 입체조형으로 확장되고 있음. 국외 MoMA, 국내 리움 사례." style="background:#fff;padding:88px 120px;display:flex;flex-direction:column;color:#1a1a1a;font-family:Pretendard,sans-serif;">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:24px;border-bottom:1px solid #1a1a1a;">
+      <div style="font-size:24px;font-weight:600;letter-spacing:0.18em;color:#aaa;">연구 개요</div>
+      <div style="font-size:24px;font-weight:600;color:#ccc;">02</div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center;">
+      <h2 style="font-size:60px;font-weight:700;letter-spacing:-0.02em;margin:0 0 32px;">AI 활용, 평면을 넘어 입체조형으로</h2>
+      <p style="font-size:32px;font-weight:400;line-height:1.65;color:#555;margin:0 0 80px;max-width:1560px;">예술 창작에서 인공지능의 활용은 텍스트·평면 이미지를 넘어 조각·설치 등 입체조형의 영역으로 확장되고 있으며, 이미지 기반 3D 형상 생성·머신러닝·디지털 제작·실시간 반응형 시스템과 결합한다.</p>
+      <div style="display:flex;gap:48px;">
+        <div style="flex:1;border-top:1px solid #1a1a1a;padding-top:26px;">
+          <div style="font-size:24px;font-weight:600;letter-spacing:0.12em;color:#aaa;margin-bottom:18px;">국제 전시 동향</div>
+          <div style="font-size:36px;font-weight:700;margin-bottom:16px;">《Unsupervised》 · Refik Anadol</div>
+          <div style="font-size:27px;font-weight:400;color:#666;line-height:1.6;">뉴욕현대미술관(MoMA), 2022–2023. AI 알고리즘·실시간 디지털 애니메이션·사운드가 결합된 데이터 기반 조형이 주요 미술관 전시로 제시됨.</div>
+        </div>
+        <div style="flex:1;border-top:1px solid #1a1a1a;padding-top:26px;">
+          <div style="font-size:24px;font-weight:600;letter-spacing:0.12em;color:#aaa;margin-bottom:18px;">국내 관련 분야 동향</div>
+          <div style="font-size:36px;font-weight:700;margin-bottom:16px;">《보이스》 · 필립 파레노</div>
+          <div style="font-size:27px;font-weight:400;color:#666;line-height:1.6;">리움미술관, 2024. 외부 센서 설치〈막〉의 환경 데이터를 내부 AI 작품〈∂A〉의 음성 생성·전시 운영에 연동하며, 국내 전시에서도 AI 기반 반응형 환경이 확장되는 양상을 보임.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 03 문제 제기 -->
+  <section data-label="선행연구의 한계" data-screen-label="03" data-speaker-notes="선행연구는 형상 생성·물질화, AI/전통 비교를 다뤘으나 '활용 시점'에 따른 차이는 다루지 않음." style="background:#fff;padding:88px 120px;display:flex;flex-direction:column;color:#1a1a1a;font-family:Pretendard,sans-serif;">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:24px;border-bottom:1px solid #1a1a1a;">
+      <div style="font-size:24px;font-weight:600;letter-spacing:0.18em;color:#aaa;">연구 개요</div>
+      <div style="font-size:24px;font-weight:600;color:#ccc;">03</div>
+    </div>
+    <h2 style="font-size:58px;font-weight:700;letter-spacing:-0.02em;margin:44px 0 40px;">선행연구의 한계</h2>
+    <div style="flex:1;display:flex;gap:60px;align-items:stretch;">
+      <div style="flex:1.25;display:flex;flex-direction:column;">
+        <div style="font-size:24px;font-weight:600;letter-spacing:0.12em;color:#aaa;margin-bottom:8px;">관련 선행연구 〈표 1〉</div>
+        <div style="flex:1;display:flex;flex-direction:column;">
+          <div style="flex:1;display:flex;align-items:center;justify-content:space-between;gap:30px;border-top:1px solid #1a1a1a;">
+            <div style="font-size:28px;font-weight:700;width:360px;">Ge et al. (2019)</div>
+            <div style="font-size:25px;font-weight:400;color:#666;flex:1;line-height:1.4;">머신러닝으로 3D 포인트 클라우드 생성 후 3D 프린팅 설치</div>
+          </div>
+          <div style="flex:1;display:flex;align-items:center;justify-content:space-between;gap:30px;border-top:1px solid #e2e2e2;">
+            <div style="font-size:28px;font-weight:700;width:360px;">Guljajeva &amp; Canet Sola (2023)</div>
+            <div style="font-size:25px;font-weight:400;color:#666;flex:1;line-height:1.4;">딥러닝 생성물을 세라믹 3D 프린팅으로 물질화</div>
+          </div>
+          <div style="flex:1;display:flex;align-items:center;justify-content:space-between;gap:30px;border-top:1px solid #e2e2e2;">
+            <div style="font-size:28px;font-weight:700;width:360px;">Atairu (2024)</div>
+            <div style="font-size:25px;font-weight:400;color:#666;flex:1;line-height:1.4;">GAN으로 베냉 청동 조각의 형상 재해석 및 3D 프린팅</div>
+          </div>
+          <div style="flex:1;display:flex;align-items:center;justify-content:space-between;gap:30px;border-top:1px solid #e2e2e2;border-bottom:1px solid #e2e2e2;">
+            <div style="font-size:28px;font-weight:700;width:360px;">봉욱호·정정호 (2024)</div>
+            <div style="font-size:25px;font-weight:400;color:#666;flex:1;line-height:1.4;">AI 조각·전통 조각 각 5점을 네 요인으로 비교 분석</div>
+          </div>
+        </div>
+      </div>
+      <div style="flex:1;background:#f4f2ee;padding:52px 48px;display:flex;flex-direction:column;justify-content:center;">
+        <div style="font-size:24px;font-weight:600;letter-spacing:0.14em;color:#999;margin-bottom:24px;">하지만</div>
+        <div style="font-size:31px;font-weight:600;line-height:1.55;color:#1a1a1a;">선행연구는 AI와 조형예술의 결합 가능성을 다루고 있으나, <span style="text-decoration:underline;text-underline-offset:7px;text-decoration-thickness:2px;">창작과정의 어느 시점</span>에 AI가 활용되는가에 따라 작품 유형과 표현 특성이 어떻게 달라지는지에 대한 사례 기반 분석은 제한적이다.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 04 연구 목적 -->
+  <section data-label="연구 목적" data-screen-label="04" data-speaker-notes="연구 목적과 핵심 질문 제시." style="background:#fff;padding:88px 120px;display:flex;flex-direction:column;color:#1a1a1a;font-family:Pretendard,sans-serif;">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:24px;border-bottom:1px solid #1a1a1a;">
+      <div style="font-size:24px;font-weight:600;letter-spacing:0.18em;color:#aaa;">연구 개요</div>
+      <div style="font-size:24px;font-weight:600;color:#ccc;">04</div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center;">
+      <div style="font-size:26px;font-weight:600;letter-spacing:0.12em;color:#999;margin-bottom:34px;">연구 질문</div>
+      <h2 style="font-size:66px;font-weight:700;letter-spacing:-0.025em;line-height:1.3;margin:0 0 56px;">AI가 창작과정의 어느 시점에 활용되는가에<br>따라, 작품의 표현은 어떻게 달라지는가?</h2>
+      <div style="padding-top:34px;border-top:1px solid #1a1a1a;">
+        <div style="font-size:24px;font-weight:600;letter-spacing:0.12em;color:#aaa;margin-bottom:18px;">연구 목적</div>
+        <p style="font-size:31px;font-weight:400;line-height:1.6;color:#555;margin:0;max-width:1620px;">본 연구는 인공지능 활용 입체조형작품 사례를 중심으로, 창작과정에서 AI가 활용되는 시점에 따라 작품 유형과 표현 특성이 어떻게 구분되는지를 분석하고, 후속 연구를 위한 기초 자료를 제공하는 데 목적이 있다.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 05 범위와 방법 -->
+  <section data-label="범위와 방법" data-screen-label="05" data-speaker-notes="141건 수집, 120건 검토. 선정 기준 네 가지." style="background:#fff;padding:88px 120px;display:flex;flex-direction:column;color:#1a1a1a;font-family:Pretendard,sans-serif;">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:24px;border-bottom:1px solid #1a1a1a;">
+      <div style="font-size:24px;font-weight:600;letter-spacing:0.18em;color:#aaa;">연구 개요</div>
+      <div style="font-size:24px;font-weight:600;color:#ccc;">05</div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center;">
+      <h2 style="font-size:60px;font-weight:700;letter-spacing:-0.02em;margin:0 0 56px;">연구 범위와 방법</h2>
+      <div style="display:flex;gap:48px;align-items:stretch;margin-bottom:72px;">
+        <div style="flex:1;border-top:1px solid #1a1a1a;padding-top:24px;">
+          <div style="display:flex;align-items:baseline;gap:12px;">
+            <div style="font-size:96px;font-weight:800;line-height:1;letter-spacing:-0.03em;">141</div>
+            <div style="font-size:32px;font-weight:600;color:#999;">건</div>
+          </div>
+          <div style="font-size:28px;font-weight:400;color:#666;margin-top:18px;line-height:1.5;">작가·기관 자료, 미술관·갤러리, 학술 논문을 통해 1차 수집</div>
+        </div>
+        <div style="display:flex;align-items:center;font-size:58px;font-weight:300;color:#ccc;">→</div>
+        <div style="flex:1;border-top:1px solid #1a1a1a;padding-top:24px;">
+          <div style="display:flex;align-items:baseline;gap:12px;">
+            <div style="font-size:96px;font-weight:800;line-height:1;letter-spacing:-0.03em;">120</div>
+            <div style="font-size:32px;font-weight:600;color:#999;">건</div>
+          </div>
+          <div style="font-size:28px;font-weight:400;color:#666;margin-top:18px;line-height:1.5;">AI 활용 도구와 활용 시점이 1차 자료를 통해 확인되는 검토 대상</div>
+        </div>
+      </div>
+      <div style="border-top:1px solid #1a1a1a;padding-top:28px;">
+        <div style="font-size:24px;font-weight:600;letter-spacing:0.12em;color:#aaa;margin-bottom:24px;">사례 선정 기준</div>
+        <div style="display:flex;gap:24px;">
+          <div style="flex:1;font-size:29px;font-weight:600;">입체조형 작품으로서의 성격</div>
+          <div style="flex:1;font-size:29px;font-weight:600;">AI 활용 확인 가능성</div>
+          <div style="flex:1;font-size:29px;font-weight:600;">출처 신뢰도</div>
+          <div style="flex:1;font-size:29px;font-weight:600;">유형 간 비교 가능성</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 06 이론1 -->
+  <section data-label="이론 ① 창작 활용" data-screen-label="06" data-speaker-notes="AI의 창작 활용은 생성형 모델과 환경 반응형 시스템 두 양상으로 나타남." style="background:#fff;padding:88px 120px;display:flex;flex-direction:column;color:#1a1a1a;font-family:Pretendard,sans-serif;">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:24px;border-bottom:1px solid #1a1a1a;">
+      <div style="font-size:24px;font-weight:600;letter-spacing:0.18em;color:#aaa;">이론적 배경</div>
+      <div style="font-size:24px;font-weight:600;color:#ccc;">06</div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center;">
+      <h2 style="font-size:60px;font-weight:700;letter-spacing:-0.02em;margin:0 0 14px;">인공지능의 창작 활용</h2>
+      <p style="font-size:30px;font-weight:400;color:#888;margin:0 0 60px;">본 연구에서는 머신러닝·딥러닝 기반 시스템의 창작 활용을 두 가지 양상으로 구분한다.</p>
+      <div style="display:flex;gap:48px;">
+        <div style="flex:1;border-top:1px solid #1a1a1a;padding-top:30px;">
+          <div style="font-size:28px;font-weight:700;color:#bbb;margin-bottom:18px;">A</div>
+          <div style="font-size:42px;font-weight:700;margin-bottom:26px;">생성형 모델</div>
+          <div style="font-size:29px;font-weight:400;color:#555;line-height:1.65;">학습 데이터의 패턴을 바탕으로 텍스트·이미지·3D 형상 등 새로운 콘텐츠를 산출한다. 확산모델은 3D·4D 장면 생성으로 적용 범위를 넓히며, <strong style="font-weight:700;color:#1a1a1a;">작가의 시각적 발상과 형상 표현 과정에 관여</strong>한다.</div>
+        </div>
+        <div style="flex:1;border-top:1px solid #1a1a1a;padding-top:30px;">
+          <div style="font-size:28px;font-weight:700;color:#bbb;margin-bottom:18px;">B</div>
+          <div style="font-size:42px;font-weight:700;margin-bottom:26px;">환경 반응형 시스템</div>
+          <div style="font-size:29px;font-weight:400;color:#555;line-height:1.65;">센서–운용 논리–액추에이터 구조로, 관람자의 움직임·소리·환경 데이터를 영상·사운드·조명·키네틱 변화로 전환하며 <strong style="font-weight:700;color:#1a1a1a;">작품의 작동 자체에 관여</strong>한다.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 07 이론2 -->
+  <section data-label="이론 ② 입체조형" data-screen-label="07" data-speaker-notes="입체조형은 형상·물질성·공간경험으로 논의됨. Krauss의 확장된 영역." style="background:#fff;padding:88px 120px;display:flex;flex-direction:column;color:#1a1a1a;font-family:Pretendard,sans-serif;">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:24px;border-bottom:1px solid #1a1a1a;">
+      <div style="font-size:24px;font-weight:600;letter-spacing:0.18em;color:#aaa;">이론적 배경</div>
+      <div style="font-size:24px;font-weight:600;color:#ccc;">07</div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center;">
+      <h2 style="font-size:60px;font-weight:700;letter-spacing:-0.02em;margin:0 0 50px;">입체조형작품의 이해</h2>
+      <div style="display:flex;gap:44px;margin-bottom:50px;">
+        <div style="flex:1;border-top:1px solid #1a1a1a;padding-top:26px;">
+          <div style="font-size:40px;font-weight:700;margin-bottom:20px;">형상</div>
+          <div style="font-size:28px;font-weight:400;color:#666;line-height:1.6;">작품의 조형 구조와 형태가 인식되는 방식</div>
+        </div>
+        <div style="flex:1;border-top:1px solid #1a1a1a;padding-top:26px;">
+          <div style="font-size:40px;font-weight:700;margin-bottom:20px;">물질성</div>
+          <div style="font-size:28px;font-weight:400;color:#666;line-height:1.6;">재료가 질감·중량감·표면성을 통해 드러나는 방식</div>
+        </div>
+        <div style="flex:1;border-top:1px solid #1a1a1a;padding-top:26px;">
+          <div style="font-size:40px;font-weight:700;margin-bottom:20px;">공간 경험</div>
+          <div style="font-size:28px;font-weight:400;color:#666;line-height:1.6;">크기·배치·관람 동선에 따라 작품이 환경과 맺는 관계</div>
+        </div>
+      </div>
+      <div style="background:#f4f2ee;padding:40px 44px;">
+        <div style="font-size:24px;font-weight:600;letter-spacing:0.12em;color:#999;margin-bottom:16px;">확장된 영역 · Krauss (1979)</div>
+        <div style="font-size:30px;font-weight:400;color:#444;line-height:1.6;">조각은 받침대 위 독립 오브제를 넘어 건축·풍경·장소와의 관계 속에서 규정된다. 본 연구에서는 이러한 확장된 조각 개념을 바탕으로, 설치·장소 특정 작품과 데이터 기반 반응형 환경까지 입체조형의 논의 범위에 포함한다.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 08 분석틀 -->
+  <section data-label="분석틀" data-screen-label="08" data-speaker-notes="창작과정을 발상·형상표현·전시운영 세 시점으로 구분하고, 각 시점에 대응하는 세 유형으로 분류." style="background:#fff;padding:88px 120px;display:flex;flex-direction:column;color:#1a1a1a;font-family:Pretendard,sans-serif;">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:24px;border-bottom:1px solid #1a1a1a;">
+      <div style="font-size:24px;font-weight:600;letter-spacing:0.18em;color:#aaa;">분석틀</div>
+      <div style="font-size:24px;font-weight:600;color:#ccc;">08</div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center;">
+      <h2 style="font-size:60px;font-weight:700;letter-spacing:-0.02em;margin:0 0 14px;">AI 활용 ‘시점’에 따른 분류</h2>
+      <p style="font-size:30px;font-weight:400;color:#888;margin:0 0 64px;">본 연구는 창작과정을 발상, 형상 표현, 전시 운영의 세 단계로 구분하고, AI 활용이 가장 두드러지는 시점을 기준으로 유형을 설정한다.</p>
+      <div style="display:flex;align-items:stretch;margin-bottom:40px;">
+        <div style="flex:1;border:1px solid #1a1a1a;padding:40px 34px;">
+          <div style="font-size:24px;font-weight:600;color:#aaa;margin-bottom:16px;">시점 1</div>
+          <div style="font-size:46px;font-weight:700;">발상</div>
+        </div>
+        <div style="display:flex;align-items:center;font-size:44px;font-weight:300;color:#ccc;padding:0 24px;">→</div>
+        <div style="flex:1;border:1px solid #1a1a1a;padding:40px 34px;">
+          <div style="font-size:24px;font-weight:600;color:#aaa;margin-bottom:16px;">시점 2</div>
+          <div style="font-size:46px;font-weight:700;">형상 표현</div>
+        </div>
+        <div style="display:flex;align-items:center;font-size:44px;font-weight:300;color:#ccc;padding:0 24px;">→</div>
+        <div style="flex:1;border:1px solid #1a1a1a;padding:40px 34px;">
+          <div style="font-size:24px;font-weight:600;color:#aaa;margin-bottom:16px;">시점 3</div>
+          <div style="font-size:46px;font-weight:700;">전시 운영</div>
+        </div>
+      </div>
+      <div style="display:flex;">
+        <div style="flex:1;text-align:center;"><div style="font-size:31px;font-weight:700;color:#1a1a1a;">발상 보조형</div></div>
+        <div style="width:92px;"></div>
+        <div style="flex:1;text-align:center;"><div style="font-size:31px;font-weight:700;color:#1a1a1a;">형상 생성형</div></div>
+        <div style="width:92px;"></div>
+        <div style="flex:1;text-align:center;"><div style="font-size:31px;font-weight:700;color:#1a1a1a;">전시 운영형</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 09 세 가지 유형 (KEY) -->
+  <section data-label="세 가지 유형" data-screen-label="09" data-speaker-notes="핵심 슬라이드. 세 유형의 개요. AI 개입 폭이 발상에서 전시로 넓어진다." style="background:#fff;padding:88px 120px;display:flex;flex-direction:column;color:#1a1a1a;font-family:Pretendard,sans-serif;">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:24px;border-bottom:1px solid #1a1a1a;">
+      <div style="font-size:24px;font-weight:600;letter-spacing:0.18em;color:#aaa;">분석틀</div>
+      <div style="font-size:24px;font-weight:600;color:#ccc;">09</div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center;">
+      <h2 style="font-size:64px;font-weight:700;letter-spacing:-0.02em;margin:0 0 10px;">세 가지 유형</h2>
+      <div style="font-size:30px;font-weight:400;color:#888;margin-bottom:64px;">AI 활용 시점에 따른 입체조형작품 분류</div>
+      <div style="display:flex;">
+        <div style="flex:1;padding-right:52px;">
+          <div style="font-size:68px;font-weight:700;line-height:1;letter-spacing:-0.03em;color:#cfcfcf;">01</div>
+          <div style="font-size:44px;font-weight:700;margin:28px 0 22px;">발상 보조형</div>
+          <div style="font-size:28px;font-weight:400;color:#666;line-height:1.65;">발상 시점에 AI 시안이 매체·형상 탐색을 보조하고, 최종 형상과 시공은 작가가 주도한다</div>
+        </div>
+        <div style="flex:1;padding:0 52px;border-left:1px solid #ddd;">
+          <div style="font-size:68px;font-weight:700;line-height:1;letter-spacing:-0.03em;color:#cfcfcf;">02</div>
+          <div style="font-size:44px;font-weight:700;margin:28px 0 22px;">형상 생성형</div>
+          <div style="font-size:28px;font-weight:400;color:#666;line-height:1.65;">알고리즘이 형상·표면 구조를 직접 산출하고, 그 결과가 디지털 제작을 통해 물질화된다</div>
+        </div>
+        <div style="flex:1;padding-left:52px;border-left:1px solid #ddd;">
+          <div style="font-size:68px;font-weight:700;line-height:1;letter-spacing:-0.03em;color:#cfcfcf;">03</div>
+          <div style="font-size:44px;font-weight:700;margin:28px 0 22px;">전시 운영형</div>
+          <div style="font-size:28px;font-weight:400;color:#666;line-height:1.65;">전시 중 데이터·관람자 반응을 처리하여 작품의 상태가 지속적으로 변화한다</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10 유형별 정의 표3 -->
+  <section data-label="유형별 정의" data-screen-label="10" data-speaker-notes="표3. 유형별 조작적 정의·판별 기준과 작가의 역할." style="background:#fff;padding:88px 120px;display:flex;flex-direction:column;color:#1a1a1a;font-family:Pretendard,sans-serif;">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:24px;border-bottom:1px solid #1a1a1a;">
+      <div style="font-size:24px;font-weight:600;letter-spacing:0.18em;color:#aaa;">분석틀</div>
+      <div style="font-size:24px;font-weight:600;color:#ccc;">10</div>
+    </div>
+    <h2 style="font-size:56px;font-weight:700;letter-spacing:-0.02em;margin:44px 0 40px;">유형별 정의와 작가의 역할</h2>
+    <div style="flex:1;display:flex;flex-direction:column;">
+      <div style="display:flex;gap:44px;padding-bottom:18px;border-bottom:1px solid #1a1a1a;">
+        <div style="width:300px;flex:none;font-size:24px;font-weight:600;letter-spacing:0.08em;color:#aaa;">유형</div>
+        <div style="flex:1;font-size:24px;font-weight:600;letter-spacing:0.08em;color:#aaa;">조작적 정의 · 판별 기준</div>
+        <div style="width:400px;flex:none;font-size:24px;font-weight:600;letter-spacing:0.08em;color:#aaa;">작가의 역할</div>
+      </div>
+      <div style="flex:1;display:flex;gap:44px;align-items:center;border-bottom:1px solid #e2e2e2;">
+        <div style="width:300px;flex:none;font-size:38px;font-weight:700;">발상 보조형</div>
+        <div style="flex:1;font-size:28px;font-weight:400;color:#555;line-height:1.5;">AI가 발상·시각화 단계에서 형상 구상과 매체 탐색을 보조하나, 최종 형상과 물질화는 작가가 주도</div>
+        <div style="width:400px;flex:none;font-size:28px;font-weight:600;color:#1a1a1a;">AI 산출물을 참조하되 조형 결정과 제작 공정을 주도</div>
+      </div>
+      <div style="flex:1;display:flex;gap:44px;align-items:center;border-bottom:1px solid #e2e2e2;">
+        <div style="width:300px;flex:none;font-size:38px;font-weight:700;">형상 생성형</div>
+        <div style="flex:1;font-size:28px;font-weight:400;color:#555;line-height:1.5;">AI가 형상 또는 표면 구조 산출에 직접 관여하고, 그 결과가 디지털 제작을 통해 물질화</div>
+        <div style="width:400px;flex:none;font-size:28px;font-weight:600;color:#1a1a1a;">AI 산출물의 선별·해석·물질화</div>
+      </div>
+      <div style="flex:1;display:flex;gap:44px;align-items:center;border-bottom:1px solid #e2e2e2;">
+        <div style="width:300px;flex:none;font-size:38px;font-weight:700;">전시 운영형</div>
+        <div style="flex:1;font-size:28px;font-weight:400;color:#555;line-height:1.5;">AI가 전시 중 데이터·관람자·환경 반응을 처리하여 작품의 운동·소리·빛·상태 변화에 지속 개입</div>
+        <div style="width:400px;flex:none;font-size:28px;font-weight:600;color:#1a1a1a;">데이터, 반응 조건, 전시 시스템의 구성</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 11 SECTION: 사례연구 -->
+  <section data-label="PART · 유형별 대표 사례" data-screen-label="11" data-speaker-notes="사례연구 파트 시작. 유형별 대표 사례 1건씩 분석." style="background:#1a1a1a;padding:96px 120px;display:flex;flex-direction:column;color:#fff;font-family:Pretendard,sans-serif;">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:26px;border-bottom:1px solid #555;">
+      <div style="font-size:24px;font-weight:600;letter-spacing:0.22em;color:#888;">PART</div>
+      <div style="font-size:24px;font-weight:600;color:#666;">사례연구</div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center;">
+      <h2 style="font-size:96px;font-weight:700;letter-spacing:-0.03em;margin:0 0 54px;">유형별 대표 사례 분석</h2>
+      <div style="display:flex;gap:56px;">
+        <div style="flex:1;border-top:1px solid #555;padding-top:22px;"><div style="font-size:24px;font-weight:600;color:#888;margin-bottom:12px;">발상 보조형</div><div style="font-size:32px;font-weight:700;">Reflection Point</div></div>
+        <div style="flex:1;border-top:1px solid #555;padding-top:22px;"><div style="font-size:24px;font-weight:600;color:#888;margin-bottom:12px;">형상 생성형</div><div style="font-size:32px;font-weight:700;">Digital Grotesque III</div></div>
+        <div style="flex:1;border-top:1px solid #555;padding-top:22px;"><div style="font-size:24px;font-weight:600;color:#888;margin-bottom:12px;">전시 운영형</div><div style="font-size:32px;font-weight:700;">Carbon Wake</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 12 사례1 개요 -->
+  <section data-label="사례1 · 개요" data-screen-label="12" data-speaker-notes="Reflection Point 개요. 록펠러 센터 미러 미로형 공공 설치. AI 도구 Whisk." style="background:#fff;padding:88px 120px;display:flex;flex-direction:column;color:#1a1a1a;font-family:Pretendard,sans-serif;">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:24px;border-bottom:1px solid #1a1a1a;">
+      <div style="font-size:24px;font-weight:600;letter-spacing:0.18em;color:#aaa;">사례 · 발상 보조형</div>
+      <div style="font-size:24px;font-weight:600;color:#ccc;">12</div>
+    </div>
+    <h2 style="font-size:54px;font-weight:700;letter-spacing:-0.02em;margin:40px 0 6px;">Reflection Point</h2>
+    <div style="font-size:28px;font-weight:500;color:#888;margin-bottom:40px;">Wade and Leta · 2025 · 뉴욕 록펠러 센터</div>
+    <div style="flex:1;display:flex;gap:56px;">
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:center;">
+        <div style="border-top:1px solid #1a1a1a;padding:22px 0;">
+          <div style="font-size:24px;font-weight:600;letter-spacing:0.08em;color:#aaa;margin-bottom:10px;">작품 개요</div>
+          <div style="font-size:27px;font-weight:400;color:#555;line-height:1.55;">미러 미로형 공공 조형 설치. 4개 포털로 분할된 미러 미로 구조에 회전 가능한 그래픽 형태가 18개 벽에 배치. Google Labs와의 협업 프로젝트로 제작되어 록펠러 센터 공공 광장에 설치.</div>
+        </div>
+        <div style="border-top:1px solid #e2e2e2;padding:22px 0;">
+          <div style="font-size:24px;font-weight:600;letter-spacing:0.08em;color:#aaa;margin-bottom:10px;">AI 활용 도구</div>
+          <div style="font-size:27px;font-weight:400;color:#555;line-height:1.55;">Whisk — Google Labs 생성형 이미지 도구</div>
+        </div>
+        <div style="border-top:1px solid #e2e2e2;padding:22px 0;">
+          <div style="font-size:24px;font-weight:600;letter-spacing:0.08em;color:#aaa;margin-bottom:10px;">창작과정에서의 AI 활용</div>
+          <div style="font-size:25px;font-weight:400;color:#555;line-height:1.55;">발상 시점에 작가가 색채·구조 탐색을 위해 Whisk에 텍스트 프롬프트를 입력하여 다수의 시각 시안을 생성. 색채 탐색 과정에서 생성된 미러 표면 이미지가 작품의 핵심 매체 선택에 영향을 미침. 채택된 매체와 색채 조합을 바탕으로 형상 설계와 구조 결정, 산업 재료 시공은 작가가 주도하여 진행.</div>
+        </div>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;">
+        <image-slot id="case1" src="구상형/01_Wade_and_Leta_Reflection_Point/01_WadeLeta_overview.jpeg" style="width:100%;flex:1;" shape="rect" placeholder="［사진 1］ 이미지를 끌어다 놓으세요"></image-slot>
+        <div style="font-size:24px;font-weight:400;color:#aaa;margin-top:14px;">사진 출처 · wadeandleta.com/works/reflection-point</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 13 사례1 표현특성 -->
+  <section data-label="사례1 · 표현 특성" data-screen-label="13" data-speaker-notes="AI 시안이 미러 매체 선택을 바꿈. 형상·물질성·공간 차원의 표현 특성." style="background:#fff;padding:88px 120px;display:flex;flex-direction:column;color:#1a1a1a;font-family:Pretendard,sans-serif;">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:24px;border-bottom:1px solid #1a1a1a;">
+      <div style="font-size:24px;font-weight:600;letter-spacing:0.18em;color:#aaa;">사례 · 발상 보조형 — Reflection Point</div>
+      <div style="font-size:24px;font-weight:600;color:#ccc;">13</div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center;">
+      <h2 style="font-size:50px;font-weight:700;letter-spacing:-0.02em;margin:0 0 40px;">표현 특성</h2>
+      <div style="display:flex;gap:44px;">
+        <div style="flex:1;border-top:1px solid #1a1a1a;padding-top:26px;display:flex;flex-direction:column;gap:22px;">
+          <div style="font-size:33px;font-weight:700;">형상</div>
+          <div style="font-size:25px;font-weight:400;color:#555;line-height:1.6;">4개 포털로 분할된 미러 미로 구조에 회전 가능한 그래픽 형태가 18개 벽에 배치되어, 관람자 동선에 따라 보이는 형태가 끊임없이 재구성됨</div>
+          <div style="font-size:25px;font-weight:400;color:#555;line-height:1.6;">미러 면이 작품의 주재료로 채택된 결정은 색채 탐색 과정에서 생성된 AI 시안과 연결되며, 이는 작가의 매체 선택에 영향을 미침</div>
+        </div>
+        <div style="flex:1;border-top:1px solid #1a1a1a;padding-top:26px;display:flex;flex-direction:column;gap:22px;">
+          <div style="font-size:33px;font-weight:700;">물질성</div>
+          <div style="font-size:25px;font-weight:400;color:#555;line-height:1.6;">미러 알루미늄 복합 패널·합판·스테인리스 등 산업 재료에 9개 보색 색조를 18개 벽에 중복 없이 페어링</div>
+          <div style="font-size:25px;font-weight:400;color:#555;line-height:1.6;">채택된 미러 표면이 도시의 빛·하늘·주변 건축을 받아들이며, 재료의 표정이 외부 환경에 따라 매 순간 달라지는 가변적 물질성으로 작동</div>
+        </div>
+        <div style="flex:1;border-top:1px solid #1a1a1a;padding-top:26px;display:flex;flex-direction:column;gap:22px;">
+          <div style="font-size:33px;font-weight:700;">공간 경험</div>
+          <div style="font-size:25px;font-weight:400;color:#555;line-height:1.6;">록펠러 센터 Center Plaza의 공공 도시 공간을 점유하며, 작품 안으로 들어가는 관람자가 작품의 일부가 됨</div>
+          <div style="font-size:25px;font-weight:400;color:#555;line-height:1.6;">작품 표면이 도시 풍경과 관람자를 반사함으로써 주변 환경을 조형 요소로 통합하는 구조로 작동</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 14 사례2 개요 -->
+  <section data-label="사례2 · 개요" data-screen-label="14" data-speaker-notes="Digital Grotesque III 개요. 5m 모노리스 3D 프린팅 조각. 자체 개발 머신러닝 알고리즘." style="background:#fff;padding:88px 120px;display:flex;flex-direction:column;color:#1a1a1a;font-family:Pretendard,sans-serif;">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:24px;border-bottom:1px solid #1a1a1a;">
+      <div style="font-size:24px;font-weight:600;letter-spacing:0.18em;color:#aaa;">사례 · 형상 생성형</div>
+      <div style="font-size:24px;font-weight:600;color:#ccc;">14</div>
+    </div>
+    <h2 style="font-size:54px;font-weight:700;letter-spacing:-0.02em;margin:40px 0 6px;">Digital Grotesque III</h2>
+    <div style="font-size:28px;font-weight:500;color:#888;margin-bottom:40px;">Michael Hansmeyer · 2022 · BMW Art Club, Warsaw</div>
+    <div style="flex:1;display:flex;gap:56px;">
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:center;">
+        <div style="border-top:1px solid #1a1a1a;padding:22px 0;">
+          <div style="font-size:24px;font-weight:600;letter-spacing:0.08em;color:#aaa;margin-bottom:10px;">작품 개요</div>
+          <div style="font-size:27px;font-weight:400;color:#555;line-height:1.55;">약 5m 높이·약 2.5톤의 3D 프린팅 모노리스 조각. 단일 구조물 표면 전체가 컴퓨테이셔널 디자인 알고리즘으로 산출된, 무한히 변주되는 프랙탈 장식 패턴으로 채워짐.</div>
+        </div>
+        <div style="border-top:1px solid #e2e2e2;padding:22px 0;">
+          <div style="font-size:24px;font-weight:600;letter-spacing:0.08em;color:#aaa;margin-bottom:10px;">AI 활용 도구</div>
+          <div style="font-size:27px;font-weight:400;color:#555;line-height:1.55;">작가 자체 개발 머신러닝 알고리즘 / 모래 기반 바인더젯 3D 프린팅 공정</div>
+        </div>
+        <div style="border-top:1px solid #e2e2e2;padding:22px 0;">
+          <div style="font-size:24px;font-weight:600;letter-spacing:0.08em;color:#aaa;margin-bottom:10px;">창작과정에서의 AI 활용</div>
+          <div style="font-size:25px;font-weight:400;color:#555;line-height:1.55;">형상 표현 시점에 머신러닝 알고리즘이 양식을 무한 프랙탈로 확장하여 형상을 산출. 작가는 알고리즘을 설계하고 산출된 형상 결과물을 선별한다.</div>
+        </div>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;">
+        <image-slot id="case2" src="전면형/04_Michael_Hansmeyer_Digital_Grotesque_III/01_Hansmeyer_DG3_4.jpg" style="width:100%;flex:1;" shape="rect" placeholder="［사진 2］ 이미지를 끌어다 놓으세요"></image-slot>
+        <div style="font-size:24px;font-weight:400;color:#aaa;margin-top:14px;">사진 출처 · michael-hansmeyer.com/digital-grotesque-III</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 15 사례2 표현특성 -->
+  <section data-label="사례2 · 표현 특성" data-screen-label="15" data-speaker-notes="알고리즘이 고딕 그로테스크 양식을 무한 프랙탈로 확장. 적층 질감." style="background:#fff;padding:88px 120px;display:flex;flex-direction:column;color:#1a1a1a;font-family:Pretendard,sans-serif;">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:24px;border-bottom:1px solid #1a1a1a;">
+      <div style="font-size:24px;font-weight:600;letter-spacing:0.18em;color:#aaa;">사례 · 형상 생성형 — Digital Grotesque III</div>
+      <div style="font-size:24px;font-weight:600;color:#ccc;">15</div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center;">
+      <h2 style="font-size:50px;font-weight:700;letter-spacing:-0.02em;margin:0 0 40px;">표현 특성</h2>
+      <div style="display:flex;gap:44px;">
+        <div style="flex:1;border-top:1px solid #1a1a1a;padding-top:26px;display:flex;flex-direction:column;gap:22px;">
+          <div style="font-size:33px;font-weight:700;">형상</div>
+          <div style="font-size:25px;font-weight:400;color:#555;line-height:1.6;">5m 모노리스 표면이 무한 변주된 프랙탈 장식 패턴으로 채워짐. 수작업으로 구현하기 어려운 표면 디테일이 작품 전체에 분포</div>
+          <div style="font-size:25px;font-weight:400;color:#555;line-height:1.6;">머신러닝 알고리즘이 고딕 그로테스크라는 고전 양식을 컴퓨테이셔널 변주로 확장하여 전통적 조형 방식만으로는 구현하기 어려운 고밀도 형상을 산출</div>
+        </div>
+        <div style="flex:1;border-top:1px solid #1a1a1a;padding-top:26px;display:flex;flex-direction:column;gap:22px;">
+          <div style="font-size:33px;font-weight:700;">물질성</div>
+          <div style="font-size:25px;font-weight:400;color:#555;line-height:1.6;">AI 산출 형상을 물질화하는 3D 프린팅 모래에 레진·페인트 코팅이 적용된 매체. 극미세 적층이 만드는 표면 질감은 알고리즘 산출과 자동 제작의 결합으로만 도달 가능한 영역</div>
+          <div style="font-size:25px;font-weight:400;color:#555;line-height:1.6;">알고리즘 연산과 바인더젯 헤드의 적층 궤적이 표면에 남아, 자동 제작 공정의 흔적이 표면 질감으로 가시화됨</div>
+        </div>
+        <div style="flex:1;border-top:1px solid #1a1a1a;padding-top:26px;display:flex;flex-direction:column;gap:22px;">
+          <div style="font-size:33px;font-weight:700;">공간 경험</div>
+          <div style="font-size:25px;font-weight:400;color:#555;line-height:1.6;">알고리즘 산출 형상을 자동 제작 공정으로 물질화한 결과 5m 수직 스케일과 약 2.5톤의 중량을 구현하여, 전시 공간에 수직적·구심적 관람 동선을 형성</div>
+          <div style="font-size:25px;font-weight:400;color:#555;line-height:1.6;">동일 양식에서 변주된 360도 비디오 인스톨레이션과 결합되어, 관람자가 결과물과 알고리즘 생성 과정을 동시에 경험</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 16 사례3 개요 -->
+  <section data-label="사례3 · 개요" data-screen-label="16" data-speaker-notes="Carbon Wake 개요. 7m 폭 벽면 키네틱 설치. 실시간 에너지 데이터." style="background:#fff;padding:88px 120px;display:flex;flex-direction:column;color:#1a1a1a;font-family:Pretendard,sans-serif;">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:24px;border-bottom:1px solid #1a1a1a;">
+      <div style="font-size:24px;font-weight:600;letter-spacing:0.18em;color:#aaa;">사례 · 전시 운영형</div>
+      <div style="font-size:24px;font-weight:600;color:#ccc;">16</div>
+    </div>
+    <h2 style="font-size:54px;font-weight:700;letter-spacing:-0.02em;margin:40px 0 6px;">Carbon Wake</h2>
+    <div style="font-size:28px;font-weight:500;color:#888;margin-bottom:40px;">BREAKFAST · 2025 · Art Dubai Digital</div>
+    <div style="flex:1;display:flex;gap:56px;">
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:center;">
+        <div style="border-top:1px solid #1a1a1a;padding:22px 0;">
+          <div style="font-size:24px;font-weight:600;letter-spacing:0.08em;color:#aaa;margin-bottom:10px;">작품 개요</div>
+          <div style="font-size:27px;font-weight:400;color:#555;line-height:1.55;">약 7m 폭의 벽면 키네틱 설치. 금색 미러 스테인리스 키네틱 타일이 격자로 배열되어 운동한다.</div>
+        </div>
+        <div style="border-top:1px solid #e2e2e2;padding:22px 0;">
+          <div style="font-size:24px;font-weight:600;letter-spacing:0.08em;color:#aaa;margin-bottom:10px;">AI 활용 도구</div>
+          <div style="font-size:27px;font-weight:400;color:#555;line-height:1.55;">자체 개발 AI 분석 시스템 · 실시간 에너지 데이터 · 모터 구동 키네틱 시스템</div>
+        </div>
+        <div style="border-top:1px solid #e2e2e2;padding:22px 0;">
+          <div style="font-size:24px;font-weight:600;letter-spacing:0.08em;color:#aaa;margin-bottom:10px;">창작과정에서의 AI 활용</div>
+          <div style="font-size:25px;font-weight:400;color:#555;line-height:1.55;">발상·형상 표현 시점에 작가가 시스템 구조(키네틱 격자 배열)와 데이터 매핑 규칙(에너지 데이터를 표면 운동으로 변환하는 알고리즘)을 설계. 전시 운영 시점에 AI 시스템이 약 100개 도시의 실시간 에너지 데이터를 분석·선별하여 표면 운동으로 변환.</div>
+        </div>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;">
+        <image-slot id="case3" src="수집이미지/50_BREAKFAST_Carbon_Wake.jpg" style="width:100%;flex:1;" shape="rect" placeholder="［사진 3］ 이미지를 끌어다 놓으세요"></image-slot>
+        <div style="font-size:24px;font-weight:400;color:#aaa;margin-top:14px;">사진 출처 · breakfaststudio.com · Carbon Wake</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 17 사례3 표현특성 -->
+  <section data-label="사례3 · 표현 특성" data-screen-label="17" data-speaker-notes="외부 데이터가 형상으로 직접 번역. 고정된 최종 형상이 없음. 관람 행위가 표현에 참여." style="background:#fff;padding:88px 120px;display:flex;flex-direction:column;color:#1a1a1a;font-family:Pretendard,sans-serif;">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:24px;border-bottom:1px solid #1a1a1a;">
+      <div style="font-size:24px;font-weight:600;letter-spacing:0.18em;color:#aaa;">사례 · 전시 운영형 — Carbon Wake</div>
+      <div style="font-size:24px;font-weight:600;color:#ccc;">17</div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center;">
+      <h2 style="font-size:50px;font-weight:700;letter-spacing:-0.02em;margin:0 0 40px;">표현 특성</h2>
+      <div style="display:flex;gap:44px;">
+        <div style="flex:1;border-top:1px solid #1a1a1a;padding-top:26px;display:flex;flex-direction:column;gap:22px;">
+          <div style="font-size:33px;font-weight:700;">형상</div>
+          <div style="font-size:25px;font-weight:400;color:#555;line-height:1.6;">약 7m 폭의 벽면에 금색 미러 스테인리스 키네틱 타일이 격자로 배열. 화석연료 사용량이 증가하면 타일이 솟아오르고 청정에너지 비중이 증가하면 가라앉는 운동으로 외부 데이터가 작품의 형상 변화로 전환됨</div>
+          <div style="font-size:25px;font-weight:400;color:#555;line-height:1.6;">고정된 최종 형상이 존재하지 않으며, 작가가 결정하는 것은 형상 자체가 아니라 형상이 산출되는 규칙</div>
+        </div>
+        <div style="flex:1;border-top:1px solid #1a1a1a;padding-top:26px;display:flex;flex-direction:column;gap:22px;">
+          <div style="font-size:33px;font-weight:700;">물질성</div>
+          <div style="font-size:25px;font-weight:400;color:#555;line-height:1.6;">금속 표면이 빛을 반사하는 조각의 매체이자 데이터를 가시화하는 화면으로 동시에 작동</div>
+          <div style="font-size:25px;font-weight:400;color:#555;line-height:1.6;">손작업·기계 가공의 물리적 흔적은 배경으로 물러나고, 데이터·소프트웨어·기계 구동이 표면 운동을 통해 가시화됨</div>
+        </div>
+        <div style="flex:1;border-top:1px solid #1a1a1a;padding-top:26px;display:flex;flex-direction:column;gap:22px;">
+          <div style="font-size:33px;font-weight:700;">공간 경험</div>
+          <div style="font-size:25px;font-weight:400;color:#555;line-height:1.6;">관람자가 작품 가까이 다가가면 그 접근이 운동 패턴에 반영되어, 관람 행위가 작품의 표현에 직접 참여</div>
+          <div style="font-size:25px;font-weight:400;color:#555;line-height:1.6;">전시 기간 동안 작품의 상태가 지속적으로 변화하며, 관람 경험은 매 순간 달라짐</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 18 비교 표7 (KEY) -->
+  <section data-label="유형별 비교" data-screen-label="18" data-speaker-notes="핵심 슬라이드. 표7. AI 활용 시점이 발상→형상→전시로 확장될수록 형상·물질성·공간경험이 다르게 나타남." style="background:#fff;padding:88px 120px;display:flex;flex-direction:column;color:#1a1a1a;font-family:Pretendard,sans-serif;">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:24px;border-bottom:1px solid #1a1a1a;">
+      <div style="font-size:24px;font-weight:600;letter-spacing:0.18em;color:#aaa;">종합</div>
+      <div style="font-size:24px;font-weight:600;color:#ccc;">18</div>
+    </div>
+    <h2 style="font-size:56px;font-weight:700;letter-spacing:-0.02em;margin:44px 0 38px;">유형별 표현 특성 비교</h2>
+    <div style="flex:1;display:flex;flex-direction:column;">
+      <div style="display:grid;grid-template-columns:1.1fr 1fr 1.4fr 1.4fr 1.4fr;gap:32px;padding-bottom:18px;border-bottom:1px solid #1a1a1a;">
+        <div style="font-size:24px;font-weight:600;letter-spacing:0.06em;color:#aaa;">유형</div>
+        <div style="font-size:24px;font-weight:600;letter-spacing:0.06em;color:#aaa;">AI 활용 시점</div>
+        <div style="font-size:24px;font-weight:600;letter-spacing:0.06em;color:#aaa;">형상</div>
+        <div style="font-size:24px;font-weight:600;letter-spacing:0.06em;color:#aaa;">물질성</div>
+        <div style="font-size:24px;font-weight:600;letter-spacing:0.06em;color:#aaa;">공간 경험</div>
+      </div>
+      <div style="flex:1;display:grid;grid-template-columns:1.1fr 1fr 1.4fr 1.4fr 1.4fr;gap:32px;align-items:center;border-bottom:1px solid #e2e2e2;">
+        <div style="font-size:33px;font-weight:700;">발상 보조형</div>
+        <div style="font-size:25px;font-weight:500;color:#888;">발상 · 시각화</div>
+        <div style="font-size:25px;font-weight:400;color:#555;line-height:1.45;">AI 시안이 형상 구상의 가능성을 확장</div>
+        <div style="font-size:25px;font-weight:400;color:#555;line-height:1.45;">AI 시안이 매체 선택에 영향</div>
+        <div style="font-size:25px;font-weight:400;color:#555;line-height:1.45;">반사면을 통해 도시·관람자가 작품에 포함</div>
+      </div>
+      <div style="flex:1;display:grid;grid-template-columns:1.1fr 1fr 1.4fr 1.4fr 1.4fr;gap:32px;align-items:center;border-bottom:1px solid #e2e2e2;">
+        <div style="font-size:33px;font-weight:700;">형상 생성형</div>
+        <div style="font-size:25px;font-weight:500;color:#888;">형상 표현</div>
+        <div style="font-size:25px;font-weight:400;color:#555;line-height:1.45;">알고리즘이 고밀도 형상·표면 구조 산출</div>
+        <div style="font-size:25px;font-weight:400;color:#555;line-height:1.45;">AI 산출물이 3D 프린팅과 코팅 공정을 통해 물질화</div>
+        <div style="font-size:25px;font-weight:400;color:#555;line-height:1.45;">대형 수직 구조와 360도 관람 동선 형성</div>
+      </div>
+      <div style="flex:1;display:grid;grid-template-columns:1.1fr 1fr 1.4fr 1.4fr 1.4fr;gap:32px;align-items:center;border-bottom:1px solid #e2e2e2;">
+        <div style="font-size:33px;font-weight:700;">전시 운영형</div>
+        <div style="font-size:25px;font-weight:500;color:#888;">전시 운영</div>
+        <div style="font-size:25px;font-weight:400;color:#555;line-height:1.45;">데이터·관람자 반응에 따라 형상 상태 변화</div>
+        <div style="font-size:25px;font-weight:400;color:#555;line-height:1.45;">금속 타일의 반사성, 모터 구동, 데이터 시스템이 결합된 가변적 물질성</div>
+        <div style="font-size:25px;font-weight:400;color:#555;line-height:1.45;">관람 행위가 작품의 운동 패턴에 참여</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 19 결론 -->
+  <section data-label="결론" data-screen-label="19" data-speaker-notes="AI는 신체적 행위를 대체하지 않고, 활용 시점에 따라 다른 표현 가능성을 연다." style="background:#fff;padding:88px 120px;display:flex;flex-direction:column;color:#1a1a1a;font-family:Pretendard,sans-serif;">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:24px;border-bottom:1px solid #1a1a1a;">
+      <div style="font-size:24px;font-weight:600;letter-spacing:0.18em;color:#aaa;">결론</div>
+      <div style="font-size:24px;font-weight:600;color:#ccc;">19</div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center;">
+      <h2 style="font-size:60px;font-weight:700;letter-spacing:-0.02em;line-height:1.28;margin:0 0 22px;">기술 중심 접근을 넘어, ‘활용 시점’ 중심의 분석 관점</h2>
+      <p style="font-size:31px;font-weight:400;line-height:1.6;color:#555;margin:0 0 76px;max-width:1620px;">본 연구의 사례에서 AI는 작가의 신체적·조형적 행위를 전면적으로 대체하기보다, 활용 시점에 따라 서로 다른 표현 가능성을 확장하는 도구로 작동하였다.</p>
+      <div style="display:flex;gap:44px;">
+        <div style="flex:1;border-top:1px solid #1a1a1a;padding-top:24px;">
+          <div style="font-size:24px;font-weight:600;color:#aaa;margin-bottom:16px;">발상 시점</div>
+          <div style="font-size:32px;font-weight:600;line-height:1.45;">시각적 탐색의 폭을 확장</div>
+        </div>
+        <div style="flex:1;border-top:1px solid #1a1a1a;padding-top:24px;">
+          <div style="font-size:24px;font-weight:600;color:#aaa;margin-bottom:16px;">형상 표현 시점</div>
+          <div style="font-size:32px;font-weight:600;line-height:1.45;">직접 표현하기 어려운 형상·질감 구현</div>
+        </div>
+        <div style="flex:1;border-top:1px solid #1a1a1a;padding-top:24px;">
+          <div style="font-size:24px;font-weight:600;color:#aaa;margin-bottom:16px;">전시 시점</div>
+          <div style="font-size:32px;font-weight:600;line-height:1.45;">작가의 역할이 조건 설정, 선택, 운영 설계로 확장</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 20 의의와 한계 -->
+  <section data-label="의의와 한계" data-screen-label="20" data-speaker-notes="학술적·실천적 의의, 한계와 후속 연구 방향." style="background:#fff;padding:88px 120px;display:flex;flex-direction:column;color:#1a1a1a;font-family:Pretendard,sans-serif;">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:24px;border-bottom:1px solid #1a1a1a;">
+      <div style="font-size:24px;font-weight:600;letter-spacing:0.18em;color:#aaa;">결론</div>
+      <div style="font-size:24px;font-weight:600;color:#ccc;">20</div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center;">
+      <h2 style="font-size:60px;font-weight:700;letter-spacing:-0.02em;margin:0 0 50px;">의의와 한계</h2>
+      <div style="display:flex;gap:52px;">
+        <div style="flex:1;display:flex;flex-direction:column;gap:38px;">
+          <div style="border-top:1px solid #1a1a1a;padding-top:24px;">
+            <div style="font-size:24px;font-weight:600;letter-spacing:0.08em;color:#aaa;margin-bottom:14px;">학술적 의의</div>
+            <div style="font-size:29px;font-weight:400;color:#555;line-height:1.6;">상대적으로 논의가 축적되지 않은 AI 활용 입체조형 영역에 ‘활용 시점’이라는 분석 차원을 제시하여 후속 연구의 분석 기반을 마련하였다.</div>
+          </div>
+          <div style="border-top:1px solid #1a1a1a;padding-top:24px;">
+            <div style="font-size:24px;font-weight:600;letter-spacing:0.08em;color:#aaa;margin-bottom:14px;">실천적 의의</div>
+            <div style="font-size:29px;font-weight:400;color:#555;line-height:1.6;">유형 분류는 인공지능을 활용한 입체조형 작업의 창작 전략과 사례 분석을 위한 참고 틀로 활용될 수 있다.</div>
+          </div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:38px;">
+          <div style="border-top:1px solid #1a1a1a;padding-top:24px;">
+            <div style="font-size:24px;font-weight:600;letter-spacing:0.08em;color:#aaa;margin-bottom:14px;">한계</div>
+            <div style="font-size:29px;font-weight:400;color:#555;line-height:1.6;">실제 작품에서는 여러 시점에 AI가 복합적으로 활용되지만, 본 연구는 가장 두드러진 활용 시점을 기준으로 유형을 설정했기 때문에 다층적 활용 양상을 충분히 포괄하는 데에는 한계가 있다.</div>
+          </div>
+          <div style="border-top:1px solid #1a1a1a;padding-top:24px;">
+            <div style="font-size:24px;font-weight:600;letter-spacing:0.08em;color:#aaa;margin-bottom:14px;">후속 연구</div>
+            <div style="font-size:29px;font-weight:400;color:#555;line-height:1.6;">후속 연구에서는 활용 시점뿐 아니라 AI 산출물의 성격, 매체화 방식, 관람자 상호작용 등을 기준으로 한 확장 분석이 필요하다.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 21 감사 -->
+  <section data-label="감사합니다" data-screen-label="21" data-speaker-notes="마무리 인사 및 질의응답." style="background:#1a1a1a;padding:104px 120px;display:flex;flex-direction:column;color:#fff;font-family:Pretendard,sans-serif;">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:26px;border-bottom:1px solid #555;">
+      <div style="font-size:24px;font-weight:600;letter-spacing:0.2em;color:#888;">감사합니다</div>
+      <div style="font-size:24px;font-weight:600;color:#666;">Q &amp; A</div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center;">
+      <h2 style="font-size:78px;font-weight:700;letter-spacing:-0.025em;line-height:1.2;margin:0;">인공지능 활용 입체조형작품의<br>유형과 표현 특성 연구</h2>
+      <div style="font-size:28px;font-weight:400;color:#aaa;margin-top:32px;">박성하 (제1저자) · 한정엽 (교신저자) · 홍익대학교 대학원 AI·실감미디어콘텐츠학</div>
+    </div>
+    <div style="padding-top:26px;border-top:1px solid #555;display:flex;gap:56px;">
+      <div style="font-size:24px;font-weight:400;color:#888;line-height:1.6;">Reflection Point — wadeandleta.com</div>
+      <div style="font-size:24px;font-weight:400;color:#888;line-height:1.6;">Digital Grotesque III — michael-hansmeyer.com</div>
+      <div style="font-size:24px;font-weight:400;color:#888;line-height:1.6;">Carbon Wake — breakfaststudio.com</div>
+    </div>
+  </section>
+
+</x-import>
+</x-dc>
+
+<script>
+/* Force no deck rail inside paper viewer 20260619 */
+(function(){
+  function apply(){
+    document.querySelectorAll('deck-stage').forEach(function(el){ el.setAttribute('no-rail',''); });
+  }
+  apply();
+  window.addEventListener('load', apply);
+  setTimeout(apply, 250);
+  setTimeout(apply, 1000);
+})();
+</script>
+</body>
+</html>
