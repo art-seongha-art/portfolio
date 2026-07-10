@@ -356,6 +356,23 @@ input[type=file]{display:none;}
     </div>
 
     <div class="panel">
+      <h2>그리기 재생</h2>
+      <div class="body">
+        <div class="row">
+          <label for="playDur">길이</label>
+          <input type="range" id="playDur" min="3" max="30" step="1" value="8"/>
+          <span class="val" id="playDurVal">8 초</span>
+        </div>
+        <div class="btnrow">
+          <button class="primary" id="playBtn">▶ 재생</button>
+          <button id="stopBtn">■ 정지</button>
+          <button id="recBtn">🎥 영상 저장</button>
+        </div>
+        <div class="hint">펜화는 획이 그어지는 순서대로, 망점·디더링은 채널별 인쇄 패스로 재생됩니다. 영상 저장은 재생 과정을 WebM으로 녹화합니다.</div>
+      </div>
+    </div>
+
+    <div class="panel">
       <h2>내보내기</h2>
       <div class="body">
         <div class="row">
@@ -1388,7 +1405,7 @@ function prepImageData(img, maxSide, p) {
   return id;
 }
 
-async function render(targetCanvas, maxDim) {
+async function render(targetCanvas, maxDim, opts = {}) {
   if (!state.img) return;
   const token = ++renderToken;
   const p = readParams();
@@ -1567,6 +1584,13 @@ async function render(targetCanvas, maxDim) {
         }
       }
     }
+    /* 채널별 인쇄 패스 스냅샷 (그리기 재생용) */
+    if (opts.snapshots) {
+      const sc = document.createElement('canvas');
+      sc.width = w; sc.height = h;
+      sc.getContext('2d').putImageData(new ImageData(od.slice(), w, h), 0, 0);
+      opts.snapshots.push(sc);
+    }
     /* 채널 사이에 이벤트 루프 양보 (대형 렌더 시 UI 멈춤 방지) */
     await yieldLoop();
     if (token !== renderToken) return;
@@ -1577,8 +1601,182 @@ async function render(targetCanvas, maxDim) {
   return true;
 }
 
+/* ============================================================
+   그리기 재생: 완성 과정을 애니메이션으로 보여주기
+   - 망점·디더링: 채널별 인쇄 패스가 위→아래로 쓸려 내려옴
+   - 펜화·선화: 점이 하나씩 찍히고 획이 순서대로 그어짐
+   ============================================================ */
+let playToken = 0;
+
+function startRecorder() {
+  if (!view.captureStream || typeof MediaRecorder === 'undefined') {
+    alert('이 브라우저는 영상 녹화를 지원하지 않습니다.');
+    return null;
+  }
+  const stream = view.captureStream(60);
+  const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+    ? 'video/webm;codecs=vp9' : 'video/webm';
+  const rec = new MediaRecorder(stream, { mimeType: mime });
+  const chunks = [];
+  rec.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+  rec.onstop = () => {
+    const blob = new Blob(chunks, { type: 'video/webm' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'raster-drawing.webm';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  };
+  rec.start();
+  return rec;
+}
+
+async function playAnimation(record) {
+  if (!state.img) { alert('먼저 이미지를 열어주세요.'); return; }
+  const myTok = ++playToken;
+  const p = readParams();
+  const durMs = +$('playDur').value * 1000;
+  const raf = () => new Promise(r => requestAnimationFrame(r));
+  let recorder = null;
+  const cancelRec = () => {
+    if (recorder && recorder.state !== 'inactive') {
+      recorder.ondataavailable = null; recorder.onstop = null; recorder.stop();
+    }
+  };
+
+  setBusy('재생 준비 중…');
+  const tmp = document.createElement('canvas');
+
+  if (PIXEL_MODES.has(p.patMode)) {
+    const snaps = [];
+    const ok = await render(tmp, p.workRes, { snapshots: snaps });
+    setBusy(null);
+    if (!ok || myTok !== playToken || !snaps.length) return;
+    view.width = tmp.width; view.height = tmp.height;
+    const ctx = view.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, view.width, view.height);
+    if (record) recorder = startRecorder();
+    const per = durMs / snaps.length;
+    for (const sc of snaps) {
+      const rows = view.height;
+      const t0 = performance.now();
+      let y = 0;
+      while (y < rows) {
+        if (myTok !== playToken) { cancelRec(); return; }
+        const targetY = Math.min(rows, Math.ceil((performance.now() - t0) / per * rows));
+        if (targetY > y) {
+          ctx.drawImage(sc, 0, y, view.width, targetY - y, 0, y, view.width, targetY - y);
+          y = targetY;
+        }
+        await raf();
+      }
+    }
+  } else {
+    const ok = await render(tmp, p.workRes);
+    setBusy(null);
+    if (!ok || myTok !== playToken || !lastVector) return;
+    const { prims, w, cmyk } = lastVector;
+    view.width = tmp.width; view.height = tmp.height;
+    const scale = view.width / w;
+    const H = view.height;
+    const ctx = view.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, view.width, H);
+    if (record) recorder = startRecorder();
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+    /* 총 작업량 → 프레임당 예산 */
+    let units = 0;
+    for (const ch of prims) {
+      units += ch.dots.length;
+      for (const q of ch.wpaths) units += q.pts.length;
+      if (ch.fwpaths) for (const q of ch.fwpaths) units += q.pts.length / 4 + 2;
+      if (ch.texts) units += ch.texts.length;
+    }
+    let budget = 0;
+    const perFrame = Math.max(1, units / (durMs / 16.7));
+    const tick = async () => { await raf(); budget = perFrame; };
+
+    for (const ch of prims) {
+      if (myTok !== playToken) { cancelRec(); return; }
+      const col = `rgb(${ch.rgb[0]},${ch.rgb[1]},${ch.rgb[2]})`;
+      ctx.fillStyle = col; ctx.strokeStyle = col;
+      ctx.globalCompositeOperation = cmyk ? 'multiply' : 'source-over';
+
+      /* 점: 셔플해서 여기저기 찍히는 느낌 */
+      const rng = mulberry32(state.seed * 5 + 42);
+      const dots = ch.dots.slice();
+      for (let i = dots.length - 1; i > 0; i--) {
+        const j = rng() * (i + 1) | 0;
+        [dots[i], dots[j]] = [dots[j], dots[i]];
+      }
+      for (const [x, y, r] of dots) {
+        if (budget < 1) { await tick(); if (myTok !== playToken) { cancelRec(); return; } }
+        ctx.beginPath();
+        ctx.arc(x * scale, y * scale, Math.max(0.3, r * scale), 0, 6.2832);
+        ctx.fill();
+        budget--;
+      }
+      /* 획: 새로 그어지는 구간만 이어 그림 */
+      for (const q of ch.wpaths) {
+        ctx.lineWidth = Math.max(0.25, q.w * scale);
+        for (let i = 1; i < q.pts.length; i++) {
+          if (budget < 1) { await tick(); if (myTok !== playToken) { cancelRec(); return; } }
+          ctx.beginPath();
+          ctx.moveTo(q.pts[i - 1][0] * scale, q.pts[i - 1][1] * scale);
+          ctx.lineTo(q.pts[i][0] * scale, q.pts[i][1] * scale);
+          ctx.stroke();
+          budget--;
+        }
+      }
+      /* 능선: 한 줄씩 (채움+획) */
+      if (ch.fwpaths) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'source-over';
+        for (const q of ch.fwpaths) {
+          if (budget < 1) { await tick(); if (myTok !== playToken) { ctx.restore(); cancelRec(); return; } }
+          const pts = q.pts;
+          ctx.beginPath();
+          ctx.moveTo(pts[0][0] * scale, pts[0][1] * scale);
+          for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0] * scale, pts[i][1] * scale);
+          ctx.lineTo(pts[pts.length - 1][0] * scale, H);
+          ctx.lineTo(pts[0][0] * scale, H);
+          ctx.closePath();
+          ctx.fillStyle = '#ffffff';
+          ctx.fill();
+          ctx.beginPath();
+          ctx.moveTo(pts[0][0] * scale, pts[0][1] * scale);
+          for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0] * scale, pts[i][1] * scale);
+          ctx.strokeStyle = col;
+          ctx.lineWidth = Math.max(0.25, q.w * scale);
+          ctx.stroke();
+          budget -= pts.length / 4 + 2;
+        }
+        ctx.restore();
+        ctx.fillStyle = col;
+      }
+      /* 문자 (아스키) */
+      if (ch.texts) {
+        ctx.font = `${Math.max(4, ch.fontSize * scale)}px "Courier New", monospace`;
+        ctx.textAlign = 'center';
+        for (const [x, y, chr] of ch.texts) {
+          if (budget < 1) { await tick(); if (myTok !== playToken) { cancelRec(); return; } }
+          ctx.fillText(chr, x * scale, y * scale);
+          budget--;
+        }
+      }
+    }
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  /* 마지막 프레임이 녹화에 담기도록 잠깐 대기 후 저장 */
+  if (recorder) {
+    await new Promise(r => setTimeout(r, 600));
+    if (recorder.state !== 'inactive') recorder.stop();
+  }
+}
+
 let renderTimer = null;
 function scheduleRender() {
+  playToken++;   // 파라미터가 바뀌면 진행 중인 재생 취소
   clearTimeout(renderTimer);
   renderTimer = setTimeout(() => render(view, +$('workRes').value), 150);
 }
@@ -1737,6 +1935,13 @@ $('exportBtn').addEventListener('click', async () => {
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   }, 'image/png');
 });
+
+$('playDur').addEventListener('input', () => {
+  $('playDurVal').textContent = $('playDur').value + ' 초';
+});
+$('playBtn').addEventListener('click', () => playAnimation(false));
+$('recBtn').addEventListener('click', () => playAnimation(true));
+$('stopBtn').addEventListener('click', () => { playToken++; scheduleRender(); });
 
 $('svgBtn').addEventListener('click', () => {
   if (!lastVector) { alert('펜화·선화 스타일을 먼저 렌더링해주세요.'); return; }
