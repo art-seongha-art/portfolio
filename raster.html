@@ -157,6 +157,13 @@ input[type=file]{display:none;}
               <option value="cells">세포 (반응-확산)</option>
               <option value="spiral">나선 망점</option>
               <option value="amdot">클래식 AM 망점</option>
+              <option value="lines">라인 스크린</option>
+              <option value="rings">동심원 스크린</option>
+            </optgroup>
+            <optgroup label="디더링">
+              <option value="fs">플로이드-스타인버그</option>
+              <option value="atkinson">앳킨슨 (레트로 맥)</option>
+              <option value="bayer">베이어 (정렬 격자)</option>
             </optgroup>
             <optgroup label="펜화 · 선화 (벡터)">
               <option value="stipple">점묘 (스티플링)</option>
@@ -165,6 +172,12 @@ input[type=file]{display:none;}
               <option value="hatch">해칭 (교차 선영)</option>
               <option value="spiralline">나선 한붓그리기</option>
               <option value="flowfield">필체 결 (플로우 필드)</option>
+              <option value="scribble">낙서 (스크리블)</option>
+              <option value="contour">등고선</option>
+              <option value="ridge">능선 웨이브</option>
+              <option value="web">연결망 (웹)</option>
+              <option value="cross">십자수 (X 스티치)</option>
+              <option value="ascii">아스키 아트</option>
             </optgroup>
           </select>
         </div>
@@ -190,13 +203,13 @@ input[type=file]{display:none;}
             <option value="-1">반시계 방향</option>
           </select>
         </div>
-        <div class="row" data-only="amdot">
+        <div class="row" data-only="amdot,lines">
           <label for="amAngle">각도</label>
           <input type="range" id="amAngle" min="0" max="90" step="1" value="45"/>
           <span class="val" id="amAngleVal">45°</span>
         </div>
 
-        <div class="row" data-only="stipple,tspline">
+        <div class="row" data-only="stipple,tspline,web">
           <label for="ptCount">점 개수</label>
           <input type="range" id="ptCount" min="1000" max="40000" step="500" value="8000"/>
           <span class="val" id="ptCountVal">8000</span>
@@ -207,17 +220,17 @@ input[type=file]{display:none;}
           <span class="val" id="dotScaleVal">100 %</span>
         </div>
         <label class="check" data-only="stipple"><input type="checkbox" id="varSize" checked/> 밝기에 따라 점 크기 변화</label>
-        <div class="row" data-only="tspline,squiggle,hatch,flowfield">
+        <div class="row" data-only="tspline,squiggle,hatch,flowfield,scribble,contour,ridge,web,cross">
           <label for="lineW">선 두께</label>
           <input type="range" id="lineW" min="3" max="40" step="1" value="10"/>
           <span class="val" id="lineWVal">1.0 px</span>
         </div>
-        <div class="row" data-only="squiggle">
+        <div class="row" data-only="squiggle,ridge">
           <label for="sqSpacing">줄 간격</label>
           <input type="range" id="sqSpacing" min="4" max="24" step="1" value="8"/>
           <span class="val" id="sqSpacingVal">8 px</span>
         </div>
-        <div class="row" data-only="squiggle">
+        <div class="row" data-only="squiggle,ridge">
           <label for="sqAmp">진폭</label>
           <input type="range" id="sqAmp" min="10" max="100" step="5" value="60"/>
           <span class="val" id="sqAmpVal">60 %</span>
@@ -249,18 +262,41 @@ input[type=file]{display:none;}
             <option value="wave">물결 진폭</option>
           </select>
         </div>
-        <div class="row" data-only="flowfield">
+        <div class="row" data-only="flowfield,scribble">
           <label for="ffDensity">선 밀도</label>
           <input type="range" id="ffDensity" min="10" max="150" step="5" value="50"/>
           <span class="val" id="ffDensityVal">50 %</span>
         </div>
-        <div class="row" data-only="flowfield">
+        <div class="row" data-only="flowfield,scribble">
           <label for="ffLen">선 길이</label>
           <input type="range" id="ffLen" min="10" max="100" step="5" value="40"/>
           <span class="val" id="ffLenVal">40</span>
         </div>
+        <div class="row" data-only="contour">
+          <label for="ctLevels">레벨 수</label>
+          <input type="range" id="ctLevels" min="3" max="12" step="1" value="6"/>
+          <span class="val" id="ctLevelsVal">6</span>
+        </div>
+        <div class="row" data-only="contour">
+          <label for="ctSmooth">부드럽기</label>
+          <input type="range" id="ctSmooth" min="0" max="10" step="1" value="4"/>
+          <span class="val" id="ctSmoothVal">4</span>
+        </div>
+        <div class="row" data-only="cross,ascii">
+          <label for="gridSize">격자 크기</label>
+          <input type="range" id="gridSize" min="4" max="32" step="1" value="10"/>
+          <span class="val" id="gridSizeVal">10 px</span>
+        </div>
+        <div class="row" data-only="ascii">
+          <label for="asciiSet">문자셋</label>
+          <select id="asciiSet" style="flex:1">
+            <option value="ascii" selected>ASCII ( .:-=+*#%@)</option>
+            <option value="blocks">블록 (░▒▓█)</option>
+            <option value="braille">점자 (⠁⠇⠿⣿)</option>
+          </select>
+        </div>
 
-        <div class="btnrow" data-only="rd,stipple,tspline,flowfield">
+        <div class="btnrow" data-only="rd,stipple,tspline,flowfield,scribble,web">
           <button id="reseedBtn">패턴 재생성 (새 시드)</button>
         </div>
         <label class="check"><input type="checkbox" id="invert"/> 반전 (네거티브)</label>
@@ -374,7 +410,21 @@ const RD_PRESETS = {
   coral: { f: 0.0545, k: 0.062,  iters: 2600 },
   cells: { f: 0.0367, k: 0.0649, iters: 2600 },
 };
-const PIXEL_MODES = new Set(['maze', 'coral', 'cells', 'spiral', 'amdot']);
+const PIXEL_MODES = new Set(['maze', 'coral', 'cells', 'spiral', 'amdot',
+                             'lines', 'rings', 'fs', 'atkinson', 'bayer']);
+/* 오차 확산 커널: [dx, dy, 비율] */
+const FS_KERNEL = [[1, 0, 7 / 16], [-1, 1, 3 / 16], [0, 1, 5 / 16], [1, 1, 1 / 16]];
+const ATK_KERNEL = [[1, 0, 1 / 8], [2, 0, 1 / 8], [-1, 1, 1 / 8], [0, 1, 1 / 8], [1, 1, 1 / 8], [0, 2, 1 / 8]];
+const BAYER8 = [
+  [0, 32, 8, 40, 2, 34, 10, 42], [48, 16, 56, 24, 50, 18, 58, 26],
+  [12, 44, 4, 36, 14, 46, 6, 38], [60, 28, 52, 20, 62, 30, 54, 22],
+  [3, 35, 11, 43, 1, 33, 9, 41], [51, 19, 59, 27, 49, 17, 57, 25],
+  [15, 47, 7, 39, 13, 45, 5, 37], [63, 31, 55, 23, 61, 29, 53, 21]];
+const ASCII_SETS = {
+  ascii: ' .:-=+*#%@',
+  blocks: ' ░▒▓█',
+  braille: ' ⠁⠃⠇⠧⠷⠿⡿⣿',
+};
 const CMYK_DEFAULT = ['#00aeef', '#ec008c', '#ffd400', '#000000'];
 const CH_NAMES = ['Cyan', 'Magenta', 'Yellow', 'Black'];
 const AM_ANGLES = [15, 75, 0, 45];   // 인쇄 표준 스크린 각도 오프셋
@@ -938,6 +988,254 @@ function renderFlowField(d, w, h, p, ci) {
   return { dots: [], wpaths };
 }
 
+/* --- 오차 확산 디더링 (Floyd-Steinberg / Atkinson), 서펜타인 스캔 --- */
+function downsampleDark(d, w, h, s, fn) {
+  const wl = Math.max(1, Math.ceil(w / s)), hl = Math.max(1, Math.ceil(h / s));
+  const out = new Float32Array(wl * hl);
+  for (let y = 0; y < hl; y++) for (let x = 0; x < wl; x++) {
+    let sum = 0, c = 0;
+    for (let yy = y * s; yy < Math.min(h, y * s + s); yy++)
+      for (let xx = x * s; xx < Math.min(w, x * s + s); xx++) { sum += d[yy * w + xx]; c++; }
+    out[y * wl + x] = fn(sum / c);
+  }
+  return { out, wl, hl };
+}
+
+function errorDiffuse(dl, wl, hl, kernel) {
+  const buf = Float32Array.from(dl);
+  const map = new Uint8Array(wl * hl);
+  for (let y = 0; y < hl; y++) {
+    const ltr = (y & 1) === 0;
+    for (let i = 0; i < wl; i++) {
+      const x = ltr ? i : wl - 1 - i;
+      const idx = y * wl + x;
+      const v = buf[idx];
+      const on = v >= 0.5;
+      if (on) map[idx] = 1;
+      const err = v - (on ? 1 : 0);
+      for (const [dx, dy, f] of kernel) {
+        const xx = x + (ltr ? dx : -dx), yy = y + dy;
+        if (xx < 0 || xx >= wl || yy < 0 || yy >= hl) continue;
+        buf[yy * wl + xx] += err * f;
+      }
+    }
+  }
+  return map;
+}
+
+/* --- 낙서 (스크리블): 어두운 곳을 좇는 무작위 행보 --- */
+function renderScribble(d, w, h, p, ci) {
+  const rng = mulberry32(state.seed * 227 + ci * 17 + 31);
+  const strokeLen = (8 + p.ffLen * 0.9) * 1.6;
+  let totalDark = 0;
+  for (let i = 0; i < d.length; i += 7) totalDark += d[i];
+  totalDark *= 7;
+  const count = Math.max(80, Math.min(16000,
+    Math.round(totalDark * (p.ffDensity / 50) * 0.35 / (strokeLen * Math.max(p.lineW, 0.4)))));
+  const seeds = samplePoints(d, w, h, count, rng, 1.3);
+  const wpaths = [];
+  for (let si = 0; si < seeds.length / 2; si++) {
+    const sx = seeds[si * 2], sy = seeds[si * 2 + 1];
+    if (d[(sy | 0) * w + (sx | 0)] < 0.06) continue;
+    let x = sx, y = sy, ang = rng() * 6.2832;
+    const pts = [[x, y]];
+    for (let st = 0; st < strokeLen / 5; st++) {
+      let bx = 0, by = 0, bd = -1, bAng = ang;
+      for (let c = 0; c < 3; c++) {          // 후보 3방향 중 가장 어두운 곳으로
+        const na = ang + (rng() - 0.5) * 2.4;
+        const nx = x + Math.cos(na) * 5.5, ny = y + Math.sin(na) * 5.5;
+        if (nx < 1 || ny < 1 || nx >= w - 1 || ny >= h - 1) continue;
+        const nd = d[(ny | 0) * w + (nx | 0)] + rng() * 0.08;
+        if (nd > bd) { bd = nd; bx = nx; by = ny; bAng = na; }
+      }
+      if (bd < 0.07) break;
+      ang = bAng; x = bx; y = by;
+      pts.push([x, y]);
+    }
+    if (pts.length > 2) wpaths.push({ w: p.lineW, pts: chaikin(pts) });
+  }
+  return { dots: [], wpaths };
+}
+
+/* --- 등고선: 블러 처리한 톤 필드의 마칭 스퀘어 --- */
+function renderContour(d, w, h, p, ci) {
+  const f = 2;
+  const gw = Math.max(2, Math.ceil(w / f)), gh = Math.max(2, Math.ceil(h / f));
+  const g = new Float32Array(gw * gh);
+  for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) {
+    const sy = Math.min(h - 1, y * f), sx = Math.min(w - 1, x * f);
+    g[y * gw + x] = d[sy * w + sx];
+  }
+  const tmp = new Float32Array(g.length);
+  for (let pass = 0; pass < p.ctSmooth; pass++) {   // 3×3 박스 블러 반복
+    tmp.set(g);
+    for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) {
+      let sum = 0, c = 0;
+      for (let yy = Math.max(0, y - 1); yy <= Math.min(gh - 1, y + 1); yy++)
+        for (let xx = Math.max(0, x - 1); xx <= Math.min(gw - 1, x + 1); xx++) { sum += tmp[yy * gw + xx]; c++; }
+      g[y * gw + x] = sum / c;
+    }
+  }
+  const wpaths = [];
+  for (let l = 0; l < p.ctLevels; l++) {
+    const thr = (l + 0.5) / p.ctLevels;
+    const segs = [];
+    const L = (a, b) => (thr - a) / (b - a);
+    for (let y = 0; y < gh - 1; y++) for (let x = 0; x < gw - 1; x++) {
+      const v0 = g[y * gw + x], v1 = g[y * gw + x + 1];
+      const v2 = g[(y + 1) * gw + x + 1], v3 = g[(y + 1) * gw + x];
+      let c = 0;
+      if (v0 > thr) c |= 1; if (v1 > thr) c |= 2; if (v2 > thr) c |= 4; if (v3 > thr) c |= 8;
+      if (c === 0 || c === 15) continue;
+      const e0 = [x + L(v0, v1), y], e1 = [x + 1, y + L(v1, v2)];
+      const e2 = [x + L(v3, v2), y + 1], e3 = [x, y + L(v0, v3)];
+      switch (c) {
+        case 1: case 14: segs.push([e3, e0]); break;
+        case 2: case 13: segs.push([e0, e1]); break;
+        case 3: case 12: segs.push([e3, e1]); break;
+        case 4: case 11: segs.push([e1, e2]); break;
+        case 6: case 9:  segs.push([e0, e2]); break;
+        case 7: case 8:  segs.push([e3, e2]); break;
+        case 5:  segs.push([e3, e2], [e0, e1]); break;
+        case 10: segs.push([e3, e0], [e1, e2]); break;
+      }
+    }
+    for (const line of chainSegs(segs)) {
+      wpaths.push({ w: p.lineW, pts: line.map(q => [q[0] * f, q[1] * f]) });
+    }
+  }
+  return { dots: [], wpaths };
+}
+
+/* 마칭 스퀘어 선분들을 끝점 공유 기준으로 폴리라인 체이닝 */
+function chainSegs(segs) {
+  const key = q => Math.round(q[0] * 4) + '_' + Math.round(q[1] * 4);
+  const km = new Map();
+  segs.forEach((s, i) => {
+    for (const q of s) {
+      const k = key(q);
+      if (!km.has(k)) km.set(k, []);
+      km.get(k).push(i);
+    }
+  });
+  const used = new Uint8Array(segs.length);
+  const lines = [];
+  for (let i = 0; i < segs.length; i++) {
+    if (used[i]) continue;
+    used[i] = 1;
+    const line = [segs[i][0], segs[i][1]];
+    for (const atEnd of [true, false]) {
+      let guard = segs.length;
+      while (guard-- > 0) {
+        const tip = atEnd ? line[line.length - 1] : line[0];
+        const cand = (km.get(key(tip)) || []).find(j => !used[j]);
+        if (cand === undefined) break;
+        used[cand] = 1;
+        const [a, b] = segs[cand];
+        const next = key(a) === key(tip) ? b : a;
+        if (atEnd) line.push(next); else line.unshift(next);
+      }
+    }
+    if (line.length > 1) lines.push(line);
+  }
+  return lines;
+}
+
+/* --- 능선 웨이브: 어두울수록 위로 솟는 가로선 (흑백은 앞줄이 뒷줄을 가림) --- */
+function renderRidge(d, w, h, p, ci) {
+  const spacing = p.sqSpacing * 1.4;
+  const amp = p.sqSpacing * 3.2 * (p.sqAmp / 100);
+  const cmyk = p.colorMode === 'cmyk';
+  const phase = cmyk ? ci * spacing / 4 : 0;
+  const paths = [];
+  for (let y0 = spacing / 2 + phase; y0 < h + spacing; y0 += spacing) {
+    const pts = [];
+    for (let x = 0; x <= w - 1; x += 2) {
+      const sy = Math.min(h - 1, y0) | 0;
+      const dv = d[sy * w + Math.min(w - 1, x | 0)];
+      pts.push([x, y0 - Math.pow(dv, 1.25) * amp]);
+    }
+    paths.push({ w: p.lineW, pts });
+  }
+  /* CMYK는 가림(흰 면 채움)이 곱하기 합성과 상충 → 줄만 겹쳐 그림 */
+  return cmyk ? { dots: [], wpaths: paths } : { dots: [], wpaths: [], fwpaths: paths };
+}
+
+/* --- 연결망 (웹): 스티플 점을 근접 이웃과 잇기, 어두울수록 연결 많음 --- */
+async function renderWeb(d, w, h, p, ci, token) {
+  const rng = mulberry32(state.seed * 149 + ci * 19 + 7);
+  const n = Math.round(p.ptCount * 0.6 * (p.colorMode === 'cmyk' ? 0.5 : 1));
+  let pts = samplePoints(d, w, h, n, rng, 1.2);
+  pts = await lloydRelax(pts, d, w, h, 1, rng, token, '연결망');
+  if (!pts) return null;
+  const m = pts.length / 2;
+  const { bs, gw, gh, buckets } = makeBuckets(pts, m, w, h);
+  const wpaths = [];
+  const seen = new Set();
+  for (let i = 0; i < m; i++) {
+    const x = pts[i * 2], y = pts[i * 2 + 1];
+    const dv = d[(y | 0) * w + (x | 0)];
+    if (dv < 0.03) continue;
+    const k = 1 + Math.round(dv * 2.2);
+    const bx = Math.min(gw - 1, x / bs | 0), by = Math.min(gh - 1, y / bs | 0);
+    const cands = [];
+    for (let yy = Math.max(0, by - 2); yy <= Math.min(gh - 1, by + 2); yy++)
+      for (let xx = Math.max(0, bx - 2); xx <= Math.min(gw - 1, bx + 2); xx++)
+        for (const j of buckets[yy * gw + xx]) {
+          if (j === i) continue;
+          const dx = pts[j * 2] - x, dy = pts[j * 2 + 1] - y;
+          cands.push([dx * dx + dy * dy, j]);
+        }
+    cands.sort((a, b) => a[0] - b[0]);
+    for (let t = 0; t < Math.min(k, cands.length); t++) {
+      const j = cands[t][1];
+      const pairKey = i < j ? i * 1e7 + j : j * 1e7 + i;
+      if (seen.has(pairKey)) continue;
+      seen.add(pairKey);
+      wpaths.push({ w: p.lineW, pts: [[x, y], [pts[j * 2], pts[j * 2 + 1]]] });
+    }
+  }
+  return { dots: [], wpaths };
+}
+
+/* --- 십자수: 격자 셀마다 어둡기에 비례한 X --- */
+function renderCross(d, w, h, p, ci) {
+  const gs = p.gridSize;
+  const off = p.colorMode === 'cmyk' ? (ci % 2) * gs / 2 : 0;
+  const offY = p.colorMode === 'cmyk' ? (ci >> 1) * gs / 2 : 0;
+  const wpaths = [];
+  for (let y = gs / 2 + offY; y < h; y += gs) {
+    for (let x = gs / 2 + off; x < w; x += gs) {
+      const dv = d[(y | 0) * w + (x | 0)];
+      if (dv < 0.1) continue;
+      const r = gs * 0.42 * (0.35 + 0.65 * Math.min(1, dv * 1.2));
+      wpaths.push({ w: p.lineW, pts: [[x - r, y - r], [x + r, y + r]] });
+      wpaths.push({ w: p.lineW, pts: [[x - r, y + r], [x + r, y - r]] });
+    }
+  }
+  return { dots: [], wpaths };
+}
+
+/* --- 아스키 아트: 셀 평균 어둡기 → 문자 밀도 --- */
+function renderAscii(d, w, h, p, ci) {
+  const gs = p.gridSize;
+  const chars = ASCII_SETS[p.asciiSet] || ASCII_SETS.ascii;
+  const ox = p.colorMode === 'cmyk' ? (ci % 2) * gs * 0.25 : 0;
+  const oy = p.colorMode === 'cmyk' ? (ci >> 1) * gs * 0.25 : 0;
+  const texts = [];
+  for (let y = 0; y < h - gs / 2; y += gs) {
+    for (let x = 0; x < w - gs / 2; x += gs) {
+      let sum = 0, c = 0;
+      for (let yy = y; yy < Math.min(h, y + gs); yy += 2)
+        for (let xx = x; xx < Math.min(w, x + gs); xx += 2) { sum += d[(yy | 0) * w + (xx | 0)]; c++; }
+      const idx = Math.min(chars.length - 1, Math.round((sum / c) * (chars.length - 1)));
+      if (idx <= 0) continue;
+      texts.push([x + gs / 2 + ox, y + gs * 0.8 + oy, chars[idx]]);
+    }
+  }
+  return { dots: [], wpaths: [], texts, fontSize: gs };
+}
+
 /* 프리미티브 → 캔버스 (scale: 분석좌표 → 출력좌표) */
 function drawPrimitives(ctx, prims, scale, cmyk, W, H) {
   ctx.fillStyle = '#ffffff';
@@ -965,6 +1263,35 @@ function drawPrimitives(ctx, prims, scale, cmyk, W, H) {
       for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0] * scale, pts[i][1] * scale);
       ctx.stroke();
     }
+    /* 채움 경로 (능선): 곡선 아래를 종이색으로 채워 뒷줄을 가림 */
+    if (ch.fwpaths) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      for (const pth of ch.fwpaths) {
+        const pts = pth.pts;
+        ctx.beginPath();
+        ctx.moveTo(pts[0][0] * scale, pts[0][1] * scale);
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0] * scale, pts[i][1] * scale);
+        ctx.lineTo(pts[pts.length - 1][0] * scale, H);
+        ctx.lineTo(pts[0][0] * scale, H);
+        ctx.closePath();
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(pts[0][0] * scale, pts[0][1] * scale);
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0] * scale, pts[i][1] * scale);
+        ctx.strokeStyle = col;
+        ctx.lineWidth = Math.max(0.25, pth.w * scale);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+    /* 텍스트 (아스키 아트) */
+    if (ch.texts) {
+      ctx.font = `${Math.max(4, ch.fontSize * scale)}px "Courier New", monospace`;
+      ctx.textAlign = 'center';
+      for (const [x, y, chr] of ch.texts) ctx.fillText(chr, x * scale, y * scale);
+    }
   }
   ctx.restore();
 }
@@ -983,12 +1310,24 @@ function buildSVG() {
     for (const [x, y, r] of ch.dots) {
       parts.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${Math.max(0.2, r).toFixed(2)}"/>`);
     }
+    const polyD = pts => {
+      let dstr = `M${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
+      for (let i = 1; i < pts.length; i++) dstr += `L${pts[i][0].toFixed(1)} ${pts[i][1].toFixed(1)}`;
+      return dstr;
+    };
     for (const pth of ch.wpaths) {
-      let dstr = `M${pth.pts[0][0].toFixed(1)} ${pth.pts[0][1].toFixed(1)}`;
-      for (let i = 1; i < pth.pts.length; i++) {
-        dstr += `L${pth.pts[i][0].toFixed(1)} ${pth.pts[i][1].toFixed(1)}`;
+      parts.push(`<path d="${polyD(pth.pts)}" fill="none" stroke-width="${pth.w.toFixed(2)}"/>`);
+    }
+    for (const pth of ch.fwpaths || []) {
+      const pts = pth.pts;
+      const closed = polyD(pts) + `L${pts[pts.length - 1][0].toFixed(1)} ${h}L${pts[0][0].toFixed(1)} ${h}Z`;
+      parts.push(`<path d="${closed}" fill="#ffffff" stroke="none"/>`);
+      parts.push(`<path d="${polyD(pts)}" fill="none" stroke-width="${pth.w.toFixed(2)}"/>`);
+    }
+    if (ch.texts) {
+      for (const [x, y, chr] of ch.texts) {
+        parts.push(`<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" stroke="none" font-family="Courier New, monospace" font-size="${ch.fontSize}">${chr}</text>`);
       }
-      parts.push(`<path d="${dstr}" fill="none" stroke-width="${pth.w.toFixed(2)}"/>`);
     }
     parts.push('</g>');
   }
@@ -1019,6 +1358,10 @@ function readParams() {
     spStyle: $('spStyle').value,
     ffDensity: +$('ffDensity').value,
     ffLen: +$('ffLen').value,
+    ctLevels: +$('ctLevels').value,
+    ctSmooth: +$('ctSmooth').value,
+    gridSize: +$('gridSize').value,
+    asciiSet: $('asciiSet').value,
     invert: $('invert').checked,
     bright: +$('bright').value,
     contrast: +$('contrast').value,
@@ -1086,6 +1429,12 @@ async function render(targetCanvas, maxDim) {
         case 'hatch':      prim = renderHatch(chans[ci].d, w, h, p, ci); break;
         case 'spiralline': prim = renderSpiralLine(chans[ci].d, w, h, p, ci); break;
         case 'flowfield':  prim = renderFlowField(chans[ci].d, w, h, p, ci); break;
+        case 'scribble':   prim = renderScribble(chans[ci].d, w, h, p, ci); break;
+        case 'contour':    prim = renderContour(chans[ci].d, w, h, p, ci); break;
+        case 'ridge':      prim = renderRidge(chans[ci].d, w, h, p, ci); break;
+        case 'web':        prim = await renderWeb(chans[ci].d, w, h, p, ci, token); break;
+        case 'cross':      prim = renderCross(chans[ci].d, w, h, p, ci); break;
+        case 'ascii':      prim = renderAscii(chans[ci].d, w, h, p, ci); break;
       }
       if (token !== renderToken) { setBusy(null); return; }
       if (!prim) { setBusy(null); return; }
@@ -1134,8 +1483,38 @@ async function render(targetCanvas, maxDim) {
   for (let ci = 0; ci < chans.length; ci++) {
     const { d, rgb } = chans[ci];
     const cr = rgb[0] / 255, cg = rgb[1] / 255, cb = rgb[2] / 255;
-    let screenAt;
-    if (isRD) {
+    /* 오차 확산 디더링: 블록 해상도에서 확산 후 확대 (게인·반전은 여기서 선반영) */
+    let dmap = null, dmapW = 0;
+    if (p.patMode === 'fs' || p.patMode === 'atkinson') {
+      const fn = v => {
+        if (hasGain) v = gain(v);
+        return p.invert ? 1 - v : v;
+      };
+      const ds = downsampleDark(d, w, h, s, fn);
+      dmapW = ds.wl;
+      dmap = errorDiffuse(ds.out, ds.wl, ds.hl, p.patMode === 'fs' ? FS_KERNEL : ATK_KERNEL);
+    }
+    let screenAt = null;
+    if (dmap) {
+      /* screenAt 불필요 */
+    } else if (p.patMode === 'bayer') {
+      const sh = ci * 3;   // 채널별 행렬 시프트
+      screenAt = (x, y) =>
+        (BAYER8[(((y / s) | 0) + sh) & 7][(((x / s) | 0) + sh) & 7] + 0.5) / 64;
+    } else if (p.patMode === 'lines') {
+      const ang = (p.amAngle + AM_ANGLES[ci]) * Math.PI / 180;
+      const ca = Math.cos(ang), sa = Math.sin(ang);
+      const period = s * 2;
+      screenAt = (x, y) => tri((ca * x + sa * y) / period);
+    } else if (p.patMode === 'rings') {
+      const cx = w / 2, cy = h / 2;
+      const period = s * 2;
+      const phase = ci * 0.25;
+      screenAt = (x, y) => {
+        const dx = x - cx, dy = y - cy;
+        return tri(Math.sqrt(dx * dx + dy * dy) / period + phase);
+      };
+    } else if (isRD) {
       const [ox, oy] = RD_OFF[ci];
       const rot = ci & 3;
       /* RD 필드의 무늬 파장은 약 10셀 → 도트 크기(px)가 무늬 굵기가 되도록 환산 */
@@ -1170,12 +1549,19 @@ async function render(targetCanvas, maxDim) {
 
     for (let y = 0; y < h; y++) {
       const y0 = y * w;
+      const dRow = dmap ? ((y / s) | 0) * dmapW : 0;
       for (let x = 0; x < w; x++) {
         const i = y0 + x;
-        let dk = d[i];
-        if (hasGain) dk = gain(dk);
-        if (p.invert) dk = 1 - dk;
-        if (dk > screenAt(x, y)) {
+        let on;
+        if (dmap) {
+          on = dmap[dRow + ((x / s) | 0)] === 1;
+        } else {
+          let dk = d[i];
+          if (hasGain) dk = gain(dk);
+          if (p.invert) dk = 1 - dk;
+          on = dk > screenAt(x, y);
+        }
+        if (on) {
           const q = i * 4;
           od[q] *= cr; od[q + 1] *= cg; od[q + 2] *= cb;
         }
@@ -1321,6 +1707,7 @@ const VAL_FMT = {
   hatchSpacing: v => v + ' px', hatchLayers: v => v,
   spPitch: v => v + ' px',
   ffDensity: v => v + ' %', ffLen: v => v,
+  ctLevels: v => v, ctSmooth: v => v, gridSize: v => v + ' px',
 };
 for (const id of Object.keys(VAL_FMT)) {
   $(id).addEventListener('input', () => {
@@ -1328,7 +1715,7 @@ for (const id of Object.keys(VAL_FMT)) {
     scheduleRender();
   });
 }
-for (const id of ['patMode', 'spDir', 'workRes', 'spStyle']) {
+for (const id of ['patMode', 'spDir', 'workRes', 'spStyle', 'asciiSet']) {
   $(id).addEventListener('change', () => { syncVisibility(); scheduleRender(); });
 }
 for (const id of ['invert', 'sharpenOn', 'varSize']) {
