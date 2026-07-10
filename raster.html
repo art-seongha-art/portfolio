@@ -412,6 +412,7 @@ input[type=file]{display:none;}
     <div id="saveSlot"></div>
     <div class="cap" id="saveCap"></div>
     <div class="btnrow">
+      <button class="primary" id="saveShare" hidden>📤 공유 / 사진첩에 저장</button>
       <button id="saveClose">닫기</button>
     </div>
   </div>
@@ -1936,7 +1937,8 @@ for (const id of ['invert', 'sharpenOn', 'varSize']) {
   $(id).addEventListener('change', scheduleRender);
 }
 
-/* 저장 결과 전달: 데스크톱은 자동 다운로드, 폰·웹뷰는 미리보기에서 길게 눌러 저장 */
+/* 저장 결과 전달: 데스크톱은 자동 다운로드, 폰은 공유 시트/길게 눌러 저장 */
+let pendingShareFile = null;
 function deliverBlob(blob, filename, kind) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -1954,15 +1956,28 @@ function deliverBlob(blob, filename, kind) {
   const slot = $('saveSlot');
   slot.innerHTML = '';
   slot.appendChild(el);
-  $('saveCap').textContent = kind === 'video'
-    ? '다운로드 폴더에 저장을 시도했습니다. 폰에서 저장이 안 되면 데스크톱 브라우저에서 다시 시도해주세요 (일부 폰 브라우저는 WebM 저장을 지원하지 않아요).'
-    : '다운로드 폴더에 저장을 시도했습니다. 폰에서는 이미지를 길게 눌러 "이미지 저장"을 선택하세요 (PC는 우클릭).';
+  /* 폰: 네이티브 공유 시트가 가장 확실한 저장 경로 */
+  pendingShareFile = new File([blob], filename, { type: blob.type });
+  const canShare = !!(navigator.canShare && navigator.canShare({ files: [pendingShareFile] }));
+  $('saveShare').hidden = !canShare;
+  $('saveCap').textContent = canShare
+    ? '폰에서는 [📤 공유] 버튼을 눌러 "이미지 저장"을 선택하는 게 가장 확실합니다. 이미지를 길게 눌러 저장할 수도 있어요.'
+    : (kind === 'video'
+      ? '다운로드 폴더에 저장을 시도했습니다. 저장이 안 되면 데스크톱 브라우저에서 다시 시도해주세요 (일부 환경은 WebM 저장을 지원하지 않아요).'
+      : '다운로드 폴더에 저장을 시도했습니다. 안 되면 이미지를 길게 누르거나(폰) 우클릭(PC)해서 "이미지 저장"을 선택하세요.');
   $('saveOverlay').hidden = false;
 }
+$('saveShare').addEventListener('click', async () => {
+  if (!pendingShareFile) return;
+  try {
+    await navigator.share({ files: [pendingShareFile] });
+  } catch (e) { /* 사용자가 공유 시트를 닫음 */ }
+});
 $('saveClose').addEventListener('click', () => {
   const slot = $('saveSlot');
   for (const el of slot.children) if (el.src) URL.revokeObjectURL(el.src);
   slot.innerHTML = '';
+  pendingShareFile = null;
   $('saveOverlay').hidden = true;
 });
 
