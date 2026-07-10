@@ -368,7 +368,7 @@ input[type=file]{display:none;}
           <button id="stopBtn">■ 정지</button>
           <button id="recBtn">🎥 영상 저장</button>
         </div>
-        <div class="hint">펜화는 획이 그어지는 순서대로, 망점·디더링은 채널별 인쇄 패스로 재생됩니다. 영상 저장은 재생 과정을 WebM으로 녹화합니다.</div>
+        <div class="hint">펜화는 획이 그어지는 순서대로, 망점·디더링은 잉크 점이 무작위로 찍히며 나타납니다 (CMYK는 채널별로 겹겹이). 영상 저장은 재생 과정을 WebM으로 녹화합니다.</div>
       </div>
     </div>
 
@@ -1585,12 +1585,7 @@ async function render(targetCanvas, maxDim, opts = {}) {
       }
     }
     /* 채널별 인쇄 패스 스냅샷 (그리기 재생용) */
-    if (opts.snapshots) {
-      const sc = document.createElement('canvas');
-      sc.width = w; sc.height = h;
-      sc.getContext('2d').putImageData(new ImageData(od.slice(), w, h), 0, 0);
-      opts.snapshots.push(sc);
-    }
+    if (opts.snapshots) opts.snapshots.push(od.slice());
     /* 채널 사이에 이벤트 루프 양보 (대형 렌더 시 UI 멈춤 방지) */
     await yieldLoop();
     if (token !== renderToken) return;
@@ -1648,28 +1643,48 @@ async function playAnimation(record) {
   const tmp = document.createElement('canvas');
 
   if (PIXEL_MODES.has(p.patMode)) {
+    /* 잉크 디졸브: 각 채널 패스에서 새로 찍힌 픽셀을 무작위 순서로 드러냄 */
     const snaps = [];
     const ok = await render(tmp, p.workRes, { snapshots: snaps });
     setBusy(null);
     if (!ok || myTok !== playToken || !snaps.length) return;
-    view.width = tmp.width; view.height = tmp.height;
+    const w = tmp.width, h = tmp.height;
+    view.width = w; view.height = h;
     const ctx = view.getContext('2d');
-    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, view.width, view.height);
+    const buf = ctx.createImageData(w, h);
+    buf.data.fill(255);
+    ctx.putImageData(buf, 0, 0);
     if (record) recorder = startRecorder();
+    const rng = mulberry32(state.seed * 3 + 99);
     const per = durMs / snaps.length;
-    for (const sc of snaps) {
-      const rows = view.height;
+    let prev = null;
+    for (const snap of snaps) {
+      /* 이번 패스에서 달라진(잉크가 찍힌) 픽셀 인덱스 수집 */
+      const idxs = [];
+      for (let i = 0; i < w * h; i++) {
+        const q = i * 4;
+        if (prev
+          ? (snap[q] !== prev[q] || snap[q + 1] !== prev[q + 1] || snap[q + 2] !== prev[q + 2])
+          : (snap[q] !== 255 || snap[q + 1] !== 255 || snap[q + 2] !== 255)) idxs.push(i);
+      }
+      for (let i = idxs.length - 1; i > 0; i--) {   // 셔플
+        const j = rng() * (i + 1) | 0;
+        const t = idxs[i]; idxs[i] = idxs[j]; idxs[j] = t;
+      }
       const t0 = performance.now();
-      let y = 0;
-      while (y < rows) {
+      let done = 0;
+      while (done < idxs.length) {
         if (myTok !== playToken) { cancelRec(); return; }
-        const targetY = Math.min(rows, Math.ceil((performance.now() - t0) / per * rows));
-        if (targetY > y) {
-          ctx.drawImage(sc, 0, y, view.width, targetY - y, 0, y, view.width, targetY - y);
-          y = targetY;
+        const target = Math.min(idxs.length,
+          Math.ceil((performance.now() - t0) / per * idxs.length));
+        for (; done < target; done++) {
+          const q = idxs[done] * 4;
+          buf.data[q] = snap[q]; buf.data[q + 1] = snap[q + 1]; buf.data[q + 2] = snap[q + 2];
         }
+        ctx.putImageData(buf, 0, 0);
         await raf();
       }
+      prev = snap;
     }
   } else {
     const ok = await render(tmp, p.workRes);
