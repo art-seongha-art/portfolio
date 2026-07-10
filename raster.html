@@ -103,6 +103,19 @@ footer{
 }
 footer a{color:inherit;}
 input[type=file]{display:none;}
+.overlay{
+  position:fixed; inset:0; background:rgba(15,15,15,.78); z-index:50;
+  display:flex; align-items:center; justify-content:center; padding:18px;
+}
+.overlay[hidden]{display:none;}
+.overlay .box{
+  background:#fff; border-radius:12px; padding:14px; max-width:min(92vw,900px);
+  max-height:86vh; display:flex; flex-direction:column; gap:10px; align-items:center;
+  overflow:auto; box-shadow:0 8px 40px rgba(0,0,0,.4);
+}
+.overlay img,.overlay video{max-width:100%; max-height:62vh; border:1px solid #ddd; border-radius:6px;}
+.overlay .cap{font-size:12px; color:#444; text-align:center; line-height:1.7; max-width:60ch;}
+.overlay .btnrow{width:100%;}
 </style>
 </head>
 <body>
@@ -393,6 +406,16 @@ input[type=file]{display:none;}
     </div>
   </aside>
 </main>
+
+<div class="overlay" id="saveOverlay" hidden>
+  <div class="box">
+    <div id="saveSlot"></div>
+    <div class="cap" id="saveCap"></div>
+    <div class="btnrow">
+      <button id="saveClose">닫기</button>
+    </div>
+  </div>
+</div>
 
 <footer>
   스토캐스틱 스크리닝(FM 망점), 그레이-스콧 반응-확산, 가중 보로노이 스티플링(Secord 2002), TSP 아트,
@@ -1616,11 +1639,7 @@ function startRecorder() {
   rec.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
   rec.onstop = () => {
     const blob = new Blob(chunks, { type: 'video/webm' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'raster-drawing.webm';
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    deliverBlob(blob, 'raster-drawing.webm', 'video');
   };
   rec.start();
   return rec;
@@ -1917,6 +1936,36 @@ for (const id of ['invert', 'sharpenOn', 'varSize']) {
   $(id).addEventListener('change', scheduleRender);
 }
 
+/* 저장 결과 전달: 데스크톱은 자동 다운로드, 폰·웹뷰는 미리보기에서 길게 눌러 저장 */
+function deliverBlob(blob, filename, kind) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  a.click();
+  let el;
+  if (kind === 'video') {
+    el = document.createElement('video');
+    el.src = url; el.controls = true; el.loop = true; el.muted = true;
+    el.playsInline = true; el.autoplay = true;
+  } else {
+    el = document.createElement('img');
+    el.src = url;
+  }
+  const slot = $('saveSlot');
+  slot.innerHTML = '';
+  slot.appendChild(el);
+  $('saveCap').textContent = kind === 'video'
+    ? '다운로드 폴더에 저장을 시도했습니다. 폰에서 저장이 안 되면 데스크톱 브라우저에서 다시 시도해주세요 (일부 폰 브라우저는 WebM 저장을 지원하지 않아요).'
+    : '다운로드 폴더에 저장을 시도했습니다. 폰에서는 이미지를 길게 눌러 "이미지 저장"을 선택하세요 (PC는 우클릭).';
+  $('saveOverlay').hidden = false;
+}
+$('saveClose').addEventListener('click', () => {
+  const slot = $('saveSlot');
+  for (const el of slot.children) if (el.src) URL.revokeObjectURL(el.src);
+  slot.innerHTML = '';
+  $('saveOverlay').hidden = true;
+});
+
 $('exportBtn').addEventListener('click', async () => {
   if (!state.img) { alert('먼저 이미지를 열어주세요.'); return; }
   setBusy('내보내기 렌더링 중…');
@@ -1924,13 +1973,7 @@ $('exportBtn').addEventListener('click', async () => {
   const ok = await render(c, +$('exportRes').value);
   setBusy(null);
   if (!ok) return;
-  c.toBlob(blob => {
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'stochastic-raster.png';
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-  }, 'image/png');
+  c.toBlob(blob => deliverBlob(blob, 'stochastic-raster.png', 'img'), 'image/png');
 });
 
 $('playDur').addEventListener('input', () => {
@@ -1944,11 +1987,7 @@ $('svgBtn').addEventListener('click', () => {
   if (!lastVector) { alert('펜화·선화 스타일을 먼저 렌더링해주세요.'); return; }
   const svg = buildSVG();
   const blob = new Blob([svg], { type: 'image/svg+xml' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'stochastic-raster.svg';
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  deliverBlob(blob, 'stochastic-raster.svg', 'img');
 });
 
 buildChannelUI();
