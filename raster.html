@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<meta name="description" content="스토캐스틱 래스터 스튜디오 — 이미지를 반응-확산 패턴 기반의 확률적 망점으로 변환하는 웹 도구. 흑백·CMYK 멀티채널 분리, 나선·AM 망점 스크린 지원."/>
+<meta name="description" content="스토캐스틱 래스터 스튜디오 — 이미지를 반응-확산 망점, 점묘(스티플링), TSP 한붓그리기, 해칭, 펜화 스타일로 변환하는 웹 도구. 흑백·CMYK 멀티채널 분리, PNG·SVG 내보내기 지원."/>
 <meta name="robots" content="noindex"/>
 <title>스토캐스틱 래스터 스튜디오 — 박성하</title>
 <style>
@@ -70,7 +70,7 @@ legend{font-size:11px; color:#555; padding:0 4px;}
 .row{display:flex; align-items:center; gap:8px;}
 .row label{flex:0 0 62px; font-size:12px; color:#333;}
 .row input[type=range]{flex:1; accent-color:var(--accent); min-width:0;}
-.row .val{flex:0 0 44px; text-align:right; font-variant-numeric:tabular-nums; color:#444; font-size:12px;}
+.row .val{flex:0 0 48px; text-align:right; font-variant-numeric:tabular-nums; color:#444; font-size:12px;}
 select,button,input[type=number]{
   font:inherit; font-size:12px; padding:4px 8px; border-radius:6px;
   border:1px solid #bbb; background:linear-gradient(#fff,#eee); cursor:pointer;
@@ -78,6 +78,7 @@ select,button,input[type=number]{
 select{cursor:default;}
 button:hover{background:linear-gradient(#fff,#e2e2e2);}
 button:active{background:#ddd;}
+button:disabled{opacity:.45; cursor:default;}
 button.primary{background:linear-gradient(#4d84f5,#2f6fed); border-color:#2456c4; color:#fff; font-weight:600;}
 button.primary:hover{filter:brightness(1.05);}
 .btnrow{display:flex; gap:6px; flex-wrap:wrap;}
@@ -107,7 +108,7 @@ input[type=file]{display:none;}
 <body>
 <header>
   <h1>스토캐스틱 래스터 스튜디오</h1>
-  <span class="sub">Stochastic Raster Studio · 반응-확산 망점 변환 도구</span>
+  <span class="sub">Stochastic Raster Studio · 망점 · 점묘 · 펜화 변환 도구</span>
   <span class="spacer"></span>
   <span class="sub" id="imgInfo"></span>
 </header>
@@ -150,14 +151,24 @@ input[type=file]{display:none;}
         <div class="row">
           <label for="patMode">스타일</label>
           <select id="patMode" style="flex:1">
-            <option value="maze" selected>유기 미로 (반응-확산)</option>
-            <option value="coral">산호 (반응-확산)</option>
-            <option value="cells">세포 (반응-확산)</option>
-            <option value="spiral">나선</option>
-            <option value="amdot">클래식 AM 망점</option>
+            <optgroup label="망점 스크린">
+              <option value="maze" selected>유기 미로 (반응-확산)</option>
+              <option value="coral">산호 (반응-확산)</option>
+              <option value="cells">세포 (반응-확산)</option>
+              <option value="spiral">나선 망점</option>
+              <option value="amdot">클래식 AM 망점</option>
+            </optgroup>
+            <optgroup label="펜화 · 선화 (벡터)">
+              <option value="stipple">점묘 (스티플링)</option>
+              <option value="tspline">한붓그리기 (TSP 라인)</option>
+              <option value="squiggle">물결선 (스퀴글)</option>
+              <option value="hatch">해칭 (교차 선영)</option>
+              <option value="spiralline">나선 한붓그리기</option>
+              <option value="flowfield">필체 결 (플로우 필드)</option>
+            </optgroup>
           </select>
         </div>
-        <div class="row">
+        <div class="row" data-only="px">
           <label for="dotSize">도트 크기</label>
           <input type="range" id="dotSize" min="2" max="24" step="1" value="5"/>
           <span class="val" id="dotSizeVal">5 px</span>
@@ -184,7 +195,72 @@ input[type=file]{display:none;}
           <input type="range" id="amAngle" min="0" max="90" step="1" value="45"/>
           <span class="val" id="amAngleVal">45°</span>
         </div>
-        <div class="btnrow" data-only="rd">
+
+        <div class="row" data-only="stipple,tspline">
+          <label for="ptCount">점 개수</label>
+          <input type="range" id="ptCount" min="1000" max="40000" step="500" value="8000"/>
+          <span class="val" id="ptCountVal">8000</span>
+        </div>
+        <div class="row" data-only="stipple">
+          <label for="dotScale">점 크기</label>
+          <input type="range" id="dotScale" min="40" max="250" step="5" value="100"/>
+          <span class="val" id="dotScaleVal">100 %</span>
+        </div>
+        <label class="check" data-only="stipple"><input type="checkbox" id="varSize" checked/> 밝기에 따라 점 크기 변화</label>
+        <div class="row" data-only="tspline,squiggle,hatch,flowfield">
+          <label for="lineW">선 두께</label>
+          <input type="range" id="lineW" min="3" max="40" step="1" value="10"/>
+          <span class="val" id="lineWVal">1.0 px</span>
+        </div>
+        <div class="row" data-only="squiggle">
+          <label for="sqSpacing">줄 간격</label>
+          <input type="range" id="sqSpacing" min="4" max="24" step="1" value="8"/>
+          <span class="val" id="sqSpacingVal">8 px</span>
+        </div>
+        <div class="row" data-only="squiggle">
+          <label for="sqAmp">진폭</label>
+          <input type="range" id="sqAmp" min="10" max="100" step="5" value="60"/>
+          <span class="val" id="sqAmpVal">60 %</span>
+        </div>
+        <div class="row" data-only="squiggle">
+          <label for="sqFreq">주파수</label>
+          <input type="range" id="sqFreq" min="5" max="100" step="5" value="50"/>
+          <span class="val" id="sqFreqVal">50</span>
+        </div>
+        <div class="row" data-only="hatch">
+          <label for="hatchSpacing">선 간격</label>
+          <input type="range" id="hatchSpacing" min="3" max="20" step="1" value="7"/>
+          <span class="val" id="hatchSpacingVal">7 px</span>
+        </div>
+        <div class="row" data-only="hatch">
+          <label for="hatchLayers">레이어</label>
+          <input type="range" id="hatchLayers" min="2" max="6" step="1" value="4"/>
+          <span class="val" id="hatchLayersVal">4</span>
+        </div>
+        <div class="row" data-only="spiralline">
+          <label for="spPitch">간격 (피치)</label>
+          <input type="range" id="spPitch" min="4" max="30" step="1" value="9"/>
+          <span class="val" id="spPitchVal">9 px</span>
+        </div>
+        <div class="row" data-only="spiralline">
+          <label for="spStyle">변조</label>
+          <select id="spStyle" style="flex:1">
+            <option value="width" selected>선 두께</option>
+            <option value="wave">물결 진폭</option>
+          </select>
+        </div>
+        <div class="row" data-only="flowfield">
+          <label for="ffDensity">선 밀도</label>
+          <input type="range" id="ffDensity" min="10" max="150" step="5" value="50"/>
+          <span class="val" id="ffDensityVal">50 %</span>
+        </div>
+        <div class="row" data-only="flowfield">
+          <label for="ffLen">선 길이</label>
+          <input type="range" id="ffLen" min="10" max="100" step="5" value="40"/>
+          <span class="val" id="ffLenVal">40</span>
+        </div>
+
+        <div class="btnrow" data-only="rd,stipple,tspline,flowfield">
           <button id="reseedBtn">패턴 재생성 (새 시드)</button>
         </div>
         <label class="check"><input type="checkbox" id="invert"/> 반전 (네거티브)</label>
@@ -255,15 +331,19 @@ input[type=file]{display:none;}
             <option value="0">원본 크기</option>
           </select>
         </div>
-        <button class="primary" id="exportBtn">PNG 다운로드</button>
-        <div class="hint">내보내기는 선택한 해상도로 전체 파이프라인을 다시 렌더링합니다.</div>
+        <div class="btnrow">
+          <button class="primary" id="exportBtn">PNG 다운로드</button>
+          <button id="svgBtn" disabled>SVG 다운로드</button>
+        </div>
+        <div class="hint">SVG는 펜화·선화(벡터) 스타일에서만 지원되며, 펜 플로터용으로도 쓸 수 있습니다.</div>
       </div>
     </div>
   </aside>
 </main>
 
 <footer>
-  스토캐스틱 스크리닝(FM 망점)과 그레이-스콧 반응-확산 패턴을 이용한 이미지 래스터화 실험 도구 ·
+  스토캐스틱 스크리닝(FM 망점), 그레이-스콧 반응-확산, 가중 보로노이 스티플링(Secord 2002), TSP 아트,
+  스퀴글·해칭 펜 플로터 기법을 이용한 이미지 래스터화 실험 도구 ·
   <a href="index.html">← 박성하 포트폴리오</a>
 </footer>
 
@@ -271,10 +351,18 @@ input[type=file]{display:none;}
 'use strict';
 /* ============================================================
    스토캐스틱 래스터 스튜디오
+   [망점 스크린 — 픽셀]
    - 반응-확산(Gray-Scott) 필드를 히스토그램 평활화해
      임계값 행렬(threshold matrix)로 사용하는 FM 스크리닝
    - 나선/AM 망점은 해석적 스크린 함수 + CDF 평활화
-   - 흑백 1채널 또는 CMYK 4채널 분리 후 곱하기 합성
+   [펜화 · 선화 — 벡터]
+   - 점묘: 가중 보로노이 스티플링 (기각 샘플링 + Lloyd 완화)
+   - 한붓그리기: 스티플 점 → 탐욕 최근접 경로 + 2-opt 개선 (TSP 아트)
+   - 물결선: 밝기에 따라 진폭·주파수가 변하는 사인파 (SquiggleDraw 방식)
+   - 해칭: 톤 양자화 다층 교차 선영
+   - 나선 한붓그리기: 아르키메데스 나선의 두께/진폭 변조
+   - 플로우 필드: 구조 텐서 방향장을 따라가는 짧은 필획
+   흑백 1채널 또는 CMYK 4채널 분리 후 곱하기 합성
    ============================================================ */
 
 const $ = id => document.getElementById(id);
@@ -286,8 +374,10 @@ const RD_PRESETS = {
   coral: { f: 0.0545, k: 0.062,  iters: 2600 },
   cells: { f: 0.0367, k: 0.0649, iters: 2600 },
 };
+const PIXEL_MODES = new Set(['maze', 'coral', 'cells', 'spiral', 'amdot']);
 const CMYK_DEFAULT = ['#00aeef', '#ec008c', '#ffd400', '#000000'];
 const CH_NAMES = ['Cyan', 'Magenta', 'Yellow', 'Black'];
+const AM_ANGLES = [15, 75, 0, 45];   // 인쇄 표준 스크린 각도 오프셋
 
 const state = {
   img: null,            // ImageBitmap
@@ -296,6 +386,7 @@ const state = {
 };
 const maskCache = new Map();   // key → Float32Array(RD_SIZE²), 평활화 완료
 let renderToken = 0;
+let lastVector = null;         // SVG 내보내기용 최근 벡터 프리미티브
 
 /* ---------- 유틸 ---------- */
 function mulberry32(a) {
@@ -308,6 +399,12 @@ function mulberry32(a) {
 }
 const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
 const hexToRgb = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+const yieldLoop = () => new Promise(r => setTimeout(r, 0));
+
+function setBusy(msg) {
+  if (msg) { busy.textContent = msg; busy.classList.add('show'); }
+  else busy.classList.remove('show');
+}
 
 /* ---------- 반응-확산 (Gray-Scott) ---------- */
 async function generateRD(preset, seed, token) {
@@ -341,8 +438,8 @@ async function generateRD(preset, seed, token) {
     }
     [u, u2] = [u2, u]; [v, v2] = [v2, v];
     if (it % 120 === 0) {
-      busy.textContent = `패턴 생성 중… ${Math.round(it / iters * 100)}%`;
-      await new Promise(r => setTimeout(r, 0));
+      setBusy(`패턴 생성 중… ${Math.round(it / iters * 100)}%`);
+      await yieldLoop();
       if (token !== renderToken) return null;   // 파라미터가 바뀌어 폐기됨
     }
   }
@@ -360,13 +457,11 @@ function equalize(field) {
   return out;
 }
 
-async function getMask(preset, seed) {
+async function getMask(preset, seed, token) {
   const key = preset + '|' + seed;
   if (maskCache.has(key)) return maskCache.get(key);
-  busy.classList.add('show');
-  const token = renderToken;
   const mask = await generateRD(preset, seed, token);
-  busy.classList.remove('show');
+  setBusy(null);
   if (mask) maskCache.set(key, mask);
   return mask;
 }
@@ -382,7 +477,7 @@ function sampleTile(field, x, y) {
   return (a + (b - a) * fx) + ((c + (d - c) * fx) - (a + (b - a) * fx)) * fy;
 }
 
-/* ---------- 해석적 스크린 (나선 / AM 망점) ---------- */
+/* ---------- 해석적 스크린 (나선 망점 / AM 망점) ---------- */
 const tri = p => { p = p - Math.floor(p); return Math.abs(2 * p - 1); };
 
 /* AM 망점의 스팟 함수는 분포가 균일하지 않으므로 CDF LUT로 평활화 */
@@ -466,6 +561,441 @@ function separate(id, mode) {
   return [c, m, yl, k];
 }
 
+/* ============================================================
+   벡터 렌더러 (펜화 · 선화)
+   프리미티브: { rgb, dots:[[x,y,r]...], wpaths:[{w, pts:[[x,y]...]}...] }
+   좌표는 분석 해상도 기준 — 그리기/내보내기에서 스케일
+   ============================================================ */
+
+/* 어둡기에 비례한 기각 샘플링 */
+function samplePoints(d, w, h, n, rng, pow) {
+  const pts = [];
+  let guard = n * 80;
+  while (pts.length < n * 2 && guard-- > 0) {
+    const x = rng() * w, y = rng() * h;
+    const v = d[(y | 0) * w + (x | 0)];
+    if (v > 0.02 && (pow === 1 ? v : Math.pow(v, pow)) > rng()) pts.push(x, y);
+  }
+  return pts;
+}
+
+/* 사이트를 버킷 격자에 넣기 (근접 검색용) */
+function makeBuckets(pts, n, w, h) {
+  const bs = Math.max(6, Math.sqrt(w * h / Math.max(n, 1)) * 2);
+  const gw = Math.max(1, Math.ceil(w / bs)), gh = Math.max(1, Math.ceil(h / bs));
+  const buckets = Array.from({ length: gw * gh }, () => []);
+  for (let i = 0; i < n; i++) {
+    const bx = Math.min(gw - 1, Math.max(0, pts[i * 2] / bs | 0));
+    const by = Math.min(gh - 1, Math.max(0, pts[i * 2 + 1] / bs | 0));
+    buckets[by * gw + bx].push(i);
+  }
+  return { bs, gw, gh, buckets };
+}
+
+/* 가중 보로노이 스티플링: Lloyd 완화 (어둡기 가중 중심으로 이동) */
+async function lloydRelax(pts, d, w, h, iters, rng, token, label) {
+  const n = pts.length / 2;
+  if (!n) return pts;
+  const sx = new Float64Array(n), sy = new Float64Array(n), sw = new Float64Array(n);
+  for (let it = 0; it < iters; it++) {
+    const { bs, gw, gh, buckets } = makeBuckets(pts, n, w, h);
+    sx.fill(0); sy.fill(0); sw.fill(0);
+    for (let y = 0; y < h; y++) {
+      const by = Math.min(gh - 1, y / bs | 0);
+      for (let x = 0; x < w; x++) {
+        const dv = d[y * w + x];
+        if (dv <= 0.015) continue;
+        const bx = Math.min(gw - 1, x / bs | 0);
+        let best = -1, bd = Infinity, foundAt = -1;
+        for (let r = 0; r < Math.max(gw, gh); r++) {
+          if (foundAt >= 0 && r > foundAt + 1) break;
+          const y0 = Math.max(0, by - r), y1 = Math.min(gh - 1, by + r);
+          const x0 = Math.max(0, bx - r), x1 = Math.min(gw - 1, bx + r);
+          for (let yy = y0; yy <= y1; yy++) {
+            const onEdgeY = (yy === by - r || yy === by + r);
+            for (let xx = x0; xx <= x1; xx++) {
+              if (r > 0 && !onEdgeY && xx !== bx - r && xx !== bx + r) continue;  // 껍질만
+              for (const i of buckets[yy * gw + xx]) {
+                const dx = pts[i * 2] - x, dy = pts[i * 2 + 1] - y;
+                const dist = dx * dx + dy * dy;
+                if (dist < bd) { bd = dist; best = i; }
+              }
+            }
+          }
+          if (best >= 0 && foundAt < 0) foundAt = r;
+        }
+        if (best >= 0) { sx[best] += dv * x; sy[best] += dv * y; sw[best] += dv; }
+      }
+      if ((y & 63) === 0) {
+        setBusy(`${label} — Lloyd 완화 ${it + 1}/${iters} (${Math.round(y / h * 100)}%)`);
+        await yieldLoop();
+        if (token !== renderToken) return null;
+      }
+    }
+    for (let i = 0; i < n; i++) {
+      if (sw[i] > 0) { pts[i * 2] = sx[i] / sw[i]; pts[i * 2 + 1] = sy[i] / sw[i]; }
+      else { pts[i * 2] = rng() * w; pts[i * 2 + 1] = rng() * h; }   // 빈 셀은 재배치
+    }
+  }
+  return pts;
+}
+
+/* 탐욕 최근접 이웃 경로 (TSP 근사 1단계) */
+function greedyOrder(pts, w, h) {
+  const n = pts.length / 2;
+  const order = new Int32Array(n);
+  if (n === 0) return order;
+  const { bs, gw, gh, buckets } = makeBuckets(pts, n, w, h);
+  const bxOf = i => Math.min(gw - 1, Math.max(0, pts[i * 2] / bs | 0));
+  const byOf = i => Math.min(gh - 1, Math.max(0, pts[i * 2 + 1] / bs | 0));
+  const remove = i => {
+    const b = buckets[byOf(i) * gw + bxOf(i)];
+    const at = b.indexOf(i);
+    if (at >= 0) b.splice(at, 1);
+  };
+  let cur = 0;
+  remove(0);
+  for (let k = 1; k < n; k++) {
+    const cx = pts[cur * 2], cy = pts[cur * 2 + 1];
+    const bx = bxOf(cur), by = byOf(cur);
+    let best = -1, bd = Infinity, foundAt = -1;
+    for (let r = 0; r < gw + gh; r++) {
+      if (foundAt >= 0 && r > foundAt + 1) break;
+      const y0 = Math.max(0, by - r), y1 = Math.min(gh - 1, by + r);
+      const x0 = Math.max(0, bx - r), x1 = Math.min(gw - 1, bx + r);
+      if (by - r < 0 && by + r > gh - 1 && bx - r < 0 && bx + r > gw - 1 && best < 0 && r > gw + gh - 2) break;
+      for (let yy = y0; yy <= y1; yy++) {
+        const onEdgeY = (yy === by - r || yy === by + r);
+        for (let xx = x0; xx <= x1; xx++) {
+          if (r > 0 && !onEdgeY && xx !== bx - r && xx !== bx + r) continue;
+          for (const i of buckets[yy * gw + xx]) {
+            const dx = pts[i * 2] - cx, dy = pts[i * 2 + 1] - cy;
+            const dist = dx * dx + dy * dy;
+            if (dist < bd) { bd = dist; best = i; }
+          }
+        }
+      }
+      if (best >= 0 && foundAt < 0) foundAt = r;
+    }
+    if (best < 0) break;   // 남은 점 없음 (안전망)
+    remove(best);
+    order[k] = best;
+    cur = best;
+  }
+  return order;
+}
+
+/* 무작위 2-opt 개선: 교차 구간을 뒤집어 경로를 정돈 */
+async function twoOptImprove(pts, order, budgetMs, token) {
+  const n = order.length;
+  if (n < 8) return;
+  const t0 = performance.now();
+  while (performance.now() - t0 < budgetMs) {
+    for (let rep = 0; rep < 4000; rep++) {
+      const i = 1 + (Math.random() * (n - 4) | 0);
+      const span = 2 + (Math.random() * Math.min(1200, n - i - 3) | 0);
+      const j = i + span;
+      if (j >= n - 1) continue;
+      const a = order[i - 1] * 2, b = order[i] * 2, c = order[j] * 2, e = order[j + 1] * 2;
+      const before = Math.hypot(pts[b] - pts[a], pts[b + 1] - pts[a + 1])
+                   + Math.hypot(pts[e] - pts[c], pts[e + 1] - pts[c + 1]);
+      const after = Math.hypot(pts[c] - pts[a], pts[c + 1] - pts[a + 1])
+                  + Math.hypot(pts[e] - pts[b], pts[e + 1] - pts[b + 1]);
+      if (after < before - 0.01) {
+        for (let lo = i, hi = j; lo < hi; lo++, hi--) {
+          const t = order[lo]; order[lo] = order[hi]; order[hi] = t;
+        }
+      }
+    }
+    await yieldLoop();
+    if (token !== renderToken) return;
+  }
+}
+
+/* Chaikin 코너 컷팅 1회 — 폴리라인을 부드럽게 */
+function chaikin(pts) {
+  if (pts.length < 3) return pts;
+  const out = [pts[0]];
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [x1, y1] = pts[i], [x2, y2] = pts[i + 1];
+    out.push([x1 * 0.75 + x2 * 0.25, y1 * 0.75 + y2 * 0.25],
+             [x1 * 0.25 + x2 * 0.75, y1 * 0.25 + y2 * 0.75]);
+  }
+  out.push(pts[pts.length - 1]);
+  return out;
+}
+
+/* --- 점묘 (스티플링) --- */
+async function renderStipple(d, w, h, p, ci, token) {
+  const rng = mulberry32(state.seed * 131 + ci * 7 + 3);
+  const n = Math.round(p.ptCount * (p.colorMode === 'cmyk' ? 0.6 : 1));
+  let pts = samplePoints(d, w, h, n, rng, 1);
+  pts = await lloydRelax(pts, d, w, h, 3, rng, token, '점묘');
+  if (!pts) return null;
+  const m = pts.length / 2;
+  const base = Math.sqrt(w * h / Math.max(m, 1)) * 0.42 * (p.dotScale / 100);
+  const dots = [];
+  for (let i = 0; i < m; i++) {
+    const x = pts[i * 2], y = pts[i * 2 + 1];
+    const dv = d[(y | 0) * w + (x | 0)];
+    if (dv <= 0.02) continue;
+    const r = p.varSize ? base * (0.3 + 0.85 * Math.sqrt(dv)) : base * 0.68;
+    dots.push([x, y, r]);
+  }
+  return { dots, wpaths: [] };
+}
+
+/* --- 한붓그리기 (TSP 라인) --- */
+async function renderTspLine(d, w, h, p, ci, token) {
+  const rng = mulberry32(state.seed * 173 + ci * 11 + 5);
+  const n = Math.round(p.ptCount * (p.colorMode === 'cmyk' ? 0.5 : 1));
+  /* 지수 1.6: 경로 밀도의 명암 대비를 키워 밝은 영역을 비움 */
+  let pts = samplePoints(d, w, h, n, rng, 1.6);
+  pts = await lloydRelax(pts, d, w, h, 1, rng, token, '한붓그리기');
+  if (!pts) return null;
+  setBusy('한붓그리기 — 경로 계산 중…');
+  await yieldLoop();
+  if (token !== renderToken) return null;
+  const order = greedyOrder(pts, w, h);
+  await twoOptImprove(pts, order, 900, token);
+  if (token !== renderToken) return null;
+  let line = [];
+  for (let i = 0; i < order.length; i++) {
+    line.push([pts[order[i] * 2], pts[order[i] * 2 + 1]]);
+  }
+  line = chaikin(line);
+  return { dots: [], wpaths: [{ w: p.lineW, pts: line }] };
+}
+
+/* --- 물결선 (스퀴글): 회전한 평행선을 따라 사인파, 진폭·주파수 ∝ 어둡기 --- */
+function renderSquiggle(d, w, h, p, ci) {
+  const angle = (p.colorMode === 'cmyk' ? AM_ANGLES[ci] : 0) * Math.PI / 180;
+  const ux = Math.cos(angle), uy = Math.sin(angle);
+  const vx = -uy, vy = ux;
+  const cx = w / 2, cy = h / 2;
+  const diag = Math.hypot(w, h) / 2 + p.sqSpacing;
+  const cmyk = p.colorMode === 'cmyk';
+  const wpaths = [];
+  const step = 1.2;
+  for (let o = -diag; o <= diag; o += p.sqSpacing) {
+    let pts = [], phase = 0;
+    const flush = () => { if (pts.length > 1) wpaths.push({ w: p.lineW, pts }); pts = []; };
+    for (let t = -diag; t <= diag; t += step) {
+      const x = cx + ux * t + vx * o, y = cy + uy * t + vy * o;
+      if (x < 0 || y < 0 || x >= w || y >= h) { flush(); phase = 0; continue; }
+      const dv = d[(y | 0) * w + (x | 0)];
+      if (cmyk && dv < 0.04) { flush(); continue; }   // CMYK에선 흰 부분 펜 업
+      const amp = dv * p.sqSpacing * 0.55 * (p.sqAmp / 100);
+      phase += (0.12 + dv * dv * (p.sqFreq / 100) * 1.5) * step;
+      const off = Math.sin(phase) * amp;
+      pts.push([x + vx * off, y + vy * off]);
+    }
+    flush();
+  }
+  return { dots: [], wpaths };
+}
+
+/* --- 해칭: 톤을 양자화해 레이어마다 다른 각도의 평행선 --- */
+function renderHatch(d, w, h, p, ci) {
+  const layerAngles = [45, 135, 0, 90, 22.5, 112.5];
+  const base = p.colorMode === 'cmyk' ? AM_ANGLES[ci] : 0;
+  const cx = w / 2, cy = h / 2;
+  const diag = Math.hypot(w, h) / 2 + p.hatchSpacing;
+  const wpaths = [];
+  for (let l = 0; l < p.hatchLayers; l++) {
+    const thr = (l + 0.6) / (p.hatchLayers + 0.4);
+    const th = (base + layerAngles[l]) * Math.PI / 180;
+    const ux = Math.cos(th), uy = Math.sin(th);
+    const vx = -uy, vy = ux;
+    for (let o = -diag; o <= diag; o += p.hatchSpacing) {
+      let pts = [];
+      const flush = () => { if (pts.length > 1) wpaths.push({ w: p.lineW, pts }); pts = []; };
+      for (let t = -diag; t <= diag; t += 1) {
+        const x = cx + ux * t + vx * o, y = cy + uy * t + vy * o;
+        const inside = x >= 0 && y >= 0 && x < w && y < h;
+        if (inside && d[(y | 0) * w + (x | 0)] >= thr) pts.push([x, y]);
+        else flush();
+      }
+      flush();
+    }
+  }
+  return { dots: [], wpaths };
+}
+
+/* --- 나선 한붓그리기: 아르키메데스 나선, 두께 또는 물결 진폭 변조 --- */
+function renderSpiralLine(d, w, h, p, ci) {
+  const cx = w / 2, cy = h / 2;
+  const maxR = Math.hypot(w, h) / 2;
+  const pitch = p.spPitch;
+  const phase0 = (p.colorMode === 'cmyk' ? ci : 0) * Math.PI / 2;
+  const wpaths = [];
+  let cur = null, curW = -1;
+  let th = 0, r = 0.8;
+  const pushPt = (x, y, wid) => {
+    const qw = Math.max(0.25, Math.round(wid * 4) / 4);
+    if (!cur || qw !== curW) {
+      const last = cur && cur.pts.length ? cur.pts[cur.pts.length - 1] : null;
+      cur = { w: qw, pts: last ? [last] : [] };   // 이어지도록 마지막 점 공유
+      wpaths.push(cur);
+      curW = qw;
+    }
+    cur.pts.push([x, y]);
+  };
+  while (r < maxR) {
+    const dth = Math.min(0.4, 1.8 / Math.max(r, 2));
+    th += dth;
+    r = pitch * th / (2 * Math.PI) + 0.8;
+    const a = th + phase0;
+    let x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r;
+    const dv = (x < 0 || y < 0 || x >= w || y >= h) ? 0 : d[(y | 0) * w + (x | 0)];
+    if (p.spStyle === 'wave') {
+      const wob = Math.sin(th * 14) * dv * pitch * 0.42;
+      x = cx + Math.cos(a) * (r + wob); y = cy + Math.sin(a) * (r + wob);
+      pushPt(x, y, p.lineW);
+    } else {
+      pushPt(x, y, 0.3 + dv * Math.min(pitch * 0.8, 6));
+    }
+  }
+  /* 한 점짜리 경로 제거 */
+  return { dots: [], wpaths: wpaths.filter(q => q.pts.length > 1) };
+}
+
+/* --- 플로우 필드: 구조 텐서 방향장을 따라 짧은 필획 --- */
+function buildFlowField(d, w, h) {
+  const s = 4;
+  const fw = Math.max(3, Math.ceil(w / s)), fh = Math.max(3, Math.ceil(h / s));
+  const g = new Float32Array(fw * fh);
+  for (let y = 0; y < fh; y++) for (let x = 0; x < fw; x++) {
+    let sum = 0, c = 0;
+    for (let yy = y * s; yy < Math.min(h, y * s + s); yy++)
+      for (let xx = x * s; xx < Math.min(w, x * s + s); xx++) { sum += d[yy * w + xx]; c++; }
+    g[y * fw + x] = sum / c;
+  }
+  const c2 = new Float32Array(fw * fh), s2 = new Float32Array(fw * fh);
+  for (let y = 1; y < fh - 1; y++) for (let x = 1; x < fw - 1; x++) {
+    const i = y * fw + x;
+    const gx = g[i + 1] - g[i - 1] + 0.5 * (g[i - fw + 1] - g[i - fw - 1] + g[i + fw + 1] - g[i + fw - 1]);
+    const gy = g[i + fw] - g[i - fw] + 0.5 * (g[i + fw - 1] - g[i - fw - 1] + g[i + fw + 1] - g[i - fw + 1]);
+    c2[i] = gx * gx - gy * gy; s2[i] = 2 * gx * gy;
+  }
+  const blur = a => {
+    const t = new Float32Array(a);
+    for (let y = 0; y < fh; y++) for (let x = 0; x < fw; x++) {
+      let sum = 0, c = 0;
+      for (let yy = Math.max(0, y - 1); yy <= Math.min(fh - 1, y + 1); yy++)
+        for (let xx = Math.max(0, x - 1); xx <= Math.min(fw - 1, x + 1); xx++) { sum += t[yy * fw + xx]; c++; }
+      a[y * fw + x] = sum / c;
+    }
+  };
+  for (let pass = 0; pass < 4; pass++) { blur(c2); blur(s2); }
+  return { fw, fh, s, c2, s2 };
+}
+
+function renderFlowField(d, w, h, p, ci) {
+  const ff = buildFlowField(d, w, h);
+  const rng = mulberry32(state.seed * 211 + ci * 13 + 9);
+  const strokeLen = 8 + p.ffLen * 0.9;
+  let totalDark = 0;
+  for (let i = 0; i < d.length; i += 7) totalDark += d[i];
+  totalDark *= 7;
+  const count = Math.max(120, Math.min(24000,
+    Math.round(totalDark * (p.ffDensity / 50) * 0.5 / (strokeLen * Math.max(p.lineW, 0.4)))));
+  const seeds = samplePoints(d, w, h, count, rng, 1.2);
+  const dirAt = (x, y, px, py) => {
+    const fx = Math.min(ff.fw - 1, Math.max(0, x / ff.s | 0));
+    const fy = Math.min(ff.fh - 1, Math.max(0, y / ff.s | 0));
+    const i = fy * ff.fw + fx;
+    const ang = 0.5 * Math.atan2(ff.s2[i], ff.c2[i]) + Math.PI / 2;   // 에지 접선 방향
+    let dx = Math.cos(ang), dy = Math.sin(ang);
+    if (dx * px + dy * py < 0) { dx = -dx; dy = -dy; }
+    return [dx, dy];
+  };
+  const wpaths = [];
+  const nSeeds = seeds.length / 2;
+  for (let si = 0; si < nSeeds; si++) {
+    const sx = seeds[si * 2], sy = seeds[si * 2 + 1];
+    const dv0 = d[(sy | 0) * w + (sx | 0)];
+    if (dv0 < 0.05) continue;
+    const half = [];
+    const trace = sign => {
+      const seg = [];
+      let x = sx, y = sy, px = sign, py = 0;
+      for (let st = 0; st < strokeLen / 1.5; st++) {
+        const [dx, dy] = dirAt(x, y, px, py);
+        x += dx * 1.5 * sign; y += dy * 1.5 * sign;
+        px = dx * sign; py = dy * sign;
+        if (x < 0 || y < 0 || x >= w || y >= h) break;
+        if (d[(y | 0) * w + (x | 0)] < 0.06) break;
+        seg.push([x, y]);
+      }
+      return seg;
+    };
+    const back = trace(-1).reverse();
+    const fwd = trace(1);
+    const path = back.concat([[sx, sy]], fwd);
+    if (path.length >= 3) wpaths.push({ w: Math.max(0.3, dv0 * p.lineW * 1.4), pts: path });
+  }
+  return { dots: [], wpaths };
+}
+
+/* 프리미티브 → 캔버스 (scale: 분석좌표 → 출력좌표) */
+function drawPrimitives(ctx, prims, scale, cmyk, W, H) {
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, W, H);
+  ctx.save();
+  if (cmyk) ctx.globalCompositeOperation = 'multiply';
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (const ch of prims) {
+    const col = `rgb(${ch.rgb[0]},${ch.rgb[1]},${ch.rgb[2]})`;
+    ctx.fillStyle = col; ctx.strokeStyle = col;
+    if (ch.dots.length) {
+      ctx.beginPath();
+      for (const [x, y, r] of ch.dots) {
+        const rr = Math.max(0.3, r * scale);
+        ctx.moveTo(x * scale + rr, y * scale);
+        ctx.arc(x * scale, y * scale, rr, 0, 6.2832);
+      }
+      ctx.fill();
+    }
+    for (const pth of ch.wpaths) {
+      ctx.beginPath();
+      ctx.lineWidth = Math.max(0.25, pth.w * scale);
+      const pts = pth.pts;
+      ctx.moveTo(pts[0][0] * scale, pts[0][1] * scale);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0] * scale, pts[i][1] * scale);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+/* 프리미티브 → SVG 문자열 (펜 플로터 호환) */
+function buildSVG() {
+  if (!lastVector) return null;
+  const { prims, w, h, cmyk } = lastVector;
+  const parts = [
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">`,
+    `<rect width="${w}" height="${h}" fill="#ffffff"/>`,
+  ];
+  for (const ch of prims) {
+    const col = `rgb(${ch.rgb[0]},${ch.rgb[1]},${ch.rgb[2]})`;
+    parts.push(`<g fill="${col}" stroke="${col}" stroke-linecap="round" stroke-linejoin="round"${cmyk ? ' style="mix-blend-mode:multiply"' : ''}>`);
+    for (const [x, y, r] of ch.dots) {
+      parts.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${Math.max(0.2, r).toFixed(2)}"/>`);
+    }
+    for (const pth of ch.wpaths) {
+      let dstr = `M${pth.pts[0][0].toFixed(1)} ${pth.pts[0][1].toFixed(1)}`;
+      for (let i = 1; i < pth.pts.length; i++) {
+        dstr += `L${pth.pts[i][0].toFixed(1)} ${pth.pts[i][1].toFixed(1)}`;
+      }
+      parts.push(`<path d="${dstr}" fill="none" stroke-width="${pth.w.toFixed(2)}"/>`);
+    }
+    parts.push('</g>');
+  }
+  parts.push('</svg>');
+  return parts.join('\n');
+}
+
 /* ---------- 메인 렌더 ---------- */
 function readParams() {
   return {
@@ -476,6 +1006,19 @@ function readParams() {
     spWrap: +$('spWrap').value,
     spDir: +$('spDir').value,
     amAngle: +$('amAngle').value,
+    ptCount: +$('ptCount').value,
+    dotScale: +$('dotScale').value,
+    varSize: $('varSize').checked,
+    lineW: +$('lineW').value / 10,
+    sqSpacing: +$('sqSpacing').value,
+    sqAmp: +$('sqAmp').value,
+    sqFreq: +$('sqFreq').value,
+    hatchSpacing: +$('hatchSpacing').value,
+    hatchLayers: +$('hatchLayers').value,
+    spPitch: +$('spPitch').value,
+    spStyle: $('spStyle').value,
+    ffDensity: +$('ffDensity').value,
+    ffLen: +$('ffLen').value,
     invert: $('invert').checked,
     bright: +$('bright').value,
     contrast: +$('contrast').value,
@@ -487,35 +1030,90 @@ function readParams() {
   };
 }
 
-async function render(targetCanvas, maxDim) {
-  if (!state.img) return;
-  const token = ++renderToken;
-  const p = readParams();
-  const isRD = p.patMode in RD_PRESETS;
-
-  let mask = null;
-  if (isRD) {
-    mask = await getMask(p.patMode, state.seed);
-    if (!mask || token !== renderToken) return;
-  }
-
-  const img = state.img;
-  const scale = maxDim > 0 ? Math.min(1, maxDim / Math.max(img.width, img.height)) : 1;
+/* 필터 적용된 ImageData를 지정 크기로 준비 */
+function prepImageData(img, maxSide, p) {
+  const scale = maxSide > 0 ? Math.min(1, maxSide / Math.max(img.width, img.height)) : 1;
   const w = Math.max(1, Math.round(img.width * scale));
   const h = Math.max(1, Math.round(img.height * scale));
-
   const oc = document.createElement('canvas');
   oc.width = w; oc.height = h;
   const octx = oc.getContext('2d', { willReadFrequently: true });
   octx.drawImage(img, 0, 0, w, h);
   const id = octx.getImageData(0, 0, w, h);
-
   if (p.bright !== 0 || p.contrast !== 0) applyBrightnessContrast(id.data, p.bright, p.contrast);
   if (p.sharpenOn && p.sharpen > 0) applySharpen(id, p.sharpen);
+  return id;
+}
 
-  const seps = separate(id, p.colorMode);
+async function render(targetCanvas, maxDim) {
+  if (!state.img) return;
+  const token = ++renderToken;
+  const p = readParams();
+  const img = state.img;
   const gain = makeDotGain(p.gainSh, p.gainHl);
   const hasGain = p.gainSh !== 0 || p.gainHl !== 0;
+
+  /* ===== 벡터 (펜화 · 선화) 경로 ===== */
+  if (!PIXEL_MODES.has(p.patMode)) {
+    const id = prepImageData(img, Math.min(p.workRes, 1600), p);
+    const w = id.width, h = id.height;
+    const seps = separate(id, p.colorMode);
+    const chans = (p.colorMode === 'bw'
+      ? [{ d: seps[0], rgb: [0, 0, 0] }]
+      : seps.map((d, i) => ({ d, rgb: hexToRgb(state.channels[i].color), on: state.channels[i].on }))
+            .filter(ch => ch.on !== false));
+    /* 게인·반전을 미리 반영한 어둡기 맵 */
+    for (const ch of chans) {
+      if (hasGain || p.invert) {
+        const o = new Float32Array(ch.d.length);
+        for (let i = 0; i < o.length; i++) {
+          let v = ch.d[i];
+          if (hasGain) v = gain(v);
+          if (p.invert) v = 1 - v;
+          o[i] = v;
+        }
+        ch.d = o;
+      }
+    }
+    setBusy('펜화 계산 중…');
+    const prims = [];
+    for (let ci = 0; ci < chans.length; ci++) {
+      let prim = null;
+      switch (p.patMode) {
+        case 'stipple':    prim = await renderStipple(chans[ci].d, w, h, p, ci, token); break;
+        case 'tspline':    prim = await renderTspLine(chans[ci].d, w, h, p, ci, token); break;
+        case 'squiggle':   prim = renderSquiggle(chans[ci].d, w, h, p, ci); break;
+        case 'hatch':      prim = renderHatch(chans[ci].d, w, h, p, ci); break;
+        case 'spiralline': prim = renderSpiralLine(chans[ci].d, w, h, p, ci); break;
+        case 'flowfield':  prim = renderFlowField(chans[ci].d, w, h, p, ci); break;
+      }
+      if (token !== renderToken) { setBusy(null); return; }
+      if (!prim) { setBusy(null); return; }
+      prim.rgb = chans[ci].rgb;
+      prims.push(prim);
+      await yieldLoop();
+    }
+    setBusy(null);
+    const tScale = maxDim > 0 ? Math.min(1, maxDim / Math.max(img.width, img.height)) : 1;
+    const tw = Math.max(1, Math.round(img.width * tScale));
+    const thh = Math.max(1, Math.round(img.height * tScale));
+    targetCanvas.width = tw; targetCanvas.height = thh;
+    drawPrimitives(targetCanvas.getContext('2d'), prims, tw / w, p.colorMode === 'cmyk', tw, thh);
+    lastVector = { prims, w, h, cmyk: p.colorMode === 'cmyk' };
+    return true;
+  }
+
+  /* ===== 픽셀 (망점 스크린) 경로 ===== */
+  const isRD = p.patMode in RD_PRESETS;
+  let mask = null;
+  if (isRD) {
+    mask = await getMask(p.patMode, state.seed, token);
+    if (!mask || token !== renderToken) return;
+  }
+
+  const id = prepImageData(img, maxDim, p);
+  const w = id.width, h = id.height;
+  const seps = separate(id, p.colorMode);
 
   const chans = p.colorMode === 'bw'
     ? [{ d: seps[0], rgb: [0, 0, 0] }]
@@ -532,7 +1130,6 @@ async function render(targetCanvas, maxDim) {
   const lut = p.patMode === 'amdot' ? getAmLUT() : null;
   /* 채널별 스크린 변형: RD는 90° 회전+오프셋, 해석 스크린은 각도 오프셋 */
   const RD_OFF = [[0, 0], [97.3, 41.7], [163.2, 201.5], [55.8, 140.2]];
-  const AM_ANGLES = [15, 75, 0, 45];
 
   for (let ci = 0; ci < chans.length; ci++) {
     const { d, rgb } = chans[ci];
@@ -585,18 +1182,19 @@ async function render(targetCanvas, maxDim) {
       }
     }
     /* 채널 사이에 이벤트 루프 양보 (대형 렌더 시 UI 멈춤 방지) */
-    await new Promise(r => setTimeout(r, 0));
+    await yieldLoop();
     if (token !== renderToken) return;
   }
 
   ctx.putImageData(out, 0, 0);
+  lastVector = null;
   return true;
 }
 
 let renderTimer = null;
 function scheduleRender() {
   clearTimeout(renderTimer);
-  renderTimer = setTimeout(() => render(view, +$('workRes').value), 120);
+  renderTimer = setTimeout(() => render(view, +$('workRes').value), 150);
 }
 
 /* ---------- 이미지 로드 ---------- */
@@ -705,15 +1303,24 @@ function syncVisibility() {
   const mode = $('patMode').value;
   const isRD = mode in RD_PRESETS;
   document.querySelectorAll('[data-only]').forEach(el => {
-    const only = el.dataset.only;
-    el.style.display = (only === 'rd' ? isRD : only === mode) ? '' : 'none';
+    const toks = el.dataset.only.split(',');
+    const show = toks.some(t =>
+      t === mode || (t === 'rd' && isRD) || (t === 'px' && PIXEL_MODES.has(mode)));
+    el.style.display = show ? '' : 'none';
   });
+  $('svgBtn').disabled = PIXEL_MODES.has(mode);
 }
 
 const VAL_FMT = {
   dotSize: v => v + ' px', spArms: v => v, spWrap: v => v,
   amAngle: v => v + '°', bright: v => v + ' %', contrast: v => v + ' %',
   sharpen: v => v + ' %', gainSh: v => v + ' %', gainHl: v => v + ' %',
+  ptCount: v => v, dotScale: v => v + ' %',
+  lineW: v => (v / 10).toFixed(1) + ' px',
+  sqSpacing: v => v + ' px', sqAmp: v => v + ' %', sqFreq: v => v,
+  hatchSpacing: v => v + ' px', hatchLayers: v => v,
+  spPitch: v => v + ' px',
+  ffDensity: v => v + ' %', ffLen: v => v,
 };
 for (const id of Object.keys(VAL_FMT)) {
   $(id).addEventListener('input', () => {
@@ -721,19 +1328,19 @@ for (const id of Object.keys(VAL_FMT)) {
     scheduleRender();
   });
 }
-for (const id of ['patMode', 'spDir', 'workRes']) {
+for (const id of ['patMode', 'spDir', 'workRes', 'spStyle']) {
   $(id).addEventListener('change', () => { syncVisibility(); scheduleRender(); });
 }
-$('invert').addEventListener('change', scheduleRender);
-$('sharpenOn').addEventListener('change', scheduleRender);
+for (const id of ['invert', 'sharpenOn', 'varSize']) {
+  $(id).addEventListener('change', scheduleRender);
+}
 
 $('exportBtn').addEventListener('click', async () => {
   if (!state.img) { alert('먼저 이미지를 열어주세요.'); return; }
-  busy.textContent = '내보내기 렌더링 중…';
-  busy.classList.add('show');
+  setBusy('내보내기 렌더링 중…');
   const c = document.createElement('canvas');
   const ok = await render(c, +$('exportRes').value);
-  busy.classList.remove('show');
+  setBusy(null);
   if (!ok) return;
   c.toBlob(blob => {
     const a = document.createElement('a');
@@ -742,6 +1349,17 @@ $('exportBtn').addEventListener('click', async () => {
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   }, 'image/png');
+});
+
+$('svgBtn').addEventListener('click', () => {
+  if (!lastVector) { alert('펜화·선화 스타일을 먼저 렌더링해주세요.'); return; }
+  const svg = buildSVG();
+  const blob = new Blob([svg], { type: 'image/svg+xml' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'stochastic-raster.svg';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 });
 
 buildChannelUI();
