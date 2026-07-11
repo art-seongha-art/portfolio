@@ -173,13 +173,19 @@ input[type=file]{display:none;}
               <option value="lines">라인 스크린</option>
               <option value="rings">동심원 스크린</option>
             </optgroup>
-            <optgroup label="디더링 · 글리치">
+            <optgroup label="디더링">
               <option value="fs">플로이드-스타인버그</option>
               <option value="atkinson">앳킨슨 (레트로 맥)</option>
               <option value="bayer">베이어 (정렬 격자)</option>
+            </optgroup>
+            <optgroup label="컬러 아트">
+              <option value="lowpoly">로우폴리 (삼각 모자이크)</option>
               <option value="pixelsort">픽셀 소팅 (컬러 글리치)</option>
             </optgroup>
             <optgroup label="펜화 · 선화 (벡터)">
+              <option value="stringart">스트링 아트 (실 초상)</option>
+              <option value="hilbert">힐베르트 곡선</option>
+              <option value="phyllo">해바라기 나선 점묘</option>
               <option value="stipple">점묘 (스티플링)</option>
               <option value="tspline">한붓그리기 (TSP 라인)</option>
               <option value="squiggle">물결선 (스퀴글)</option>
@@ -226,17 +232,27 @@ input[type=file]{display:none;}
           <span class="val" id="amAngleVal">45°</span>
         </div>
 
-        <div class="row" data-only="stipple,tspline,web">
+        <div class="row" data-only="stringart">
+          <label for="saNails">못 개수</label>
+          <input type="range" id="saNails" min="120" max="360" step="20" value="240"/>
+          <span class="val" id="saNailsVal">240</span>
+        </div>
+        <div class="row" data-only="stringart">
+          <label for="saLines">실 가닥 수</label>
+          <input type="range" id="saLines" min="500" max="6000" step="100" value="3200"/>
+          <span class="val" id="saLinesVal">3200</span>
+        </div>
+        <div class="row" data-only="stipple,tspline,web,phyllo,lowpoly">
           <label for="ptCount">점 개수</label>
           <input type="range" id="ptCount" min="1000" max="40000" step="500" value="8000"/>
           <span class="val" id="ptCountVal">8000</span>
         </div>
-        <div class="row" data-only="stipple">
+        <div class="row" data-only="stipple,phyllo">
           <label for="dotScale">점 크기</label>
           <input type="range" id="dotScale" min="40" max="250" step="5" value="100"/>
           <span class="val" id="dotScaleVal">100 %</span>
         </div>
-        <label class="check" data-only="stipple"><input type="checkbox" id="varSize" checked/> 밝기에 따라 점 크기 변화</label>
+        <label class="check" data-only="stipple,phyllo"><input type="checkbox" id="varSize" checked/> 밝기에 따라 점 크기 변화</label>
         <div class="row" data-only="bigdot">
           <label for="dotGrid">격자 형태</label>
           <select id="dotGrid" style="flex:1">
@@ -256,7 +272,7 @@ input[type=file]{display:none;}
             <option value="h">가로</option>
           </select>
         </div>
-        <div class="row" data-only="tspline,squiggle,hatch,flowfield,scribble,contour,ridge,web,cross,packing,engrave">
+        <div class="row" data-only="tspline,squiggle,hatch,flowfield,scribble,contour,ridge,web,cross,packing,engrave,stringart,hilbert">
           <label for="lineW">선 두께</label>
           <input type="range" id="lineW" min="3" max="40" step="1" value="10"/>
           <span class="val" id="lineWVal">1.0 px</span>
@@ -318,7 +334,7 @@ input[type=file]{display:none;}
           <input type="range" id="ctSmooth" min="0" max="10" step="1" value="4"/>
           <span class="val" id="ctSmoothVal">4</span>
         </div>
-        <div class="row" data-only="cross,ascii,bigdot,packing">
+        <div class="row" data-only="cross,ascii,bigdot,packing,hilbert">
           <label for="gridSize">격자 크기</label>
           <input type="range" id="gridSize" min="4" max="32" step="1" value="10"/>
           <span class="val" id="gridSizeVal">10 px</span>
@@ -1522,6 +1538,245 @@ function renderEngrave(d, w, h, p, ci) {
   return { dots: [], wpaths: wpaths.filter(q => q.pts.length > 1) };
 }
 
+/* --- 스트링 아트 (Vrellis 방식): 원형 틀의 못 사이 현을 탐욕적으로 선택 --- */
+async function renderStringArt(d, w, h, p, ci, token) {
+  const S = 420;                         // 분석 해상도 (정사각)
+  const cx = w / 2, cy = h / 2, R = Math.min(w, h) / 2 - 2;
+  const g = new Float32Array(S * S);     // 원 내부 잔여 어둡기
+  const half = S / 2;
+  for (let y = 0; y < S; y++) {
+    for (let x = 0; x < S; x++) {
+      const ddx = x - half, ddy = y - half;
+      if (ddx * ddx + ddy * ddy > half * half) continue;
+      const ix = Math.min(w - 1, Math.max(0, cx + ddx / half * R)) | 0;
+      const iy = Math.min(h - 1, Math.max(0, cy + ddy / half * R)) | 0;
+      g[y * S + x] = d[iy * w + ix];
+    }
+  }
+  /* 실은 질감을 못 그린다 — 블러로 톤 덩어리만 남기고 정규화로 대비 확보 */
+  const tmpB = new Float32Array(S * S);
+  for (let pass = 0; pass < 2; pass++) {
+    tmpB.set(g);
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+      let sum = 0, c = 0;
+      for (let yy = Math.max(0, y - 3); yy <= Math.min(S - 1, y + 3); yy += 3)
+        for (let xx = Math.max(0, x - 3); xx <= Math.min(S - 1, x + 3); xx += 3) { sum += tmpB[yy * S + xx]; c++; }
+      g[y * S + x] = sum / c;
+    }
+  }
+  let gmax = 0;
+  for (let i = 0; i < g.length; i++) if (g[i] > gmax) gmax = g[i];
+  if (gmax > 0.05) {
+    const invMax = 1 / gmax;
+    for (let i = 0; i < g.length; i++) g[i] = Math.pow(g[i] * invMax, 1.4);
+  }
+  const nails = p.saNails;
+  const NP = [];
+  for (let i = 0; i < nails; i++) {
+    const a = i / nails * 2 * Math.PI;
+    NP.push([half + Math.cos(a) * (half - 1), half + Math.sin(a) * (half - 1)]);
+  }
+  const weight = 0.09;                   // 실 한 가닥이 덮는 어둡기
+  const used = new Set();
+  const order = [0];
+  let cur = 0;
+  for (let l = 0; l < p.saLines; l++) {
+    let best = -1, bs = 0.035;
+    const [x1, y1] = NP[cur];
+    for (let cand = 0; cand < nails; cand++) {
+      const dk = Math.abs(cand - cur);
+      if (dk < 12 || dk > nails - 12) continue;      // 너무 짧은 현 제외
+      const key = cur < cand ? cur * 1000 + cand : cand * 1000 + cur;
+      if (used.has(key)) continue;
+      const [x2, y2] = NP[cand];
+      const steps = Math.max(8, Math.hypot(x2 - x1, y2 - y1) | 0);
+      let sum = 0, cnt = 0;
+      for (let s = 0; s < steps; s += 3) {
+        const t = s / steps;
+        sum += g[((y1 + (y2 - y1) * t) | 0) * S + ((x1 + (x2 - x1) * t) | 0)];
+        cnt++;
+      }
+      const score = sum / cnt;
+      if (score > bs) { bs = score; best = cand; }
+    }
+    if (best < 0) break;                 // 더 이상 어두운 현이 없음
+    const [x2, y2] = NP[best];
+    const steps = Math.max(8, Math.hypot(x2 - x1, y2 - y1) | 0);
+    for (let s = 0; s <= steps; s++) {
+      const t = s / steps;
+      const idx = ((y1 + (y2 - y1) * t) | 0) * S + ((x1 + (x2 - x1) * t) | 0);
+      g[idx] = Math.max(0, g[idx] - weight);
+    }
+    used.add(cur < best ? cur * 1000 + best : best * 1000 + cur);
+    order.push(best);
+    cur = best;
+    if ((l & 127) === 0) {
+      setBusy(`스트링 아트 — 실 감는 중 ${l}/${p.saLines}`);
+      await yieldLoop();
+      if (token !== renderToken) return null;
+    }
+  }
+  const pts = order.map(i => {
+    const a = i / nails * 2 * Math.PI;
+    return [cx + Math.cos(a) * R, cy + Math.sin(a) * R];
+  });
+  /* 반투명 실이 겹겹이 쌓여 톤을 만든다 */
+  return { dots: [], wpaths: [{ w: p.lineW, pts }], alpha: 0.52 };
+}
+
+/* --- 힐베르트 곡선: 프랙탈 한붓그리기, 어둡기로 두께 변조 --- */
+function renderHilbert(d, w, h, p, ci) {
+  const side = Math.max(w, h);
+  let k = Math.round(Math.log2(side / Math.max(4, p.gridSize)));
+  k = Math.min(8, Math.max(4, k));
+  const N = 1 << k;
+  const cell = side / N;
+  const ox = (w - side) / 2, oy = (h - side) / 2;
+  const wpaths = [];
+  let cur = null, curW = -1;
+  let x = 0, y = 0;
+  for (let idx = 0; idx < N * N; idx++) {
+    /* 힐베르트 d2xy */
+    let rx, ry, t = idx, hx = 0, hy = 0;
+    for (let s = 1; s < N; s <<= 1) {
+      rx = 1 & (t / 2); ry = 1 & (t ^ rx);
+      if (ry === 0) {
+        if (rx === 1) { hx = s - 1 - hx; hy = s - 1 - hy; }
+        const tmp = hx; hx = hy; hy = tmp;
+      }
+      hx += s * rx; hy += s * ry;
+      t = Math.floor(t / 4);
+    }
+    x = ox + (hx + 0.5) * cell; y = oy + (hy + 0.5) * cell;
+    const inside = x >= 0 && y >= 0 && x < w && y < h;
+    const dv = inside ? d[(y | 0) * w + (x | 0)] : 0;
+    if (dv < 0.035) { cur = null; curW = -1; continue; }
+    const wd = Math.max(0.25, Math.round(p.lineW * (0.2 + dv * 1.6) * 4) / 4);
+    if (!cur || wd !== curW) {
+      const last = cur && cur.pts.length ? cur.pts[cur.pts.length - 1] : null;
+      cur = { w: wd, pts: last ? [last] : [] };
+      wpaths.push(cur);
+      curW = wd;
+    }
+    cur.pts.push([x, y]);
+  }
+  return { dots: [], wpaths: wpaths.filter(q => q.pts.length > 1) };
+}
+
+/* --- 해바라기 나선 점묘: 보겔 피보나치 배열 (황금각 137.5°) --- */
+function renderPhyllo(d, w, h, p, ci) {
+  const cx = w / 2, cy = h / 2;
+  const maxR = Math.hypot(w, h) / 2;
+  const n = p.ptCount * 2;
+  const c = maxR / Math.sqrt(n);
+  const golden = Math.PI * (3 - Math.sqrt(5));
+  const phase = p.colorMode !== 'mono' ? ci * 0.5 : 0;
+  const dots = [];
+  for (let i = 0; i < n; i++) {
+    const r = c * Math.sqrt(i), th = i * golden + phase;
+    const x = cx + Math.cos(th) * r, y = cy + Math.sin(th) * r;
+    if (x < 0 || y < 0 || x >= w || y >= h) continue;
+    const dv = d[(y | 0) * w + (x | 0)];
+    if (dv < 0.04) continue;
+    const base = c * 0.68 * (p.dotScale / 100);
+    dots.push([x, y, p.varSize ? base * (0.25 + 0.85 * Math.sqrt(dv)) : base * 0.68]);
+  }
+  return { dots, wpaths: [] };
+}
+
+/* --- 들로네 삼각분할 (Bowyer-Watson) --- */
+async function delaunay(pts, token) {
+  const n = pts.length;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const [x, y] of pts) {
+    if (x < minX) minX = x; if (y < minY) minY = y;
+    if (x > maxX) maxX = x; if (y > maxY) maxY = y;
+  }
+  const dmax = Math.max(maxX - minX, maxY - minY) * 10;
+  const midx = (minX + maxX) / 2, midy = (minY + maxY) / 2;
+  const P = pts.concat([[midx - dmax, midy - dmax], [midx, midy + dmax], [midx + dmax, midy - dmax]]);
+  const circum = (a, b, c) => {
+    const [ax, ay] = P[a], [bx, by] = P[b], [cx2, cy2] = P[c];
+    const dd = 2 * (ax * (by - cy2) + bx * (cy2 - ay) + cx2 * (ay - by));
+    if (Math.abs(dd) < 1e-12) return null;
+    const a2 = ax * ax + ay * ay, b2 = bx * bx + by * by, c2 = cx2 * cx2 + cy2 * cy2;
+    const ux = (a2 * (by - cy2) + b2 * (cy2 - ay) + c2 * (ay - by)) / dd;
+    const uy = (a2 * (cx2 - bx) + b2 * (ax - cx2) + c2 * (bx - ax)) / dd;
+    return [ux, uy, (ax - ux) * (ax - ux) + (ay - uy) * (ay - uy)];
+  };
+  let tris = [[n, n + 1, n + 2]];
+  let ccs = [circum(n, n + 1, n + 2)];
+  for (let i = 0; i < n; i++) {
+    const [px, py] = P[i];
+    const bad = [];
+    for (let t = 0; t < tris.length; t++) {
+      const c = ccs[t];
+      if (c && (px - c[0]) * (px - c[0]) + (py - c[1]) * (py - c[1]) <= c[2]) bad.push(t);
+    }
+    const edges = new Map();
+    for (const t of bad) {
+      const [a, b, c] = tris[t];
+      for (const [e1, e2] of [[a, b], [b, c], [c, a]]) {
+        const key = e1 < e2 ? e1 + '_' + e2 : e2 + '_' + e1;
+        edges.set(key, edges.has(key) ? null : [e1, e2]);
+      }
+    }
+    for (let bi = bad.length - 1; bi >= 0; bi--) {
+      tris.splice(bad[bi], 1);
+      ccs.splice(bad[bi], 1);
+    }
+    for (const e of edges.values()) {
+      if (!e) continue;
+      tris.push([e[0], e[1], i]);
+      ccs.push(circum(e[0], e[1], i));
+    }
+    if ((i & 255) === 0) {
+      setBusy(`로우폴리 — 삼각분할 ${Math.round(i / n * 100)}%`);
+      await yieldLoop();
+      if (token !== renderToken) return null;
+    }
+  }
+  return tris.filter(t => t[0] < n && t[1] < n && t[2] < n);
+}
+
+/* --- 로우폴리: 엣지 가중 샘플 + 들로네, 원본 색으로 채움 --- */
+async function renderLowPoly(id, p, token) {
+  const { data, width: w, height: h } = id;
+  /* 그레이 + 소벨 엣지 강도 */
+  const gray = new Float32Array(w * h);
+  for (let i = 0; i < w * h; i++) {
+    const q = i * 4;
+    gray[i] = (0.2126 * data[q] + 0.7152 * data[q + 1] + 0.0722 * data[q + 2]) / 255;
+  }
+  const mag = new Float32Array(w * h);
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+    const i = y * w + x;
+    const gx = gray[i + 1] - gray[i - 1], gy = gray[i + w] - gray[i - w];
+    mag[i] = Math.min(1, Math.hypot(gx, gy) * 4);
+  }
+  const rng = mulberry32(state.seed * 331 + 7);
+  const target = Math.max(300, Math.min(6000, p.ptCount));
+  const pts = [[0, 0], [w - 1, 0], [0, h - 1], [w - 1, h - 1]];
+  const bstep = Math.max(24, Math.min(w, h) / 10);
+  for (let x = bstep; x < w - 1; x += bstep) pts.push([x, 0], [x, h - 1]);
+  for (let y = bstep; y < h - 1; y += bstep) pts.push([0, y], [w - 1, y]);
+  let guard = target * 80;
+  while (pts.length < target && guard-- > 0) {
+    const x = rng() * w, y = rng() * h;
+    if (rng() < 0.05 + mag[(y | 0) * w + (x | 0)] * 3) pts.push([x, y]);
+  }
+  const tris = await delaunay(pts, token);
+  if (!tris) return null;
+  const polys = [];
+  for (const [a, b, c] of tris) {
+    const cxp = (pts[a][0] + pts[b][0] + pts[c][0]) / 3;
+    const cyp = (pts[a][1] + pts[b][1] + pts[c][1]) / 3;
+    const q = ((cyp | 0) * w + (cxp | 0)) * 4;
+    polys.push({ pts: [pts[a], pts[b], pts[c]], rgb: [data[q], data[q + 1], data[q + 2]] });
+  }
+  return { dots: [], wpaths: [], polys };
+}
+
 /* 잉크 채널 구성과 종이 정보 */
 function buildChans(seps, mode) {
   if (mode === 'cmyk') {
@@ -1552,6 +1807,24 @@ function drawPrimitives(ctx, prims, scale, multi, W, H, paper, blendScreen) {
   for (const ch of prims) {
     const col = `rgb(${ch.rgb[0]},${ch.rgb[1]},${ch.rgb[2]})`;
     ctx.fillStyle = col; ctx.strokeStyle = col;
+    ctx.globalAlpha = ch.alpha || 1;          // 스트링 아트: 반투명 실 중첩
+    /* 컬러 삼각형 (로우폴리) */
+    if (ch.polys) {
+      for (const poly of ch.polys) {
+        ctx.beginPath();
+        ctx.moveTo(poly.pts[0][0] * scale, poly.pts[0][1] * scale);
+        ctx.lineTo(poly.pts[1][0] * scale, poly.pts[1][1] * scale);
+        ctx.lineTo(poly.pts[2][0] * scale, poly.pts[2][1] * scale);
+        ctx.closePath();
+        const pcol = `rgb(${poly.rgb[0]},${poly.rgb[1]},${poly.rgb[2]})`;
+        ctx.fillStyle = pcol;
+        ctx.fill();
+        ctx.strokeStyle = pcol;               // AA 이음새 가림
+        ctx.lineWidth = Math.max(0.5, 0.7 * scale);
+        ctx.stroke();
+      }
+      ctx.fillStyle = col; ctx.strokeStyle = col;
+    }
     if (ch.dots.length) {
       ctx.beginPath();
       for (const [x, y, r] of ch.dots) {
@@ -1608,6 +1881,7 @@ function drawPrimitives(ctx, prims, scale, multi, W, H, paper, blendScreen) {
       ctx.textAlign = 'center';
       for (const [x, y, chr] of ch.texts) ctx.fillText(chr, x * scale, y * scale);
     }
+    ctx.globalAlpha = 1;
   }
   ctx.restore();
 }
@@ -1623,7 +1897,13 @@ function buildSVG() {
   ];
   for (const ch of prims) {
     const col = `rgb(${ch.rgb[0]},${ch.rgb[1]},${ch.rgb[2]})`;
-    parts.push(`<g fill="${col}" stroke="${col}" stroke-linecap="round" stroke-linejoin="round"${multi ? ` style="mix-blend-mode:${blendScreen ? 'screen' : 'multiply'}"` : ''}>`);
+    const alphaAttr = ch.alpha ? ` stroke-opacity="${ch.alpha}"` : '';
+    parts.push(`<g fill="${col}" stroke="${col}"${alphaAttr} stroke-linecap="round" stroke-linejoin="round"${multi ? ` style="mix-blend-mode:${blendScreen ? 'screen' : 'multiply'}"` : ''}>`);
+    for (const poly of ch.polys || []) {
+      const pstr = poly.pts.map(q => `${q[0].toFixed(1)},${q[1].toFixed(1)}`).join(' ');
+      const pcol = `rgb(${poly.rgb[0]},${poly.rgb[1]},${poly.rgb[2]})`;
+      parts.push(`<polygon points="${pstr}" fill="${pcol}" stroke="${pcol}" stroke-width="0.7"/>`);
+    }
     for (const [x, y, r] of ch.dots) {
       parts.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${Math.max(0.2, r).toFixed(2)}"/>`);
     }
@@ -1685,6 +1965,8 @@ function readParams() {
     dotGrid: $('dotGrid').value,
     psThr: +$('psThr').value,
     psDir: $('psDir').value,
+    saNails: +$('saNails').value,
+    saLines: +$('saLines').value,
     invert: $('invert').checked,
     bright: +$('bright').value,
     contrast: +$('contrast').value,
@@ -1723,6 +2005,22 @@ async function render(targetCanvas, maxDim, opts = {}) {
   if (!PIXEL_MODES.has(p.patMode)) {
     const id = prepImageData(img, Math.min(p.workRes, 1600), p);
     const w = id.width, h = id.height;
+
+    /* 로우폴리: 원본 색을 쓰는 단일 프리미티브 (채널 분리 없음) */
+    if (p.patMode === 'lowpoly') {
+      const prim = await renderLowPoly(id, p, token);
+      setBusy(null);
+      if (!prim || token !== renderToken) return;
+      prim.rgb = [0, 0, 0];
+      const tScale = maxDim > 0 ? Math.min(1, maxDim / Math.max(img.width, img.height)) : 1;
+      const tw = Math.max(1, Math.round(img.width * tScale));
+      const thh = Math.max(1, Math.round(img.height * tScale));
+      targetCanvas.width = tw; targetCanvas.height = thh;
+      drawPrimitives(targetCanvas.getContext('2d'), [prim], tw / w, false, tw, thh, [255, 255, 255], false);
+      lastVector = { prims: [prim], w, h, multi: false, paper: [255, 255, 255], blendScreen: false };
+      return true;
+    }
+
     const seps = separate(id, p.colorMode);
     const chans = buildChans(seps, p.colorMode);
     const { paper, blendScreen } = paperInfo(p.colorMode);
@@ -1759,6 +2057,9 @@ async function render(targetCanvas, maxDim, opts = {}) {
         case 'bigdot':     prim = renderBigDot(chans[ci].d, w, h, p, ci); break;
         case 'packing':    prim = renderPacking(chans[ci].d, w, h, p, ci); break;
         case 'engrave':    prim = renderEngrave(chans[ci].d, w, h, p, ci); break;
+        case 'stringart':  prim = await renderStringArt(chans[ci].d, w, h, p, ci, token); break;
+        case 'hilbert':    prim = renderHilbert(chans[ci].d, w, h, p, ci); break;
+        case 'phyllo':     prim = renderPhyllo(chans[ci].d, w, h, p, ci); break;
       }
       if (token !== renderToken) { setBusy(null); return; }
       if (!prim) { setBusy(null); return; }
@@ -2027,7 +2328,7 @@ async function playAnimation(record) {
     /* 총 작업량 → 프레임당 예산 */
     let units = 0;
     for (const ch of prims) {
-      units += ch.dots.length + (ch.rings ? ch.rings.length : 0);
+      units += ch.dots.length + (ch.rings ? ch.rings.length : 0) + (ch.polys ? ch.polys.length : 0);
       for (const q of ch.wpaths) units += q.pts.length;
       if (ch.fwpaths) for (const q of ch.fwpaths) units += q.pts.length / 4 + 2;
       if (ch.texts) units += ch.texts.length;
@@ -2041,6 +2342,25 @@ async function playAnimation(record) {
       const col = `rgb(${ch.rgb[0]},${ch.rgb[1]},${ch.rgb[2]})`;
       ctx.fillStyle = col; ctx.strokeStyle = col;
       ctx.globalCompositeOperation = multi ? (blendScreen ? 'screen' : 'multiply') : 'source-over';
+      ctx.globalAlpha = ch.alpha || 1;
+
+      /* 컬러 삼각형 (로우폴리): 하나씩 채워짐 */
+      if (ch.polys) {
+        for (const poly of ch.polys) {
+          if (budget < 1) { await tick(); if (myTok !== playToken) { cancelRec(); return; } }
+          ctx.beginPath();
+          ctx.moveTo(poly.pts[0][0] * scale, poly.pts[0][1] * scale);
+          ctx.lineTo(poly.pts[1][0] * scale, poly.pts[1][1] * scale);
+          ctx.lineTo(poly.pts[2][0] * scale, poly.pts[2][1] * scale);
+          ctx.closePath();
+          const pcol = `rgb(${poly.rgb[0]},${poly.rgb[1]},${poly.rgb[2]})`;
+          ctx.fillStyle = pcol; ctx.strokeStyle = pcol;
+          ctx.lineWidth = Math.max(0.5, 0.7 * scale);
+          ctx.fill(); ctx.stroke();
+          budget--;
+        }
+        ctx.fillStyle = col; ctx.strokeStyle = col;
+      }
 
       /* 점: 셔플해서 여기저기 찍히는 느낌 */
       const rng = mulberry32(state.seed * 5 + 42);
@@ -2115,6 +2435,7 @@ async function playAnimation(record) {
           budget--;
         }
       }
+      ctx.globalAlpha = 1;
     }
     ctx.globalCompositeOperation = 'source-over';
   }
@@ -2270,6 +2591,10 @@ const STYLE_DEFAULTS = {
   bigdot: { gridSize: 15 },
   packing: { gridSize: 9, lineW: 12 },
   engrave: { hatchSpacing: 6, lineW: 16 },
+  stringart: { saNails: 260, saLines: 4200, lineW: 5 },
+  hilbert: { gridSize: 9, lineW: 13 },
+  phyllo: { ptCount: 14000, dotScale: 125 },
+  lowpoly: { ptCount: 3000 },
 };
 function applyStyleDefaults(mode) {
   const d = STYLE_DEFAULTS[mode];
@@ -2308,7 +2633,7 @@ const VAL_FMT = {
   spPitch: v => v + ' px',
   ffDensity: v => v + ' %', ffLen: v => v,
   ctLevels: v => v, ctSmooth: v => v, gridSize: v => v + ' px',
-  psThr: v => v + ' %',
+  psThr: v => v + ' %', saNails: v => v, saLines: v => v,
 };
 for (const id of Object.keys(VAL_FMT)) {
   $(id).addEventListener('input', () => {
