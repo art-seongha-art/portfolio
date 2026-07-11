@@ -854,7 +854,7 @@ async function renderTspLine(d, w, h, p, ci, token) {
   for (let i = 0; i < order.length; i++) {
     line.push([pts[order[i] * 2], pts[order[i] * 2 + 1]]);
   }
-  line = chaikin(line);
+  line = chaikin(chaikin(line));   // 두 번 다듬어 곡선을 매끄럽게
   return { dots: [], wpaths: [{ w: p.lineW, pts: line }] };
 }
 
@@ -1248,8 +1248,8 @@ function renderCross(d, w, h, p, ci) {
   for (let y = gs / 2 + offY; y < h; y += gs) {
     for (let x = gs / 2 + off; x < w; x += gs) {
       const dv = d[(y | 0) * w + (x | 0)];
-      if (dv < 0.1) continue;
-      const r = gs * 0.42 * (0.35 + 0.65 * Math.min(1, dv * 1.2));
+      if (dv < 0.08) continue;
+      const r = gs * 0.45 * (0.45 + 0.55 * Math.min(1, dv * 1.15));
       wpaths.push({ w: p.lineW, pts: [[x - r, y - r], [x + r, y + r]] });
       wpaths.push({ w: p.lineW, pts: [[x - r, y + r], [x + r, y - r]] });
     }
@@ -1269,7 +1269,8 @@ function renderAscii(d, w, h, p, ci) {
       let sum = 0, c = 0;
       for (let yy = y; yy < Math.min(h, y + gs); yy += 2)
         for (let xx = x; xx < Math.min(w, x + gs); xx += 2) { sum += d[(yy | 0) * w + (xx | 0)]; c++; }
-      const idx = Math.min(chars.length - 1, Math.round((sum / c) * (chars.length - 1)));
+      /* 감마 0.8: 중간톤 문자가 뭉개지지 않게 밀도를 끌어올림 */
+      const idx = Math.min(chars.length - 1, Math.round(Math.pow(sum / c, 0.8) * (chars.length - 1)));
       if (idx <= 0) continue;
       texts.push([x + gs / 2 + ox, y + gs * 0.8 + oy, chars[idx]]);
     }
@@ -1329,7 +1330,7 @@ function drawPrimitives(ctx, prims, scale, cmyk, W, H) {
     }
     /* 텍스트 (아스키 아트) */
     if (ch.texts) {
-      ctx.font = `${Math.max(4, ch.fontSize * scale)}px "Courier New", monospace`;
+      ctx.font = `bold ${Math.max(4, ch.fontSize * scale)}px "Courier New", monospace`;
       ctx.textAlign = 'center';
       for (const [x, y, chr] of ch.texts) ctx.fillText(chr, x * scale, y * scale);
     }
@@ -1367,7 +1368,7 @@ function buildSVG() {
     }
     if (ch.texts) {
       for (const [x, y, chr] of ch.texts) {
-        parts.push(`<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" stroke="none" font-family="Courier New, monospace" font-size="${ch.fontSize}">${chr}</text>`);
+        parts.push(`<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" stroke="none" font-family="Courier New, monospace" font-weight="bold" font-size="${ch.fontSize}">${chr}</text>`);
       }
     }
     parts.push('</g>');
@@ -1821,6 +1822,20 @@ async function loadImage(source) {
   try {
     const bmp = await createImageBitmap(source, { imageOrientation: 'from-image' });
     state.img = bmp;
+    /* 평균 어둡기 측정 — 어두운 사진은 펜화 스타일에서 자동 반전 */
+    const mc = document.createElement('canvas');
+    mc.width = mc.height = 64;
+    const mctx = mc.getContext('2d', { willReadFrequently: true });
+    mctx.drawImage(bmp, 0, 0, 64, 64);
+    const md = mctx.getImageData(0, 0, 64, 64).data;
+    let sum = 0;
+    for (let i = 0; i < md.length; i += 4) {
+      sum += 1 - (0.2126 * md[i] + 0.7152 * md[i + 1] + 0.0722 * md[i + 2]) / 255;
+    }
+    state.meanDark = sum / (64 * 64);
+    if (!PIXEL_MODES.has($('patMode').value)) {
+      $('invert').checked = state.meanDark > 0.5;
+    }
     $('dropHint').style.display = 'none';
     $('imgInfo').textContent = `${bmp.width} × ${bmp.height} px`;
     scheduleRender();
@@ -1900,6 +1915,40 @@ $('colorMode').addEventListener('change', () => {
   scheduleRender();
 });
 
+/* 스타일별 추천 기본값 — 스타일을 바꾸면 자동 적용 */
+const STYLE_DEFAULTS = {
+  maze: { dotSize: 5 }, coral: { dotSize: 5 }, cells: { dotSize: 5 },
+  spiral: { dotSize: 10 }, amdot: { dotSize: 10 },
+  lines: { dotSize: 4 }, rings: { dotSize: 4 },
+  fs: { dotSize: 2 }, atkinson: { dotSize: 2 }, bayer: { dotSize: 3 },
+  stipple: { ptCount: 12000, dotScale: 115 },
+  tspline: { ptCount: 12000, lineW: 13 },
+  squiggle: { sqSpacing: 6, sqAmp: 70, sqFreq: 45, lineW: 12 },
+  hatch: { hatchSpacing: 5, hatchLayers: 4, lineW: 13 },
+  spiralline: { spPitch: 8 },
+  flowfield: { ffDensity: 75, ffLen: 45, lineW: 13 },
+  scribble: { ffDensity: 75, ffLen: 60, lineW: 12 },
+  contour: { ctLevels: 8, ctSmooth: 3, lineW: 12 },
+  ridge: { sqSpacing: 7, sqAmp: 80, lineW: 13 },
+  web: { ptCount: 10000, lineW: 10 },
+  cross: { gridSize: 13, lineW: 18 },
+  ascii: { gridSize: 13 },
+};
+function applyStyleDefaults(mode) {
+  const d = STYLE_DEFAULTS[mode];
+  if (!d) return;
+  for (const [id, val] of Object.entries(d)) {
+    const el = $(id);
+    if (!el) continue;
+    el.value = val;
+    if (VAL_FMT[id]) $(id + 'Val').textContent = VAL_FMT[id](String(val));
+  }
+  /* 펜화 계열: 어두운 사진이면 자동 반전 → 밝은 피사체에 획이 감 */
+  if (!PIXEL_MODES.has(mode)) {
+    $('invert').checked = (state.meanDark || 0) > 0.5;
+  }
+}
+
 function syncVisibility() {
   const mode = $('patMode').value;
   const isRD = mode in RD_PRESETS;
@@ -1930,7 +1979,12 @@ for (const id of Object.keys(VAL_FMT)) {
     scheduleRender();
   });
 }
-for (const id of ['patMode', 'spDir', 'workRes', 'spStyle', 'asciiSet']) {
+$('patMode').addEventListener('change', () => {
+  applyStyleDefaults($('patMode').value);
+  syncVisibility();
+  scheduleRender();
+});
+for (const id of ['spDir', 'workRes', 'spStyle', 'asciiSet']) {
   $(id).addEventListener('change', () => { syncVisibility(); scheduleRender(); });
 }
 for (const id of ['invert', 'sharpenOn', 'varSize']) {
