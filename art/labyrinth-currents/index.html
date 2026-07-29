@@ -633,22 +633,24 @@
     // The back runs nearly straight and the taper is deferred to the last third.
     // Peak depth too far forward turns the animal into a tadpole.
     const TOP_PROFILE = [
-        [-0.075, 0.000], [-0.071, 0.052], [-0.060, 0.102], [-0.040, 0.154],
-        [-0.010, 0.198], [0.040, 0.224], [0.120, 0.240], [0.240, 0.246],
-        [0.380, 0.240], [0.520, 0.222], [0.660, 0.188], [0.800, 0.132], [0.900, 0.084], [1.000, 0.032]
+        [-0.075, 0.000], [-0.070, 0.062], [-0.060, 0.120], [-0.045, 0.172],
+        [-0.025, 0.212], [0.005, 0.238], [0.045, 0.248], [0.100, 0.243],
+        [0.190, 0.254], [0.310, 0.250], [0.450, 0.230],
+        [0.600, 0.186], [0.760, 0.124], [0.890, 0.070], [1.000, 0.030]
     ];
     const BOT_PROFILE = [
-        [-0.075, 0.000], [-0.071, 0.054], [-0.060, 0.108], [-0.040, 0.168],
-        [-0.010, 0.228], [0.040, 0.270], [0.120, 0.298], [0.240, 0.304],
-        [0.380, 0.294], [0.520, 0.264], [0.660, 0.212], [0.800, 0.146], [0.900, 0.090], [1.000, 0.032]
+        [-0.075, 0.000], [-0.070, 0.050], [-0.060, 0.098], [-0.045, 0.150],
+        [-0.025, 0.200], [0.005, 0.246], [0.045, 0.282], [0.100, 0.300],
+        [0.190, 0.312], [0.310, 0.302], [0.450, 0.264],
+        [0.600, 0.200], [0.760, 0.130], [0.890, 0.072], [1.000, 0.030]
     ];
 
     // Dorsal→ventral shading ramp. Three facts of a real fish flank live here:
     // a near-extinct back, one narrow iridescent lateral band, and a belly that
     // counter-shades pale without ever becoming a highlight.
     const RAMP_HUE = [[0, 0.05], [0.14, 0.10], [0.30, 0.55], [0.44, 0.95], [0.58, 0.72], [0.74, 0.45], [0.88, 0.30], [1, 0.35]];
-    const RAMP_SAT = [[0, 1.00], [0.14, 1.00], [0.30, 0.90], [0.44, 0.84], [0.58, 0.92], [0.74, 0.94], [0.88, 0.58], [1, 0.32]];
-    const RAMP_VAL = [[0, 0.30], [0.14, 0.52], [0.30, 0.80], [0.44, 0.92], [0.58, 0.82], [0.74, 0.64], [0.88, 0.54], [1, 0.62]];
+    const RAMP_SAT = [[0, 1.00], [0.14, 1.00], [0.30, 0.94], [0.44, 0.92], [0.58, 0.96], [0.74, 0.96], [0.88, 0.62], [1, 0.34]];
+    const RAMP_VAL = [[0, 0.28], [0.14, 0.46], [0.30, 0.66], [0.44, 0.78], [0.58, 0.70], [0.74, 0.56], [0.88, 0.48], [1, 0.56]];
 
     // ═══════════════════════════════════════════════════════════════════════
     //  FIN RAY — a pinned Verlet rope with graded bend stiffness.
@@ -910,10 +912,15 @@
                 this.rise = 1;
             }
             if (this.rise > 0) {
-                tx = this.x + Math.cos(this.head) * 140;
-                ty = SURFACE + this.len * 0.20;
-                urgency = 0.85;
-                if (this.y < SURFACE + this.len * 0.34) {
+                // A betta rises on a long shallow diagonal and tips its snout up
+                // at the last moment. Aiming straight at the ceiling produced a
+                // near-vertical dive pose — the one angle these fish never look
+                // good from, and the one no reference photograph uses.
+                tx = this.x + Math.cos(this.head) * this.len * 2.6;
+                ty = SURFACE + this.len * 0.42;
+                urgency = 0.72;
+                // must sit clear of the hard y-clamp (0.35L) or the fish rises forever
+                if (this.y < SURFACE + this.len * 0.52) {
                     // breath taken
                     this.air = 0; this.rise = 0; this.mouth = 1;
                     const nb = 2 + Math.floor(random() * 3);
@@ -933,7 +940,7 @@
                 const n1 = noise(this.wanderSeed, T * 0.052) - 0.5;
                 const n2 = noise(this.wanderSeed + 90, T * 0.017) - 0.5;
                 tx = W * 0.5 + n1 * W * 1.15 + n2 * W * 0.5;
-                ty = H * 0.52 + (noise(this.wanderSeed + 41, T * 0.043) - 0.5) * H * 1.15;
+                ty = H * 0.52 + (noise(this.wanderSeed + 41, T * 0.043) - 0.5) * H * 0.78;
                 urgency = 0.30 + this.boldness * 0.34;
                 // hovering: bettas stall in place and simply hang there
                 const hv = noise(this.wanderSeed + 200, T * 0.09);
@@ -975,7 +982,8 @@
             }
 
             // ── steer ──────────────────────────────────────────────────
-            const want = Math.atan2(ty - this.y, tx - this.x);
+            const pitch = this.rise > 0 ? 0.72 : 0.48;   // bias travel toward the horizontal
+            const want = Math.atan2((ty - this.y) * pitch, tx - this.x);
             const dist = Math.hypot(tx - this.x, ty - this.y);
             const turnRate = (0.055 + 0.045 * this.throttle) * (1 + this.dart * 0.6);
             this.head += clamp(angDiff(want, this.head), -turnRate, turnRate) * dt * 60;
@@ -1000,7 +1008,7 @@
             const c = Math.cos(this.head);
             if (c > 0.22) this.flipTarget = 1;
             else if (c < -0.22) this.flipTarget = -1;
-            const rate = dt * 2.6;
+            const rate = dt * 6.0;
             this.flip += clamp(this.flipTarget - this.flip, -rate, rate);
         }
 
@@ -1034,7 +1042,9 @@
             else { fx = this.jx[i - 1] - this.jx[i]; fy = this.jy[i - 1] - this.jy[i];
                    const d = Math.hypot(fx, fy) || 1; fx /= d; fy /= d; }
             // signed by flip: as flip → 0 the animal turns edge-on and thins out
-            const f = this.flip;
+            // never let the flank vanish completely — a betta seen exactly
+            // edge-on is a frame nobody photographs, and it reads as an eel
+            const f = Math.sign(this.flip || 1) * Math.max(0.34, Math.abs(this.flip));
             return { fx, fy, nx: fy * f, ny: -fx * f };
         }
 
@@ -1162,7 +1172,7 @@
             const bandBreak = 0.45 + 0.55 * noise(u * 3.6, T * 0.22 + this.wanderSeed);
             const spec = Math.exp(-Math.pow((v - 0.44) / 0.21, 2));
             val *= (0.84 + 0.16 * bandEnv * bandBreak);
-            val += spec * irid * 0.15 * bandEnv * bandBreak * (0.45 + shimmer);
+            val += spec * irid * 0.09 * bandEnv * bandBreak * (0.45 + shimmer);
             // gill flush and the darker mask over the skull
             const gill = smoothstep(0.24, 0.02, u);
             h = lerpHue(h, pal.edge[0] + this.hueOffset, gill * 0.28);
@@ -1301,8 +1311,8 @@
                     const v = lerpv(0.86, -0.62, r / (ROWS - 1));
                     const stagger = (r % 2) * 0.5;
                     for (let c = 0; c < COLS; c++) {
-                        const u = 0.125 + ((c + stagger) / COLS) * 0.70;
-                        if (u > 0.83) continue;
+                        const u = 0.175 + ((c + stagger) / COLS) * 0.66;
+                        if (u > 0.84) continue;
                         const p = this.pointAt(u, v);
                         const sh = noise(u * 5.2, v * 3.2, T * 0.38 + this.wanderSeed * 0.3);
                         // light falls from above: the upper flank catches most
@@ -1324,7 +1334,7 @@
 
                         // lit rim — hue shifts with the interference field
                         const col = hsv2rgb(rimH + (sh - 0.5) * 74 * irid, 0.30, 1);
-                        stroke(col[0], col[1], col[2], 235 * rim);
+                        stroke(col[0], col[1], col[2], 255 * rim);
                         strokeWeight(w);
                         arc(p.x, p.y, rad * 2, rad * 2.15, ang + Math.PI * 0.62, ang + Math.PI * 1.38);
                     }
@@ -1352,8 +1362,8 @@
 
         drawHead() {
             const hz = this.haze, L = this.len;
-            const eyeP = this.pointAt(0.072, 0.30);
-            const R = L * 0.030 * clamp(Math.abs(this.flip) + 0.35, 0.4, 1.15);
+            const eyeP = this.pointAt(0.088, 0.16);
+            const R = L * 0.036 * clamp(Math.abs(this.flip) + 0.35, 0.4, 1.15);
 
             // operculum seam
             const g0 = this.pointAt(0.185, 0.92), g1 = this.pointAt(0.215, -0.55);
@@ -1463,16 +1473,19 @@
                 const band = (noise(s * 3.4, f.phase * 0.6) - 0.5);
                 const jitH = band * 52 * (0.4 + irid);
                 const jitA = 0.78 + 0.34 * noise(s * 2.7 + 11, f.phase * 0.6);
+                // form shading: a slow field across the fan, animated, so the
+                // membrane reads as folding in space rather than lying flat
+                const shade = 0.52 + 0.62 * noise(s * 1.9 + 4, T * 0.28 + f.phase);
 
                 const gx0 = (A[0].x + B[0].x) * 0.5, gy0 = (A[0].y + B[0].y) * 0.5;
                 const gx1 = (A[n].x + B[n].x) * 0.5, gy1 = (A[n].y + B[n].y) * 0.5;
                 const g = ctx.createLinearGradient(gx0, gy0, gx1, gy1);
                 const aS = alphaScale * jitA;
-                g.addColorStop(0.00, rgba(H0 + jitH * 0.4, 0.54 * sat, 0.54 * dim, 0.34 * aS));
-                g.addColorStop(0.24, rgba(lerpHue(H0, H1, 0.28) + jitH * 0.7 + irid * 10 * breathe, 0.74 * sat, 0.70 * dim, 0.52 * aS));
-                g.addColorStop(0.56, rgba(lerpHue(H0, H1, 0.68) + jitH, 0.90 * sat, 0.84 * dim, 0.54 * aS));
-                g.addColorStop(0.84, rgba(H1 + jitH * 0.8, 0.94 * sat, 0.94 * dim, 0.46 * aS));
-                g.addColorStop(1.00, rgba(H1 + jitH * 0.5, 0.80 * sat, 1.00 * dim, 0.10 * aS));
+                g.addColorStop(0.00, rgba(H0 + jitH * 0.4, 0.54 * sat, 0.54 * dim * shade, 0.68 * aS));
+                g.addColorStop(0.24, rgba(lerpHue(H0, H1, 0.28) + jitH * 0.7 + irid * 10 * breathe, 0.74 * sat, 0.70 * dim * shade, 0.62 * aS));
+                g.addColorStop(0.56, rgba(lerpHue(H0, H1, 0.68) + jitH, 0.90 * sat, 0.84 * dim * shade, 0.44 * aS));
+                g.addColorStop(0.84, rgba(H1 + jitH * 0.8, 0.94 * sat, 0.94 * dim * shade, 0.58 * aS));
+                g.addColorStop(1.00, rgba(H1 + jitH * 0.5, 0.80 * sat, 1.00 * dim * shade, 0.12 * aS));
                 ctx.fillStyle = g;
 
                 ctx.beginPath();
@@ -1523,12 +1536,25 @@
                 ctx.restore();
             }
 
-            // ── luminous margin ───────────────────────────────────────
-            blendMode(ADD);
-            const cE = hsv2rgb(H1, 0.62, 1);
+            // ── margin ────────────────────────────────────────────────
+            // Three overlapping veils with no edges read as one amorphous
+            // cloud. Each fin gets a defined boundary first — a darker,
+            // saturated rim that separates it from whatever lies behind —
+            // and only then the luminous highlight on top of that.
             ctx.save();
-            ctx.strokeStyle = `rgba(${cE[0] | 0},${cE[1] | 0},${cE[2] | 0},${0.20 * alphaScale * hz})`;
-            ctx.lineWidth = Math.max(1.0, this.len * 0.0075);
+            const cB = hsv2rgb(H1, 0.96 * sat, 0.34 * dim);
+            ctx.strokeStyle = `rgba(${cB[0] | 0},${cB[1] | 0},${cB[2] | 0},${0.34 * alphaScale * hz})`;
+            ctx.lineWidth = Math.max(1.0, this.len * 0.006);
+            ctx.lineJoin = 'round';
+            outline();
+            ctx.stroke();
+            ctx.restore();
+
+            blendMode(ADD);
+            const cE = hsv2rgb(H1, 0.55, 1);
+            ctx.save();
+            ctx.strokeStyle = `rgba(${cE[0] | 0},${cE[1] | 0},${cE[2] | 0},${0.26 * alphaScale * hz})`;
+            ctx.lineWidth = Math.max(1.0, this.len * 0.005);
             ctx.lineJoin = 'round';
             outline();
             ctx.stroke();
