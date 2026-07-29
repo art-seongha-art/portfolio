@@ -653,108 +653,201 @@
     const RAMP_VAL = [[0, 0.28], [0.14, 0.46], [0.30, 0.66], [0.44, 0.78], [0.58, 0.70], [0.74, 0.56], [0.88, 0.48], [1, 0.56]];
 
     // ═══════════════════════════════════════════════════════════════════════
-    //  FIN RAY — a pinned Verlet rope with graded bend stiffness.
-    //  The membrane between two of these is not authored; it falls out.
+    //  FIN — a position-based cloth sheet
+    //
+    //  The previous version was a bundle of independent ropes, each one pulled
+    //  back toward a fixed angle in a fan. That is exactly why it read as a
+    //  stiff paper fan: nothing connected one ray to the next, so the sheet had
+    //  no way to gather, lag, or ripple as a surface.
+    //
+    //  This is a real cloth solve. Particles on an R x S grid, Verlet
+    //  integration, and three families of constraint projected iteratively:
+    //
+    //    along-ray   inextensible — fin rays are bone and do not stretch
+    //    cross-ray   stiff in tension, SOFT in compression, which is what lets
+    //                the sheet gather into folds instead of holding a rigid arc
+    //    bend        a weak straightening term, the springiness of the ray
+    //
+    //  Only the root row is pinned, and only the first segment is held to the
+    //  body's attachment angle. Everything past that is free, so the veil
+    //  trails, overshoots and settles on its own.
     // ═══════════════════════════════════════════════════════════════════════
 
-    class FinRay {
-        constructor(segs, segLen, phase, coord) {
-            this.n = segs;
-            this.segLen = segLen;
-            this.phase = phase;      // per-fin, not per-ray: neighbours must correlate
-            this.coord = coord;      // 0..1 across the fan
-            this.p = new Array(segs + 1);
-            this.q = new Array(segs + 1);
-            for (let i = 0; i <= segs; i++) { this.p[i] = { x: 0, y: 0 }; this.q[i] = { x: 0, y: 0 }; }
-            this.seeded = false;
-        }
-
-        place(rx, ry, dx, dy) {
-            for (let i = 0; i <= this.n; i++) {
-                this.p[i].x = rx + dx * this.segLen * i;
-                this.p[i].y = ry + dy * this.segLen * i;
-                this.q[i].x = this.p[i].x;
-                this.q[i].y = this.p[i].y;
-            }
-            this.seeded = true;
-        }
-
-        // rootX/Y : world attachment. dirX/Y : rest direction (unit).
-        // stiff : bend stiffness at the root, decaying toward the tip.
-        // curl  : per-segment rest curvature — the natural arc of the veil.
-        solve(rootX, rootY, dirX, dirY, stiff, curl, flutter, drift) {
-            if (!this.seeded) this.place(rootX, rootY, dirX, dirY);
-
-            const n = this.n, L = this.segLen;
-
-            // Ambient forcing, coherent ACROSS the fan. Neighbouring rays must
-            // share a noise neighbourhood or the veil reads as a torn net
-            // instead of a single sheet of silk. This is the whole trick.
-            const c = this.coord;
-            const px = -dirY, py = dirX;                 // perpendicular to the ray
-            for (let i = 1; i <= n; i++) {
-                const P = this.p[i], Q = this.q[i];
-                const vx = (P.x - Q.x) * 0.90;
-                const vy = (P.y - Q.y) * 0.90;
-                Q.x = P.x; Q.y = P.y;
-                const t = i / n;
-                const nz = noise(this.phase + c * 1.7, i * 0.24, T * 0.50) - 0.5;
-                // a wave travelling root → tip, phase-shifted across the fan
-                const wv = Math.sin(T * 2.1 + this.phase * 3.1 - t * 3.4 + c * 2.2) * 0.32;
-                const amp = flutter * (0.18 + t * t * 2.0);
-                const f = (nz * 1.5 + wv) * amp;
-                P.x += vx + px * f + drift.x * t * t;
-                P.y += vy + py * f + drift.y * t * t + 0.010 * t * t * L;
-            }
-
-            this.p[0].x = rootX; this.p[0].y = rootY;
-
-            // constraint relaxation — length is inviolable, so the fin can never tear
-            for (let it = 0; it < 2; it++) {
-                let px = dirX, py = dirY;
-                let rx = dirX, ry = dirY;
-                for (let i = 1; i <= n; i++) {
-                    const t = (i - 1) / n;
-                    // rest direction curls progressively away from the root heading
-                    const ca = Math.cos(curl), sa = Math.sin(curl);
-                    const nrx = rx * ca - ry * sa, nry = rx * sa + ry * ca;
-                    rx = nrx; ry = nry;
-
-                    const A = this.p[i - 1], B = this.p[i];
-                    let dx = B.x - A.x, dy = B.y - A.y;
-                    const d = Math.sqrt(dx * dx + dy * dy) || 1;
-                    dx /= d; dy /= d;
-
-                    // blend the inertial direction toward the rest direction
-                    const k = stiff * (1 - 0.72 * t);
-                    let tx = dx + (rx - dx) * k;
-                    let ty = dy + (ry - dy) * k;
-                    // and keep it from folding back on the previous segment
-                    tx += (px - tx) * 0.18;
-                    ty += (py - ty) * 0.18;
-                    const tl = Math.sqrt(tx * tx + ty * ty) || 1;
-                    tx /= tl; ty /= tl;
-
-                    B.x = A.x + tx * L;
-                    B.y = A.y + ty * L;
-                    px = tx; py = ty;
-                }
-            }
-        }
-    }
-
-    // ═══════════════════════════════════════════════════════════════════════
-    //  FIN — a fan of rays plus the membrane they span
-    // ═══════════════════════════════════════════════════════════════════════
+    // Cloth tunables, kept together because they only make sense against each
+    // other: rays floppy (low bend) but membrane reluctant to bunch (high
+    // gather) is what produces a broad fan that still ripples. Raise bend and
+    // it becomes a paper fan; drop gather and it gathers shut.
+    const CLOTH = {
+        damp: 0.955,
+        sag: 0.012,
+        iters: 6,
+        bend0: 0.26, bend1: 0.09,     // stiff → soft end of the softness slider
+        rootK0: 0.90, rootK1: 0.62,
+        tension: 0.92,
+        gather0: 0.97, gather1: 0.80,
+        foldSpan: 1.62, foldK: 0.45
+    };
 
     class Fin {
         constructor(cfg) {
             Object.assign(this, cfg);
-            this.rays = [];
-            for (let i = 0; i < this.count; i++) {
-                const s = this.count === 1 ? 0 : i / (this.count - 1);
-                const len = this.length * sampleProfile(this.lenProfile, s) * (1 + this.ragged[i]);
-                this.rays.push(new FinRay(this.segs, len / this.segs, this.phase, s));
+            const R = this.R = this.count, S = this.S = this.segs;
+            const N = R * (S + 1);
+            this.px = new Float32Array(N); this.py = new Float32Array(N);
+            this.ox = new Float32Array(N); this.oy = new Float32Array(N);
+            this.segLen = new Float32Array(R);
+            for (let r = 0; r < R; r++) {
+                const t = R === 1 ? 0 : r / (R - 1);
+                const len = this.length * sampleProfile(this.lenProfile, t) * (1 + this.ragged[r]);
+                this.segLen[r] = Math.max(0.6, len / S);
+            }
+            this.cross = new Float32Array(Math.max(1, (R - 1) * (S + 1)));
+            this.rootX = new Float32Array(R); this.rootY = new Float32Array(R);
+            this.dirX  = new Float32Array(R); this.dirY  = new Float32Array(R);
+            this.seeded = false;
+        }
+
+        i(r, s) { return r * (this.S + 1) + s; }
+
+        // Lay the sheet out flat along its rest directions and record the
+        // cross-ray rest lengths from that pose. Doing it from the real layout
+        // rather than analytically keeps the fan shape honest for every fin.
+        seed() {
+            const { R, S, px, py, ox, oy } = this;
+            for (let r = 0; r < R; r++) {
+                for (let s = 0; s <= S; s++) {
+                    const k = this.i(r, s);
+                    px[k] = this.rootX[r] + this.dirX[r] * this.segLen[r] * s;
+                    py[k] = this.rootY[r] + this.dirY[r] * this.segLen[r] * s;
+                    ox[k] = px[k]; oy[k] = py[k];
+                }
+            }
+            for (let r = 0; r < R - 1; r++) {
+                for (let s = 0; s <= S; s++) {
+                    const a = this.i(r, s), b = this.i(r + 1, s);
+                    this.cross[r * (S + 1) + s] = Math.hypot(px[a] - px[b], py[a] - py[b]);
+                }
+            }
+            this.seeded = true;
+        }
+
+        step(soft, flutter, cur, drive) {
+            if (!this.seeded) { this.seed(); return; }
+            const { R, S, px, py, ox, oy, segLen } = this;
+            const row = S + 1;
+            const damp = CLOTH.damp;
+            const sag = CLOTH.sag;
+
+            for (let r = 0; r < R; r++) {
+                const t0 = R === 1 ? 0 : r / (R - 1);
+                const base = r * row;
+                for (let s = 1; s <= S; s++) {
+                    const k = base + s;
+                    const vx = (px[k] - ox[k]) * damp;
+                    const vy = (py[k] - oy[k]) * damp;
+                    ox[k] = px[k]; oy[k] = py[k];
+                    const t = s / S;
+                    // forcing is coherent across the fan — neighbouring rays must
+                    // share a noise neighbourhood or the sheet reads as a torn net
+                    const nz = noise(this.phase + t0 * 1.6, s * 0.22, T * 0.5) - 0.5;
+                    const wv = Math.sin(T * 1.9 + this.phase * 3.1 - t * 3.0 + t0 * 2.6) * 0.30;
+                    const f = (nz * 1.5 + wv) * flutter * (0.14 + t * t * 2.1);
+                    let dx = px[k] - px[k - 1], dy = py[k] - py[k - 1];
+                    const d = Math.hypot(dx, dy) || 1; dx /= d; dy /= d;
+                    px[k] += vx - dy * f + cur.x * t * t;
+                    py[k] += vy + dx * f + cur.y * t * t + sag * t * t * segLen[r];
+                }
+            }
+
+            const ITER = CLOTH.iters;
+            const bend    = lerpv(CLOTH.bend0, CLOTH.bend1, soft);
+            const rootK   = lerpv(CLOTH.rootK0, CLOTH.rootK1, soft);
+            const tension = CLOTH.tension;
+            // enough compression resistance that the fan stays open — too little and the
+            // sheet simply gathers shut, which is a different wrong answer from a
+            // rigid fan but just as wrong
+            const gather  = lerpv(CLOTH.gather0, CLOTH.gather1, soft);
+
+            for (let it = 0; it < ITER; it++) {
+                // pin the attachment row, and hold the first segment to the
+                // angle the body presents — everything beyond it is free
+                for (let r = 0; r < R; r++) {
+                    const k = r * row;
+                    px[k] = this.rootX[r]; py[k] = this.rootY[r];
+                    const k1 = k + 1;
+                    const tx = this.rootX[r] + this.dirX[r] * segLen[r];
+                    const ty = this.rootY[r] + this.dirY[r] * segLen[r];
+                    px[k1] += (tx - px[k1]) * rootK;
+                    py[k1] += (ty - py[k1]) * rootK;
+                }
+
+                // Bend, in two parts.
+                //
+                // A symmetric pull-toward-straight cannot stop a ray folding
+                // back on itself: turn it up and the sheet goes rigid, turn it
+                // down and the ray accordions into a spike. The fan geometry of
+                // the caudal happens to resist that through its own cross
+                // constraints; a parallel sheet like the dorsal has nothing
+                // holding it, which is exactly where the comb came from.
+                //
+                // So: a light smoothing term for elegance, plus a ONE-SIDED
+                // anti-fold that leaves gentle curvature completely free and
+                // only fires when a ray tries to double over.
+                for (let r = 0; r < R; r++) {
+                    const base = r * row, L = segLen[r];
+                    for (let s = 1; s < S; s++) {
+                        const a = base + s - 1, b = base + s, c = base + s + 1;
+                        const mx = (px[a] + px[c]) * 0.5 - px[b];
+                        const my = (py[a] + py[c]) * 0.5 - py[b];
+                        const w = bend * (1 - 0.55 * (s / S));
+                        px[b] += mx * w * 0.5; py[b] += my * w * 0.5;
+                        px[a] -= mx * w * 0.25; py[a] -= my * w * 0.25;
+                        px[c] -= mx * w * 0.25; py[c] -= my * w * 0.25;
+
+                        const dx = px[c] - px[a], dy = py[c] - py[a];
+                        const d = Math.hypot(dx, dy) || 1;
+                        const need = L * CLOTH.foldSpan;
+                        if (d < need) {
+                            const h = ((d - need) / d) * CLOTH.foldK;
+                            px[a] += dx * h; py[a] += dy * h;
+                            px[c] -= dx * h; py[c] -= dy * h;
+                        }
+                    }
+                }
+
+                // cross-ray: stiff in tension, soft in compression, so the
+                // sheet gathers into folds instead of holding a rigid arc
+                for (let r = 0; r < R - 1; r++) {
+                    const ca = r * row, cb = (r + 1) * row, cr = r * row;
+                    for (let s = 1; s <= S; s++) {
+                        const a = ca + s, b = cb + s;
+                        const rest = this.cross[cr + s];
+                        const dx = px[b] - px[a], dy = py[b] - py[a];
+                        const d = Math.hypot(dx, dy) || 1;
+                        const k = d > rest ? tension : gather;
+                        const h = ((d - rest) / d) * k * 0.5;
+                        px[a] += dx * h; py[a] += dy * h;
+                        px[b] -= dx * h; py[b] -= dy * h;
+                    }
+                }
+
+                // along-ray: inextensible, projected outward from the pinned
+                // root. A mass-symmetric projection perturbs the joint it just
+                // fixed and leaves ~18% residual stretch at this iteration
+                // count — measurably, the rays were growing as they flexed.
+                // Anchoring the sweep at the root makes it exact in one pass,
+                // which is also the physically right answer: fin rays are bone.
+                for (let r = 0; r < R; r++) {
+                    const L = segLen[r], base = r * row;
+                    for (let s = 1; s <= S; s++) {
+                        const a = base + s - 1, b = base + s;
+                        const dx = px[b] - px[a], dy = py[b] - py[a];
+                        const d = Math.hypot(dx, dy) || 1e-6;
+                        const k = L / d;
+                        px[b] = px[a] + dx * k;
+                        py[b] = py[a] + dy * k;
+                    }
+                }
             }
         }
     }
@@ -832,14 +925,14 @@
             // Dorsal — short at the front, trailing into a long veil at the rear.
             this.dorsal = new Fin({
                 count: 17, segs: 10, length: L * 0.96 * v, phase: random() * 100,
-                lenProfile: [[0, 0.20], [0.3, 0.46], [0.62, 0.86], [0.86, 1.0], [1, 0.84]],
+                lenProfile: [[0, 0.46], [0.3, 0.62], [0.62, 0.88], [0.86, 1.0], [1, 0.88]],
                 ragged: rag(17, 0.05)
             });
 
             // Anal — the longest fin on the animal, sweeping down and back.
             this.anal = new Fin({
                 count: 20, segs: 11, length: L * 1.04 * v, phase: random() * 100,
-                lenProfile: [[0, 0.24], [0.28, 0.58], [0.6, 0.90], [0.87, 1.0], [1, 0.78]],
+                lenProfile: [[0, 0.48], [0.28, 0.68], [0.6, 0.92], [0.87, 1.0], [1, 0.82]],
                 ragged: rag(20, 0.05)
             });
 
@@ -852,9 +945,9 @@
 
             // Pectorals — the near-invisible fans that never stop beating.
             this.pecN = new Fin({ count: 6, segs: 4, length: L * 0.27, phase: random() * 100,
-                lenProfile: [[0, 0.70], [0.45, 1.0], [1, 0.72]], ragged: rag(6, 0.03) });
+                lenProfile: [[0, 0.82], [0.45, 1.0], [1, 0.84]], ragged: rag(6, 0.03) });
             this.pecF = new Fin({ count: 6, segs: 4, length: L * 0.25, phase: random() * 100,
-                lenProfile: [[0, 0.70], [0.45, 1.0], [1, 0.72]], ragged: rag(6, 0.03) });
+                lenProfile: [[0, 0.82], [0.45, 1.0], [1, 0.84]], ragged: rag(6, 0.03) });
         }
 
         // ── LOCOMOTION ─────────────────────────────────────────────────
@@ -1072,73 +1165,69 @@
         // ── FIN SOLVING ────────────────────────────────────────────────
         solveFins() {
             const soft = params.finSoftness;
-            // stiff enough to hold the fan open, soft enough to trail
-            const stiffBase = lerpv(0.94, 0.52, soft);
-            const flutter = lerpv(0.08, 0.34, soft) * this.len * 0.010 + params.current * 0.14;
+            const flutter = lerpv(0.16, 0.55, soft) * this.len * 0.012 + params.current * 0.20;
             const cur = this.currentAt();
             const flare = this.flare;
 
-            // caudal — fan about the backward axis at the peduncle
+            // caudal — fanned about the backward axis at the peduncle
             {
                 const p = this.pointAt(1.0, 0);
                 const bx = -p.fx, by = -p.fy;
                 const spread = this.tailSpread * (1 + flare * 0.16);
                 const f = this.caudal;
-                for (let i = 0; i < f.count; i++) {
-                    const s = (i / (f.count - 1)) * 2 - 1;
-                    const a = s * spread;
-                    // rotate the backward axis toward the dorsal normal by a
-                    const ca = Math.cos(a), sa = Math.sin(a);
-                    let dx = bx * ca + p.nx * sa * 1.0;
-                    let dy = by * ca + p.ny * sa * 1.0;
-                    const d = Math.hypot(dx, dy) || 1; dx /= d; dy /= d;
-                    const rx = p.x + p.nx * p.w * s * 0.55;
-                    const ry = p.y + p.ny * p.w * s * 0.55;
-                    f.rays[i].solve(rx, ry, dx, dy, stiffBase * 0.92, s * 0.004, flutter, cur);
+                for (let i = 0; i < f.R; i++) {
+                    const t = (i / (f.R - 1)) * 2 - 1;
+                    const a = t * spread, ca = Math.cos(a), sa = Math.sin(a);
+                    let dx = bx * ca + p.nx * sa, dy = by * ca + p.ny * sa;
+                    const d = Math.hypot(dx, dy) || 1;
+                    f.dirX[i] = dx / d; f.dirY[i] = dy / d;
+                    f.rootX[i] = p.x + p.nx * p.w * t * 0.55;
+                    f.rootY[i] = p.y + p.ny * p.w * t * 0.55;
                 }
+                f.step(soft, flutter, cur);
             }
 
-            // dorsal — rises clear of the back before trailing, so it reads as
-            // its own plane instead of dissolving into the caudal
-            this.solveEdgeFin(this.dorsal, +1, 0.34, 0.96, 1.36, 0.82, stiffBase * 0.78, flutter, cur, flare);
-            // anal
-            this.solveEdgeFin(this.anal,   -1, 0.36, 1.00, 1.22, 0.42, stiffBase * 0.64, flutter, cur, flare);
-            // pelvic ribbons
-            this.solveEdgeFin(this.pelvic, -1, 0.16, 0.23, 1.34, 1.12, stiffBase * 0.20, flutter * 1.5, cur, flare * 0.4);
+            this.aimEdgeFin(this.dorsal, +1, 0.34, 0.96, 1.36, 0.82, flare);
+            this.dorsal.step(soft, flutter, cur);
+            this.aimEdgeFin(this.anal, -1, 0.36, 1.00, 1.22, 0.42, flare);
+            this.anal.step(soft, flutter, cur);
+            this.aimEdgeFin(this.pelvic, -1, 0.16, 0.23, 1.34, 1.12, flare * 0.4);
+            this.pelvic.step(Math.min(0.95, soft + 0.25), flutter * 1.5, cur);
 
             // pectorals — driven, not passive. They beat whether or not the fish moves.
-            const beat = Math.sin(T * (7.5 + this.hover * 5.2) + this.wanderSeed);
-            const beat2 = Math.sin(T * (7.5 + this.hover * 5.2) + this.wanderSeed + 0.7);
-            this.solvePectoral(this.pecN, +0.34, beat, stiffBase, flutter, cur);
-            this.solvePectoral(this.pecF, -0.34, beat2, stiffBase, flutter, cur);
+            const rate = T * (7.5 + this.hover * 5.2) + this.wanderSeed;
+            this.aimPectoral(this.pecN, +0.34, Math.sin(rate));
+            this.pecN.step(Math.max(0.05, soft - 0.35), flutter * 0.4, cur);
+            this.aimPectoral(this.pecF, -0.34, Math.sin(rate + 0.7));
+            this.pecF.step(Math.max(0.05, soft - 0.35), flutter * 0.4, cur);
         }
 
-        solveEdgeFin(f, side, u0, u1, sweep0, sweep1, stiff, flutter, cur, flare) {
-            for (let i = 0; i < f.count; i++) {
-                const s = f.count === 1 ? 0 : i / (f.count - 1);
-                const u = lerpv(u0, u1, s);
-                const p = this.pointAt(u, side * 0.97);
-                // sweep: PI/2 = straight out from the body, 0 = straight back
-                const sw = lerpv(sweep0, sweep1, s) * (1 + flare * 0.22);
+        aimEdgeFin(f, side, u0, u1, sweep0, sweep1, flare) {
+            for (let i = 0; i < f.R; i++) {
+                const t = f.R === 1 ? 0 : i / (f.R - 1);
+                const p = this.pointAt(lerpv(u0, u1, t), side * 0.97);
+                const sw = lerpv(sweep0, sweep1, t) * (1 + flare * 0.22);
                 const bx = -p.fx, by = -p.fy;
                 let dx = bx * Math.cos(sw) + side * p.nx * Math.sin(sw);
                 let dy = by * Math.cos(sw) + side * p.ny * Math.sin(sw);
-                const d = Math.hypot(dx, dy) || 1; dx /= d; dy /= d;
-                f.rays[i].solve(p.x, p.y, dx, dy, stiff, side * 0.012 * (1 - s), flutter, cur);
+                const d = Math.hypot(dx, dy) || 1;
+                f.dirX[i] = dx / d; f.dirY[i] = dy / d;
+                f.rootX[i] = p.x; f.rootY[i] = p.y;
             }
         }
 
-        solvePectoral(f, depth, beat, stiff, flutter, cur) {
+        aimPectoral(f, depth, beat) {
             const p = this.pointAt(0.20, depth);
-            for (let i = 0; i < f.count; i++) {
-                const s = i / (f.count - 1);
-                const sw = lerpv(1.35, 0.35, s) + beat * 0.42;
-                const side = depth > 0 ? 1 : -1;
+            const side = depth > 0 ? 1 : -1;
+            for (let i = 0; i < f.R; i++) {
+                const t = i / (f.R - 1);
+                const sw = lerpv(1.35, 0.35, t) + beat * 0.42;
                 const bx = -p.fx, by = -p.fy;
-                let dx = bx * Math.cos(sw) + side * p.nx * Math.sin(sw) * 0.75 - p.fx * 0;
+                let dx = bx * Math.cos(sw) + side * p.nx * Math.sin(sw) * 0.75;
                 let dy = by * Math.cos(sw) + side * p.ny * Math.sin(sw) * 0.75;
-                const d = Math.hypot(dx, dy) || 1; dx /= d; dy /= d;
-                f.rays[i].solve(p.x, p.y, dx, dy, Math.max(0.45, stiff), 0.02, flutter * 0.4, cur);
+                const d = Math.hypot(dx, dy) || 1;
+                f.dirX[i] = dx / d; f.dirY[i] = dy / d;
+                f.rootX[i] = p.x; f.rootY[i] = p.y;
             }
         }
 
@@ -1308,7 +1397,7 @@
                 const rimH = pal.sheen[0] + this.hueOffset;
                 noFill();
                 for (let r = 0; r < ROWS; r++) {
-                    const v = lerpv(0.86, -0.62, r / (ROWS - 1));
+                    const v = lerpv(0.72, -0.58, r / (ROWS - 1));
                     const stagger = (r % 2) * 0.5;
                     for (let c = 0; c < COLS; c++) {
                         const u = 0.175 + ((c + stagger) / COLS) * 0.66;
@@ -1425,7 +1514,9 @@
         drawFin(f, alphaScale, hueShift, edgeMix, satMul) {
             const hz = this.haze;
             const irid = params.iridescence;
-            const n = f.rays[0].n, C = f.count;
+            const n = f.S, C = f.R, row = n + 1;
+            const FX = f.px, FY = f.py;
+            const IX = (r, k) => r * row + k;
             const ctx = drawingContext;
 
             const H0 = pal.sheen[0] + this.hueOffset + hueShift;
@@ -1441,18 +1532,16 @@
             // ── silhouette ────────────────────────────────────────────
             const outline = () => {
                 ctx.beginPath();
-                const A = f.rays[0].p;
-                ctx.moveTo(A[0].x, A[0].y);
-                for (let j = 1; j <= n; j++) ctx.lineTo(A[j].x, A[j].y);
+                ctx.moveTo(FX[IX(0, 0)], FY[IX(0, 0)]);
+                for (let j = 1; j <= n; j++) ctx.lineTo(FX[IX(0, j)], FY[IX(0, j)]);
                 // the outer margin, smoothed through the ray tips
                 for (let i = 1; i < C - 1; i++) {
-                    const P = f.rays[i].p[n], Q = f.rays[i + 1].p[n];
-                    ctx.quadraticCurveTo(P.x, P.y, (P.x + Q.x) * 0.5, (P.y + Q.y) * 0.5);
+                    const a = IX(i, n), b = IX(i + 1, n);
+                    ctx.quadraticCurveTo(FX[a], FY[a], (FX[a] + FX[b]) * 0.5, (FY[a] + FY[b]) * 0.5);
                 }
-                const Z = f.rays[C - 1].p;
-                ctx.lineTo(Z[n].x, Z[n].y);
-                for (let j = n - 1; j >= 0; j--) ctx.lineTo(Z[j].x, Z[j].y);
-                for (let i = C - 2; i >= 1; i--) { const R = f.rays[i].p[0]; ctx.lineTo(R.x, R.y); }
+                ctx.lineTo(FX[IX(C - 1, n)], FY[IX(C - 1, n)]);
+                for (let j = n - 1; j >= 0; j--) ctx.lineTo(FX[IX(C - 1, j)], FY[IX(C - 1, j)]);
+                for (let i = C - 2; i >= 1; i--) ctx.lineTo(FX[IX(i, 0)], FY[IX(i, 0)]);
                 ctx.closePath();
             };
 
@@ -1466,8 +1555,8 @@
             // gradient, and the strips are hue-offset against each other.
             ctx.save();
             for (let i = 0; i < C - 1; i++) {
-                const A = f.rays[i].p, B = f.rays[i + 1].p;
-                const s = (f.rays[i].coord + f.rays[i + 1].coord) * 0.5;
+                const ai = IX(i, 0), bi = IX(i + 1, 0);
+                const s = (i + 0.5) / (C - 1);
                 // banding across the fan — low frequency, so it reads as
                 // pigment sectors, not as noise
                 const band = (noise(s * 3.4, f.phase * 0.6) - 0.5);
@@ -1477,8 +1566,8 @@
                 // membrane reads as folding in space rather than lying flat
                 const shade = 0.52 + 0.62 * noise(s * 1.9 + 4, T * 0.28 + f.phase);
 
-                const gx0 = (A[0].x + B[0].x) * 0.5, gy0 = (A[0].y + B[0].y) * 0.5;
-                const gx1 = (A[n].x + B[n].x) * 0.5, gy1 = (A[n].y + B[n].y) * 0.5;
+                const gx0 = (FX[ai] + FX[bi]) * 0.5, gy0 = (FY[ai] + FY[bi]) * 0.5;
+                const gx1 = (FX[ai + n] + FX[bi + n]) * 0.5, gy1 = (FY[ai + n] + FY[bi + n]) * 0.5;
                 const g = ctx.createLinearGradient(gx0, gy0, gx1, gy1);
                 const aS = alphaScale * jitA;
                 g.addColorStop(0.00, rgba(H0 + jitH * 0.4, 0.54 * sat, 0.54 * dim * shade, 0.68 * aS));
@@ -1489,10 +1578,10 @@
                 ctx.fillStyle = g;
 
                 ctx.beginPath();
-                ctx.moveTo(A[0].x, A[0].y);
-                for (let j = 1; j <= n; j++) ctx.lineTo(A[j].x, A[j].y);
-                ctx.lineTo(B[n].x, B[n].y);
-                for (let j = n - 1; j >= 0; j--) ctx.lineTo(B[j].x, B[j].y);
+                ctx.moveTo(FX[ai], FY[ai]);
+                for (let j = 1; j <= n; j++) ctx.lineTo(FX[ai + j], FY[ai + j]);
+                ctx.lineTo(FX[bi + n], FY[bi + n]);
+                for (let j = n - 1; j >= 0; j--) ctx.lineTo(FX[bi + j], FY[bi + j]);
                 ctx.closePath();
                 ctx.fill();
             }
@@ -1503,8 +1592,8 @@
             // a betta's caudal is a paper cut-out; with them it is tissue.
             const wRay = Math.max(0.7, this.len * 0.0042);
             for (let i = 0; i < C; i++) {
-                const P = f.rays[i].p;
-                const s = f.rays[i].coord;
+                const pi = IX(i, 0);
+                const s = C === 1 ? 0 : i / (C - 1);
                 // the sheet folds; light finds some rays and misses others
                 const fold = noise(s * 2.6, T * 0.42 + f.phase);
                 const bright = smoothstep(0.46, 0.86, fold);
@@ -1529,8 +1618,8 @@
                     if (j1 <= j0) continue;
                     ctx.strokeStyle = col;
                     ctx.beginPath();
-                    ctx.moveTo(P[j0].x, P[j0].y);
-                    for (let j = j0 + 1; j <= j1; j++) ctx.lineTo(P[j].x, P[j].y);
+                    ctx.moveTo(FX[pi + j0], FY[pi + j0]);
+                    for (let j = j0 + 1; j <= j1; j++) ctx.lineTo(FX[pi + j], FY[pi + j]);
                     ctx.stroke();
                 }
                 ctx.restore();
