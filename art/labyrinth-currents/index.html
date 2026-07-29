@@ -391,7 +391,7 @@
                 <div class="control-group">
                     <label>몸 크기 <span class="en">/ Body Scale</span></label>
                     <div class="slider-container">
-                        <input type="range" id="bodyScale" min="0.55" max="1.7" step="0.05" value="1" oninput="updateParam('bodyScale', this.value)">
+                        <input type="range" id="bodyScale" min="0.5" max="1.35" step="0.05" value="1" oninput="updateParam('bodyScale', this.value)">
                         <span class="value-display" id="bodyScale-value">1.00</span>
                     </div>
                 </div>
@@ -647,8 +647,8 @@
     // a near-extinct back, one narrow iridescent lateral band, and a belly that
     // counter-shades pale without ever becoming a highlight.
     const RAMP_HUE = [[0, 0.05], [0.14, 0.10], [0.30, 0.55], [0.44, 0.95], [0.58, 0.72], [0.74, 0.45], [0.88, 0.30], [1, 0.35]];
-    const RAMP_SAT = [[0, 1.00], [0.14, 1.00], [0.30, 0.86], [0.44, 0.70], [0.58, 0.88], [0.74, 0.92], [0.88, 0.55], [1, 0.30]];
-    const RAMP_VAL = [[0, 0.22], [0.14, 0.38], [0.30, 0.68], [0.44, 0.88], [0.58, 0.64], [0.74, 0.46], [0.88, 0.42], [1, 0.58]];
+    const RAMP_SAT = [[0, 1.00], [0.14, 1.00], [0.30, 0.90], [0.44, 0.84], [0.58, 0.92], [0.74, 0.94], [0.88, 0.58], [1, 0.32]];
+    const RAMP_VAL = [[0, 0.30], [0.14, 0.52], [0.30, 0.80], [0.44, 0.92], [0.58, 0.82], [0.74, 0.64], [0.88, 0.54], [1, 0.62]];
 
     // ═══════════════════════════════════════════════════════════════════════
     //  FIN RAY — a pinned Verlet rope with graded bend stiffness.
@@ -768,14 +768,14 @@
             const r = () => random();
 
             // ── genome (fixed by seed) ──────────────────────────────────
-            this.len = (232 + r() * 56) * params.bodyScale;
+            this.len = (198 + r() * 46) * params.bodyScale;
             this.hueOffset = (r() - 0.5) * 20;
             this.satBias   = 0.88 + r() * 0.20;
             this.boldness  = 0.32 + r() * 0.62;
             this.tempo     = 0.82 + r() * 0.42;
             this.wanderSeed = r() * 400;
             this.veil      = 0.86 + r() * 0.38;        // fin extravagance
-            this.tailSpread = 1.14 + r() * 0.30;       // ~65°–82° half-fan
+            this.tailSpread = 1.30 + r() * 0.30;       // ~74°–92° half-fan
             this.z         = count === 1 ? 1 : 0.46 + (idx / Math.max(1, count - 1)) * 0.56 + (r() - 0.5) * 0.10;
             this.z = clamp(this.z, 0.38, 1.06);
             this.len *= lerpv(0.58, 1.04, this.z);
@@ -807,42 +807,52 @@
 
         buildFins() {
             const L = this.len, v = this.veil * params.finFullness;
-            const rag = (n, amt) => { const a = []; for (let i = 0; i < n; i++) a.push((random() - 0.5) * amt); return a; };
+            // A real veil does not have a jagged edge — it has two or three big
+            // soft lobes. High-frequency jitter reads as damage; low-frequency
+            // length modulation reads as tissue folding under its own weight.
+            const rag = (n, amt) => {
+                const a = [], lobes = 1.8 + random() * 1.6, ph = random() * TAU;
+                for (let i = 0; i < n; i++) {
+                    const s = n === 1 ? 0 : i / (n - 1);
+                    a.push(Math.sin(s * Math.PI * lobes + ph) * amt + (random() - 0.5) * amt * 0.22);
+                }
+                return a;
+            };
 
             // Caudal — the halfmoon. Rooted at the peduncle, fanned about the
             // backward axis. The single most expensive thing to get right.
             this.caudal = new Fin({
-                count: 23, segs: 12, length: L * 0.80 * v, phase: random() * 100,
-                lenProfile: [[0, 0.72], [0.16, 0.92], [0.5, 1.0], [0.84, 0.93], [1, 0.74]],
-                ragged: rag(23, 0.045)
+                count: 27, segs: 12, length: L * 1.16 * v, phase: random() * 100,
+                lenProfile: [[0, 0.86], [0.16, 0.97], [0.5, 1.0], [0.84, 0.97], [1, 0.86]],
+                ragged: rag(27, 0.045)
             });
 
             // Dorsal — short at the front, trailing into a long veil at the rear.
             this.dorsal = new Fin({
-                count: 15, segs: 10, length: L * 0.58 * v, phase: random() * 100,
-                lenProfile: [[0, 0.22], [0.3, 0.46], [0.62, 0.84], [0.86, 1.0], [1, 0.82]],
-                ragged: rag(15, 0.04)
+                count: 17, segs: 10, length: L * 0.96 * v, phase: random() * 100,
+                lenProfile: [[0, 0.20], [0.3, 0.46], [0.62, 0.86], [0.86, 1.0], [1, 0.84]],
+                ragged: rag(17, 0.05)
             });
 
             // Anal — the longest fin on the animal, sweeping down and back.
             this.anal = new Fin({
-                count: 18, segs: 11, length: L * 0.70 * v, phase: random() * 100,
-                lenProfile: [[0, 0.26], [0.28, 0.58], [0.6, 0.90], [0.87, 1.0], [1, 0.76]],
-                ragged: rag(18, 0.04)
+                count: 20, segs: 11, length: L * 1.04 * v, phase: random() * 100,
+                lenProfile: [[0, 0.24], [0.28, 0.58], [0.6, 0.90], [0.87, 1.0], [1, 0.78]],
+                ragged: rag(20, 0.05)
             });
 
             // Pelvic — two ribbons under the throat. Almost no stiffness at all.
             this.pelvic = new Fin({
-                count: 3, segs: 12, length: L * 0.56 * v, phase: random() * 100,
+                count: 3, segs: 12, length: L * 0.64 * v, phase: random() * 100,
                 lenProfile: [[0, 1.0], [1, 0.80]],
                 ragged: rag(3, 0.06)
             });
 
             // Pectorals — the near-invisible fans that never stop beating.
-            this.pecN = new Fin({ count: 8, segs: 5, length: L * 0.27, phase: random() * 100,
-                lenProfile: [[0, 0.70], [0.45, 1.0], [1, 0.72]], ragged: rag(8, 0.03) });
-            this.pecF = new Fin({ count: 8, segs: 5, length: L * 0.25, phase: random() * 100,
-                lenProfile: [[0, 0.70], [0.45, 1.0], [1, 0.72]], ragged: rag(8, 0.03) });
+            this.pecN = new Fin({ count: 6, segs: 4, length: L * 0.27, phase: random() * 100,
+                lenProfile: [[0, 0.70], [0.45, 1.0], [1, 0.72]], ragged: rag(6, 0.03) });
+            this.pecF = new Fin({ count: 6, segs: 4, length: L * 0.25, phase: random() * 100,
+                lenProfile: [[0, 0.70], [0.45, 1.0], [1, 0.72]], ragged: rag(6, 0.03) });
         }
 
         // ── LOCOMOTION ─────────────────────────────────────────────────
@@ -937,18 +947,20 @@
             for (const o of others) {
                 if (o === this) continue;
                 const d = Math.hypot(o.x - this.x, o.y - this.y);
-                if (d < this.len * 2.1) {
+                if (d < this.len * 3.0) {
                     this.flare = Math.min(1, this.flare + dt * 1.3 * this.boldness);
-                    // and a little personal space
+                    // and a little personal space — measured against the veil,
+                    // which is most of what these two would actually collide with
                     const a = Math.atan2(this.y - o.y, this.x - o.x);
-                    tx += Math.cos(a) * 160; ty += Math.sin(a) * 160;
+                    const push = 380 * (1 - d / (this.len * 3.0));
+                    tx += Math.cos(a) * push; ty += Math.sin(a) * push;
                 }
             }
             this.flare = Math.max(0, this.flare - dt * 0.55);
 
             // walls — the margin has to clear the veil, not the body. A betta's
             // caudal reaches most of a body-length past the peduncle.
-            const m = this.len * 1.35;
+            const m = this.len * 1.75;
             if (this.x < m)         tx = Math.max(tx, m + 320);
             if (this.x > W - m)     tx = Math.min(tx, W - m - 320);
             if (this.y < SURFACE + m * 0.55 && this.rise <= 0) ty = Math.max(ty, SURFACE + m * 0.9);
@@ -976,8 +988,10 @@
             this.speed = this.throttle * this.len * 0.021;
             this.x += Math.cos(this.head) * this.speed * dt * 60;
             this.y += Math.sin(this.head) * this.speed * dt * 60;
-            this.x = clamp(this.x, this.len * 0.35, W - this.len * 0.35);
-            this.y = clamp(this.y, SURFACE + this.len * 0.20, H - this.len * 0.30);
+            // the hard clamp has to know about the veil too, or a large specimen
+            // parks its caudal outside the frame
+            this.x = clamp(this.x, this.len * 0.80, W - this.len * 0.80);
+            this.y = clamp(this.y, SURFACE + this.len * 0.35, H - this.len * 0.62);
             this.mouth = Math.max(0, this.mouth - dt * 2.4);
         }
 
@@ -1049,8 +1063,8 @@
         solveFins() {
             const soft = params.finSoftness;
             // stiff enough to hold the fan open, soft enough to trail
-            const stiffBase = lerpv(0.80, 0.30, soft);
-            const flutter = lerpv(0.10, 0.52, soft) * this.len * 0.012 + params.current * 0.22;
+            const stiffBase = lerpv(0.94, 0.52, soft);
+            const flutter = lerpv(0.08, 0.34, soft) * this.len * 0.010 + params.current * 0.14;
             const cur = this.currentAt();
             const flare = this.flare;
 
@@ -1070,13 +1084,13 @@
                     const d = Math.hypot(dx, dy) || 1; dx /= d; dy /= d;
                     const rx = p.x + p.nx * p.w * s * 0.55;
                     const ry = p.y + p.ny * p.w * s * 0.55;
-                    f.rays[i].solve(rx, ry, dx, dy, stiffBase * 0.86, s * 0.004, flutter, cur);
+                    f.rays[i].solve(rx, ry, dx, dy, stiffBase * 0.92, s * 0.004, flutter, cur);
                 }
             }
 
             // dorsal — rises clear of the back before trailing, so it reads as
             // its own plane instead of dissolving into the caudal
-            this.solveEdgeFin(this.dorsal, +1, 0.34, 0.96, 1.58, 1.02, stiffBase * 0.78, flutter, cur, flare);
+            this.solveEdgeFin(this.dorsal, +1, 0.34, 0.96, 1.36, 0.82, stiffBase * 0.78, flutter, cur, flare);
             // anal
             this.solveEdgeFin(this.anal,   -1, 0.36, 1.00, 1.22, 0.42, stiffBase * 0.64, flutter, cur, flare);
             // pelvic ribbons
@@ -1271,27 +1285,48 @@
             blendMode(BLEND);
             noStroke();
 
-            // scale rows — individual arcs sampling the same interference field
+            // ── SCALES ─────────────────────────────────────────────────
+            // The reticulated metallic mesh is the single most recognisable
+            // thing about this animal, and it is not a texture — it is a
+            // staggered lattice of overlapping plates, each one a small mirror.
+            // Every plate gets a shadow on its leading edge and a lit rim on
+            // its trailing edge; that pair is what makes the flank read as
+            // armour rather than as paint.
             const irid = params.iridescence;
             if (irid > 0.02) {
-                const R = 6, C = 16, hz = this.haze;
+                const ROWS = 7, COLS = 16, hz = this.haze;
+                const rimH = pal.sheen[0] + this.hueOffset;
                 noFill();
-                for (let r = 1; r < R; r++) {
-                    const v = 0.10 + (r / R) * 0.80;
-                    for (let c = 1; c < C; c++) {
-                        const u = 0.10 + (c / C) * 0.84;
-                        const p = this.pointAt(u, 1 - 2 * v);
-                        const sh = noise(u * 6.5, v * 5.0, T * 0.45 + this.wanderSeed * 0.3);
-                        // only the scales the light happens to catch, never a grid
-                        const a = Math.pow(Math.max(0, sh - 0.46), 1.3) * 760 * irid * hz
-                                * (0.30 + 0.70 * Math.exp(-Math.pow((v - 0.45) / 0.36, 2)));
-                        if (a < 4) continue;
-                        const col = hsv2rgb(pal.sheen[0] + this.hueOffset + (sh - 0.5) * 90, 0.28, 1);
-                        stroke(col[0], col[1], col[2], a);
-                        strokeWeight(Math.max(0.5, this.len * 0.005));
-                        const rad = this.len * 0.026 * (0.7 + p.w / (this.len * 0.2) * 0.4);
+                for (let r = 0; r < ROWS; r++) {
+                    const v = lerpv(0.86, -0.62, r / (ROWS - 1));
+                    const stagger = (r % 2) * 0.5;
+                    for (let c = 0; c < COLS; c++) {
+                        const u = 0.125 + ((c + stagger) / COLS) * 0.70;
+                        if (u > 0.83) continue;
+                        const p = this.pointAt(u, v);
+                        const sh = noise(u * 5.2, v * 3.2, T * 0.38 + this.wanderSeed * 0.3);
+                        // light falls from above: the upper flank catches most
+                        const lit = Math.exp(-Math.pow((v - 0.34) / 0.78, 2));
+                        // and the mesh dissolves toward the belly, as it does in life
+                        const fade = smoothstep(-0.75, -0.15, v);
+                        const rim = (0.30 + 0.70 * sh) * lit * fade * irid * hz;
+                        if (rim < 0.035) continue;
+
+                        const rad = this.len * 0.030 * (0.62 + 0.38 * (p.w / (this.len * 0.24)));
                         const ang = Math.atan2(p.fy, p.fx);
-                        arc(p.x, p.y, rad * 2, rad * 2.4, ang + Math.PI * 0.62, ang + Math.PI * 1.38);
+                        const w = Math.max(0.6, this.len * 0.0055);
+
+                        // seated shadow — gives each plate its thickness
+                        stroke(0, 0, 0, 92 * rim);
+                        strokeWeight(w * 1.25);
+                        arc(p.x - p.fx * w * 0.8, p.y - p.fy * w * 0.8,
+                            rad * 2, rad * 2.15, ang + Math.PI * 0.58, ang + Math.PI * 1.42);
+
+                        // lit rim — hue shifts with the interference field
+                        const col = hsv2rgb(rimH + (sh - 0.5) * 74 * irid, 0.30, 1);
+                        stroke(col[0], col[1], col[2], 235 * rim);
+                        strokeWeight(w);
+                        arc(p.x, p.y, rad * 2, rad * 2.15, ang + Math.PI * 0.62, ang + Math.PI * 1.38);
                     }
                 }
                 noStroke();
@@ -1411,39 +1446,59 @@
                 ctx.closePath();
             };
 
-            // radial gradient anchored at the attachment
-            const r0 = f.rays[0].p[0], r1 = f.rays[C - 1].p[0];
-            const cx = (r0.x + r1.x) * 0.5, cy = (r0.y + r1.y) * 0.5;
-            const reach = f.length * 1.05 + 1;
             const breathe = 0.5 + 0.5 * Math.sin(T * 0.7 + f.phase);
 
-            // Tissue, not paint. Translucent at the attachment where it is
-            // thinnest, densest through the mid-web, thinning again at the
-            // margin — with the saturation peak sitting inboard of the edge.
+            // Tissue, not paint. One radial wash over the whole fin cannot
+            // produce what the reference photographs actually show: colour that
+            // varies with ANGLE as well as radius, so the veil reads as dozens
+            // of adjacent bands rather than a single dyed sheet. So each pair of
+            // neighbouring rays gets its own strip with its own root→margin
+            // gradient, and the strips are hue-offset against each other.
             ctx.save();
-            const g = ctx.createRadialGradient(cx, cy, reach * 0.04, cx, cy, reach);
-            g.addColorStop(0.00, rgba(H0, 0.50 * sat, 0.38 * dim, 0.20 * alphaScale));
-            g.addColorStop(0.22, rgba(lerpHue(H0, H1, 0.26) + irid * 12 * breathe, 0.68 * sat, 0.46 * dim, 0.30 * alphaScale));
-            g.addColorStop(0.52, rgba(lerpHue(H0, H1, 0.66), 0.86 * sat, 0.58 * dim, 0.40 * alphaScale));
-            g.addColorStop(0.80, rgba(H1, 0.92 * sat, 0.70 * dim, 0.34 * alphaScale));
-            g.addColorStop(0.95, rgba(H1, 0.86 * sat, 0.86 * dim, 0.18 * alphaScale));
-            g.addColorStop(1.00, rgba(H1, 0.80 * sat, 0.95 * dim, 0.05 * alphaScale));
-            ctx.fillStyle = g;
-            outline();
-            ctx.fill();
+            for (let i = 0; i < C - 1; i++) {
+                const A = f.rays[i].p, B = f.rays[i + 1].p;
+                const s = (f.rays[i].coord + f.rays[i + 1].coord) * 0.5;
+                // banding across the fan — low frequency, so it reads as
+                // pigment sectors, not as noise
+                const band = (noise(s * 3.4, f.phase * 0.6) - 0.5);
+                const jitH = band * 52 * (0.4 + irid);
+                const jitA = 0.78 + 0.34 * noise(s * 2.7 + 11, f.phase * 0.6);
+
+                const gx0 = (A[0].x + B[0].x) * 0.5, gy0 = (A[0].y + B[0].y) * 0.5;
+                const gx1 = (A[n].x + B[n].x) * 0.5, gy1 = (A[n].y + B[n].y) * 0.5;
+                const g = ctx.createLinearGradient(gx0, gy0, gx1, gy1);
+                const aS = alphaScale * jitA;
+                g.addColorStop(0.00, rgba(H0 + jitH * 0.4, 0.54 * sat, 0.54 * dim, 0.34 * aS));
+                g.addColorStop(0.24, rgba(lerpHue(H0, H1, 0.28) + jitH * 0.7 + irid * 10 * breathe, 0.74 * sat, 0.70 * dim, 0.52 * aS));
+                g.addColorStop(0.56, rgba(lerpHue(H0, H1, 0.68) + jitH, 0.90 * sat, 0.84 * dim, 0.54 * aS));
+                g.addColorStop(0.84, rgba(H1 + jitH * 0.8, 0.94 * sat, 0.94 * dim, 0.46 * aS));
+                g.addColorStop(1.00, rgba(H1 + jitH * 0.5, 0.80 * sat, 1.00 * dim, 0.10 * aS));
+                ctx.fillStyle = g;
+
+                ctx.beginPath();
+                ctx.moveTo(A[0].x, A[0].y);
+                for (let j = 1; j <= n; j++) ctx.lineTo(A[j].x, A[j].y);
+                ctx.lineTo(B[n].x, B[n].y);
+                for (let j = n - 1; j >= 0; j--) ctx.lineTo(B[j].x, B[j].y);
+                ctx.closePath();
+                ctx.fill();
+            }
             ctx.restore();
 
             // ── the webbing ───────────────────────────────────────────
             // Fin rays are the visible architecture of the fin. Without them
             // a betta's caudal is a paper cut-out; with them it is tissue.
-            const wRay = Math.max(0.6, this.len * 0.0034);
+            const wRay = Math.max(0.7, this.len * 0.0042);
             for (let i = 0; i < C; i++) {
                 const P = f.rays[i].p;
                 const s = f.rays[i].coord;
                 // the sheet folds; light finds some rays and misses others
                 const fold = noise(s * 2.6, T * 0.42 + f.phase);
                 const bright = smoothstep(0.46, 0.86, fold);
-                const va = (0.12 + bright * 0.30) * alphaScale * hz;
+                // reference fins are streaked, not evenly washed: neighbouring
+                // rays carry visibly different hues along their whole length
+                const jit = (noise(s * 5.2, f.phase * 0.7) - 0.5) * 46;
+                const va = (0.24 + bright * 0.46) * alphaScale * hz;
                 ctx.save();
                 ctx.lineWidth = wRay * (0.8 + bright * 0.9);
                 ctx.lineCap = 'round';
@@ -1453,9 +1508,8 @@
                 // Rays must emerge from the body, never terminate against it —
                 // a hard root end reads as a black comb along the animal's back.
                 const SEG = [
-                    [0, 0.30, rgba(H0, 0.38 * sat, 0.80 * dim, va * 0.30)],
-                    [Math.max(1, Math.floor(n * 0.26)), 0.68, rgba(lerpHue(H0, H1, 0.5), 0.34 * sat, 0.95 * dim, va)],
-                    [Math.max(2, Math.floor(n * 0.62)), 1.00, rgba(H1, 0.28 * sat, 1.00 * dim, va * 0.82)]
+                    [0, 0.34, rgba(H0 + jit * 0.5, 0.46 * sat, 0.88 * dim, va * 0.40)],
+                    [Math.max(1, Math.floor(n * 0.28)), 1.00, rgba(lerpHue(H0, H1, 0.62) + jit, 0.38 * sat, 1.00 * dim, va * 1.15)]
                 ];
                 for (const [j0, jf, col] of SEG) {
                     const j1 = Math.round(n * jf);
@@ -1656,7 +1710,7 @@
         // Each shaft is laid down three times at decreasing width and rising
         // intensity. Hard-edged wedges read as cut paper; nested falloff reads
         // as light scattering through a volume.
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < 4; i++) {
             const nx = noise(i * 13.1, T * 0.040);
             const x = nx * W * 1.3 - W * 0.15;
             const wBase = 70 + noise(i * 7.7, T * 0.026) * 190;
