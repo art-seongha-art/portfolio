@@ -1,0 +1,1893 @@
+<!DOCTYPE html>
+<!--
+    LABYRINTH CURRENTS
+    Interactive betta simulation — algorithmic philosophy expressed in p5.js
+    Built on the generative-art viewer template (Anthropic branding preserved).
+-->
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Labyrinth Currents — 베타의 물살</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Lora:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        /* Anthropic Brand Colors */
+        :root {
+            --anthropic-dark: #141413;
+            --anthropic-light: #faf9f5;
+            --anthropic-mid-gray: #b0aea5;
+            --anthropic-light-gray: #e8e6dc;
+            --anthropic-orange: #d97757;
+            --anthropic-blue: #6a9bcc;
+            --anthropic-green: #788c5d;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, var(--anthropic-light) 0%, #f5f3ee 100%);
+            min-height: 100vh;
+            color: var(--anthropic-dark);
+        }
+
+        .container {
+            display: flex;
+            min-height: 100vh;
+            padding: 20px;
+            gap: 20px;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 320px;
+            flex-shrink: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(20, 20, 19, 0.1);
+            overflow-y: auto;
+            overflow-x: hidden;
+            max-height: calc(100vh - 40px);
+        }
+
+        .sidebar h1 {
+            font-family: 'Lora', serif;
+            font-size: 24px;
+            font-weight: 500;
+            color: var(--anthropic-dark);
+            margin-bottom: 8px;
+        }
+
+        .sidebar .subtitle {
+            color: var(--anthropic-mid-gray);
+            font-size: 14px;
+            margin-bottom: 32px;
+            line-height: 1.4;
+        }
+
+        /* Control Sections */
+        .control-section {
+            margin-bottom: 32px;
+        }
+
+        .control-section h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--anthropic-dark);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .control-section h3::before {
+            content: '•';
+            color: var(--anthropic-orange);
+            font-weight: bold;
+        }
+
+        /* Seed Controls */
+        .seed-input {
+            width: 100%;
+            background: var(--anthropic-light);
+            padding: 12px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            margin-bottom: 12px;
+            border: 1px solid var(--anthropic-light-gray);
+            text-align: center;
+        }
+
+        .seed-input:focus {
+            outline: none;
+            border-color: var(--anthropic-orange);
+            box-shadow: 0 0 0 2px rgba(217, 119, 87, 0.1);
+            background: white;
+        }
+
+        .seed-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .regen-button {
+            margin-bottom: 0;
+        }
+
+        /* Parameter Controls */
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--anthropic-dark);
+            margin-bottom: 8px;
+        }
+
+        .control-group label .en {
+            color: var(--anthropic-mid-gray);
+            font-weight: 400;
+            font-size: 12px;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .slider-container input[type="range"] {
+            flex: 1;
+            height: 4px;
+            background: var(--anthropic-light-gray);
+            border-radius: 2px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider-container input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: var(--anthropic-orange);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .slider-container input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+            background: #c86641;
+        }
+
+        .slider-container input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: var(--anthropic-orange);
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .value-display {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: var(--anthropic-mid-gray);
+            min-width: 52px;
+            text-align: right;
+        }
+
+        /* Color Pickers */
+        .color-group {
+            margin-bottom: 16px;
+        }
+
+        .color-group label {
+            display: block;
+            font-size: 12px;
+            color: var(--anthropic-mid-gray);
+            margin-bottom: 4px;
+        }
+
+        .color-picker-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .color-picker-container input[type="color"] {
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            background: none;
+            padding: 0;
+        }
+
+        .color-value {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: var(--anthropic-mid-gray);
+        }
+
+        /* Palette presets */
+        .preset-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 18px;
+            flex-wrap: wrap;
+        }
+
+        .preset {
+            width: 38px;
+            height: 24px;
+            border-radius: 5px;
+            border: 1px solid rgba(20, 20, 19, 0.12);
+            cursor: pointer;
+            padding: 0;
+            transition: transform 0.15s ease;
+        }
+
+        .preset:hover { transform: translateY(-2px); }
+
+        /* Buttons */
+        .button {
+            background: var(--anthropic-orange);
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .button:hover {
+            background: #c86641;
+            transform: translateY(-1px);
+        }
+
+        .button:active {
+            transform: translateY(0);
+        }
+
+        .button.secondary {
+            background: var(--anthropic-blue);
+        }
+
+        .button.secondary:hover {
+            background: #5a8bb8;
+        }
+
+        .button.tertiary {
+            background: var(--anthropic-green);
+        }
+
+        .button.tertiary:hover {
+            background: #6b7b52;
+        }
+
+        .button-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .button-row .button {
+            flex: 1;
+        }
+
+        .hint {
+            font-size: 12px;
+            line-height: 1.5;
+            color: var(--anthropic-mid-gray);
+            border-left: 2px solid var(--anthropic-light-gray);
+            padding-left: 10px;
+        }
+
+        /* Canvas Area */
+        .canvas-area {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 0;
+        }
+
+        #canvas-container {
+            width: 100%;
+            max-width: 1200px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(20, 20, 19, 0.18);
+            background: #000;
+            position: relative;
+        }
+
+        #canvas-container canvas {
+            display: block;
+            width: 100% !important;
+            height: auto !important;
+            cursor: crosshair;
+        }
+
+        /* Loading State */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: var(--anthropic-mid-gray);
+            min-height: 400px;
+        }
+
+        /* Responsive - Stack on mobile */
+        @media (max-width: 600px) {
+            .container {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                max-height: none;
+            }
+
+            .canvas-area {
+                padding: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Control Sidebar -->
+        <div class="sidebar">
+            <h1>Labyrinth Currents</h1>
+            <div class="subtitle">베타의 물살 — 지연으로 빚어낸 유영 시뮬레이션. 클릭하면 먹이를 줄 수 있습니다.</div>
+
+            <!-- Seed Section -->
+            <div class="control-section">
+                <h3>Seed</h3>
+                <input type="number" id="seed-input" class="seed-input" value="12345" onchange="updateSeed()">
+                <div class="seed-controls">
+                    <button class="button secondary" onclick="previousSeed()">← Prev</button>
+                    <button class="button secondary" onclick="nextSeed()">Next →</button>
+                </div>
+                <button class="button tertiary regen-button" onclick="randomSeedAndUpdate()">↻ Random</button>
+            </div>
+
+            <!-- Parameters Section -->
+            <div class="control-section">
+                <h3>Parameters</h3>
+
+                <div class="control-group">
+                    <label>개체 수 <span class="en">/ Fish Count</span></label>
+                    <div class="slider-container">
+                        <input type="range" id="fishCount" min="1" max="5" step="1" value="2" oninput="updateParam('fishCount', this.value)">
+                        <span class="value-display" id="fishCount-value">2</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>몸 크기 <span class="en">/ Body Scale</span></label>
+                    <div class="slider-container">
+                        <input type="range" id="bodyScale" min="0.55" max="1.7" step="0.05" value="1" oninput="updateParam('bodyScale', this.value)">
+                        <span class="value-display" id="bodyScale-value">1.00</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>유영 활력 <span class="en">/ Swim Vigor</span></label>
+                    <div class="slider-container">
+                        <input type="range" id="vigor" min="0.2" max="2" step="0.05" value="0.9" oninput="updateParam('vigor', this.value)">
+                        <span class="value-display" id="vigor-value">0.90</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>지느러미 크기 <span class="en">/ Fin Fullness</span></label>
+                    <div class="slider-container">
+                        <input type="range" id="finFullness" min="0.5" max="1.8" step="0.05" value="1.1" oninput="updateParam('finFullness', this.value)">
+                        <span class="value-display" id="finFullness-value">1.10</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>지느러미 하늘거림 <span class="en">/ Fin Softness</span></label>
+                    <div class="slider-container">
+                        <input type="range" id="finSoftness" min="0.05" max="0.95" step="0.05" value="0.55" oninput="updateParam('finSoftness', this.value)">
+                        <span class="value-display" id="finSoftness-value">0.55</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>비늘 광택 <span class="en">/ Iridescence</span></label>
+                    <div class="slider-container">
+                        <input type="range" id="iridescence" min="0" max="1" step="0.05" value="0.62" oninput="updateParam('iridescence', this.value)">
+                        <span class="value-display" id="iridescence-value">0.62</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>물의 잔상 <span class="en">/ Water Persistence</span></label>
+                    <div class="slider-container">
+                        <input type="range" id="persistence" min="0" max="0.94" step="0.02" value="0.42" oninput="updateParam('persistence', this.value)">
+                        <span class="value-display" id="persistence-value">0.42</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>부유물 <span class="en">/ Suspended Motes</span></label>
+                    <div class="slider-container">
+                        <input type="range" id="motes" min="0" max="420" step="10" value="180" oninput="updateParam('motes', this.value)">
+                        <span class="value-display" id="motes-value">180</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>수면 광선 <span class="en">/ Light Shafts</span></label>
+                    <div class="slider-container">
+                        <input type="range" id="lightShafts" min="0" max="1.4" step="0.05" value="0.7" oninput="updateParam('lightShafts', this.value)">
+                        <span class="value-display" id="lightShafts-value">0.70</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>물살 <span class="en">/ Current</span></label>
+                    <div class="slider-container">
+                        <input type="range" id="current" min="0" max="1.6" step="0.05" value="0.5" oninput="updateParam('current', this.value)">
+                        <span class="value-display" id="current-value">0.50</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Colors Section -->
+            <div class="control-section">
+                <h3>Colors</h3>
+
+                <div class="preset-row">
+                    <button class="preset" title="Royal Blue"   style="background:linear-gradient(90deg,#0b1d5c,#3fd2ff,#ff2f6e)" onclick="applyPreset('#0b1d5c','#3fd2ff','#ff2f6e')"></button>
+                    <button class="preset" title="Crimson"      style="background:linear-gradient(90deg,#3d0410,#ff5a3c,#ffd166)" onclick="applyPreset('#3d0410','#ff5a3c','#ffd166')"></button>
+                    <button class="preset" title="Galaxy Koi"   style="background:linear-gradient(90deg,#101a3a,#e8ecf5,#ff4d5e)" onclick="applyPreset('#101a3a','#e8ecf5','#ff4d5e')"></button>
+                    <button class="preset" title="Emerald"      style="background:linear-gradient(90deg,#02251d,#2ef0b0,#7d5bff)" onclick="applyPreset('#02251d','#2ef0b0','#7d5bff')"></button>
+                    <button class="preset" title="Copper Gold"  style="background:linear-gradient(90deg,#2b1403,#ffb03a,#ff5ecb)" onclick="applyPreset('#2b1403','#ffb03a','#ff5ecb')"></button>
+                    <button class="preset" title="Ink Wash"     style="background:linear-gradient(90deg,#0d0d12,#9fb6c9,#5f7fff)" onclick="applyPreset('#0d0d12','#9fb6c9','#5f7fff')"></button>
+                </div>
+
+                <div class="color-group">
+                    <label>등 · 심부색 / Body Deep</label>
+                    <div class="color-picker-container">
+                        <input type="color" id="color1" value="#0b1d5c" onchange="updateColor('color1', this.value)">
+                        <span class="color-value" id="color1-value">#0b1d5c</span>
+                    </div>
+                </div>
+
+                <div class="color-group">
+                    <label>측면 · 광택색 / Body Sheen</label>
+                    <div class="color-picker-container">
+                        <input type="color" id="color2" value="#3fd2ff" onchange="updateColor('color2', this.value)">
+                        <span class="color-value" id="color2-value">#3fd2ff</span>
+                    </div>
+                </div>
+
+                <div class="color-group">
+                    <label>지느러미 끝 / Fin Edge</label>
+                    <div class="color-picker-container">
+                        <input type="color" id="color3" value="#ff2f6e" onchange="updateColor('color3', this.value)">
+                        <span class="color-value" id="color3-value">#ff2f6e</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions Section -->
+            <div class="control-section">
+                <h3>Actions</h3>
+                <div class="button-row">
+                    <button class="button" onclick="regenerate()">Regenerate</button>
+                    <button class="button" onclick="resetParameters()">Reset</button>
+                </div>
+                <div class="button-row">
+                    <button class="button secondary" id="pause-btn" onclick="togglePause()">‖ Pause</button>
+                    <button class="button tertiary" onclick="downloadPNG()">↓ PNG</button>
+                </div>
+                <div class="hint">
+                    캔버스를 클릭하면 먹이가 떨어지고, 물고기가 달려옵니다. 마우스를 천천히 움직이면 호기심을 보이며 따라옵니다.
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Canvas Area -->
+        <div class="canvas-area">
+            <div id="canvas-container">
+                <div class="loading">Initializing water…</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ═══════════════════════════════════════════════════════════════════════
+    //  LABYRINTH CURRENTS
+    //  Nothing here is drawn. Everything is propagated.
+    // ═══════════════════════════════════════════════════════════════════════
+
+    let params = {
+        seed: 12345,
+        fishCount: 2,
+        bodyScale: 1.0,
+        vigor: 0.9,
+        finFullness: 1.1,
+        finSoftness: 0.55,
+        iridescence: 0.62,
+        persistence: 0.42,
+        motes: 180,
+        lightShafts: 0.7,
+        current: 0.5,
+        colorPalette: ['#0b1d5c', '#3fd2ff', '#ff2f6e']
+    };
+
+    const defaultParams = JSON.parse(JSON.stringify(params));
+
+    const W = 1440, H = 900;
+    const SURFACE = 46;                    // y of the water ceiling
+
+    let fishes = [], motes = [], bubbles = [], foods = [], nest = [], ripples = [];
+    let paused = false;
+    let T = 0;                             // simulation clock (seconds-ish)
+    let pal = { deep: null, sheen: null, edge: null };
+    let pointer = { x: W * 0.5, y: H * 0.5, px: W * 0.5, py: H * 0.5, vx: 0, vy: 0, inside: false, active: 0, everMoved: false };
+    let hintFade = 1;
+
+    // ───────────────────────────────────────────────────────────────────────
+    //  COLOR — worked in HSV so interference shifts stay physical
+    // ───────────────────────────────────────────────────────────────────────
+
+    function hexToRgb(hex) {
+        const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return m ? [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)] : [255, 255, 255];
+    }
+
+    function rgb2hsv(r, g, b) {
+        r /= 255; g /= 255; b /= 255;
+        const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+        let h = 0;
+        if (d > 1e-6) {
+            if (mx === r)      h = 60 * (((g - b) / d) % 6);
+            else if (mx === g) h = 60 * ((b - r) / d + 2);
+            else               h = 60 * ((r - g) / d + 4);
+        }
+        if (h < 0) h += 360;
+        return [h, mx < 1e-6 ? 0 : d / mx, mx];
+    }
+
+    function hsv2rgb(h, s, v) {
+        h = ((h % 360) + 360) % 360;
+        s = Math.min(1, Math.max(0, s));
+        v = Math.min(1, Math.max(0, v));
+        const c = v * s, x = c * (1 - Math.abs(((h / 60) % 2) - 1)), m = v - c;
+        let r = 0, g = 0, b = 0;
+        if (h < 60)       { r = c; g = x; }
+        else if (h < 120) { r = x; g = c; }
+        else if (h < 180) { g = c; b = x; }
+        else if (h < 240) { g = x; b = c; }
+        else if (h < 300) { r = x; b = c; }
+        else              { r = c; b = x; }
+        return [(r + m) * 255, (g + m) * 255, (b + m) * 255];
+    }
+
+    function rebuildPalette() {
+        pal.deep  = rgb2hsv(...hexToRgb(params.colorPalette[0]));
+        pal.sheen = rgb2hsv(...hexToRgb(params.colorPalette[1]));
+        pal.edge  = rgb2hsv(...hexToRgb(params.colorPalette[2]));
+    }
+
+    // ───────────────────────────────────────────────────────────────────────
+    //  MATH
+    // ───────────────────────────────────────────────────────────────────────
+
+    const TAU = Math.PI * 2;
+    function angDiff(a, b) { let d = (a - b) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return d; }
+    // Hue lives on a circle. A linear blend from 350° to 13° travels backwards
+    // through green and paints a rainbow down the flank — always take the arc.
+    function lerpHue(a, b, t) { return a + ((((b - a) % 360) + 540) % 360 - 180) * t; }
+    function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
+    function lerpv(a, b, t) { return a + (b - a) * t; }
+    function smoothstep(e0, e1, x) { const t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); }
+
+    // Piecewise-linear profile sampler. Control points are the tuned constants
+    // that give this species its silhouette — they are load-bearing.
+    function sampleProfile(prof, u) {
+        const n = prof.length - 1;
+        if (u <= prof[0][0]) return prof[0][1];
+        if (u >= prof[n][0]) return prof[n][1];
+        for (let i = 0; i < n; i++) {
+            if (u <= prof[i + 1][0]) {
+                const t = (u - prof[i][0]) / (prof[i + 1][0] - prof[i][0]);
+                return lerpv(prof[i][1], prof[i + 1][1], t * t * (3 - 2 * t));
+            }
+        }
+        return prof[n][1];
+    }
+
+    // Betta splendens — deep-bodied, belly heavier than back, blunt rounded snout.
+    // Domain runs from -0.075 (ahead of the snout) so the head cap closes smoothly.
+    // The back runs nearly straight and the taper is deferred to the last third.
+    // Peak depth too far forward turns the animal into a tadpole.
+    const TOP_PROFILE = [
+        [-0.075, 0.000], [-0.071, 0.052], [-0.060, 0.102], [-0.040, 0.154],
+        [-0.010, 0.198], [0.040, 0.224], [0.120, 0.240], [0.240, 0.246],
+        [0.380, 0.240], [0.520, 0.222], [0.660, 0.188], [0.800, 0.132], [0.900, 0.084], [1.000, 0.032]
+    ];
+    const BOT_PROFILE = [
+        [-0.075, 0.000], [-0.071, 0.054], [-0.060, 0.108], [-0.040, 0.168],
+        [-0.010, 0.228], [0.040, 0.270], [0.120, 0.298], [0.240, 0.304],
+        [0.380, 0.294], [0.520, 0.264], [0.660, 0.212], [0.800, 0.146], [0.900, 0.090], [1.000, 0.032]
+    ];
+
+    // Dorsal→ventral shading ramp. Three facts of a real fish flank live here:
+    // a near-extinct back, one narrow iridescent lateral band, and a belly that
+    // counter-shades pale without ever becoming a highlight.
+    const RAMP_HUE = [[0, 0.05], [0.14, 0.10], [0.30, 0.55], [0.44, 0.95], [0.58, 0.72], [0.74, 0.45], [0.88, 0.30], [1, 0.35]];
+    const RAMP_SAT = [[0, 1.00], [0.14, 1.00], [0.30, 0.86], [0.44, 0.70], [0.58, 0.88], [0.74, 0.92], [0.88, 0.55], [1, 0.30]];
+    const RAMP_VAL = [[0, 0.22], [0.14, 0.38], [0.30, 0.68], [0.44, 0.88], [0.58, 0.64], [0.74, 0.46], [0.88, 0.42], [1, 0.58]];
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  FIN RAY — a pinned Verlet rope with graded bend stiffness.
+    //  The membrane between two of these is not authored; it falls out.
+    // ═══════════════════════════════════════════════════════════════════════
+
+    class FinRay {
+        constructor(segs, segLen, phase, coord) {
+            this.n = segs;
+            this.segLen = segLen;
+            this.phase = phase;      // per-fin, not per-ray: neighbours must correlate
+            this.coord = coord;      // 0..1 across the fan
+            this.p = new Array(segs + 1);
+            this.q = new Array(segs + 1);
+            for (let i = 0; i <= segs; i++) { this.p[i] = { x: 0, y: 0 }; this.q[i] = { x: 0, y: 0 }; }
+            this.seeded = false;
+        }
+
+        place(rx, ry, dx, dy) {
+            for (let i = 0; i <= this.n; i++) {
+                this.p[i].x = rx + dx * this.segLen * i;
+                this.p[i].y = ry + dy * this.segLen * i;
+                this.q[i].x = this.p[i].x;
+                this.q[i].y = this.p[i].y;
+            }
+            this.seeded = true;
+        }
+
+        // rootX/Y : world attachment. dirX/Y : rest direction (unit).
+        // stiff : bend stiffness at the root, decaying toward the tip.
+        // curl  : per-segment rest curvature — the natural arc of the veil.
+        solve(rootX, rootY, dirX, dirY, stiff, curl, flutter, drift) {
+            if (!this.seeded) this.place(rootX, rootY, dirX, dirY);
+
+            const n = this.n, L = this.segLen;
+
+            // Ambient forcing, coherent ACROSS the fan. Neighbouring rays must
+            // share a noise neighbourhood or the veil reads as a torn net
+            // instead of a single sheet of silk. This is the whole trick.
+            const c = this.coord;
+            const px = -dirY, py = dirX;                 // perpendicular to the ray
+            for (let i = 1; i <= n; i++) {
+                const P = this.p[i], Q = this.q[i];
+                const vx = (P.x - Q.x) * 0.90;
+                const vy = (P.y - Q.y) * 0.90;
+                Q.x = P.x; Q.y = P.y;
+                const t = i / n;
+                const nz = noise(this.phase + c * 1.7, i * 0.24, T * 0.50) - 0.5;
+                // a wave travelling root → tip, phase-shifted across the fan
+                const wv = Math.sin(T * 2.1 + this.phase * 3.1 - t * 3.4 + c * 2.2) * 0.32;
+                const amp = flutter * (0.18 + t * t * 2.0);
+                const f = (nz * 1.5 + wv) * amp;
+                P.x += vx + px * f + drift.x * t * t;
+                P.y += vy + py * f + drift.y * t * t + 0.010 * t * t * L;
+            }
+
+            this.p[0].x = rootX; this.p[0].y = rootY;
+
+            // constraint relaxation — length is inviolable, so the fin can never tear
+            for (let it = 0; it < 2; it++) {
+                let px = dirX, py = dirY;
+                let rx = dirX, ry = dirY;
+                for (let i = 1; i <= n; i++) {
+                    const t = (i - 1) / n;
+                    // rest direction curls progressively away from the root heading
+                    const ca = Math.cos(curl), sa = Math.sin(curl);
+                    const nrx = rx * ca - ry * sa, nry = rx * sa + ry * ca;
+                    rx = nrx; ry = nry;
+
+                    const A = this.p[i - 1], B = this.p[i];
+                    let dx = B.x - A.x, dy = B.y - A.y;
+                    const d = Math.sqrt(dx * dx + dy * dy) || 1;
+                    dx /= d; dy /= d;
+
+                    // blend the inertial direction toward the rest direction
+                    const k = stiff * (1 - 0.72 * t);
+                    let tx = dx + (rx - dx) * k;
+                    let ty = dy + (ry - dy) * k;
+                    // and keep it from folding back on the previous segment
+                    tx += (px - tx) * 0.18;
+                    ty += (py - ty) * 0.18;
+                    const tl = Math.sqrt(tx * tx + ty * ty) || 1;
+                    tx /= tl; ty /= tl;
+
+                    B.x = A.x + tx * L;
+                    B.y = A.y + ty * L;
+                    px = tx; py = ty;
+                }
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  FIN — a fan of rays plus the membrane they span
+    // ═══════════════════════════════════════════════════════════════════════
+
+    class Fin {
+        constructor(cfg) {
+            Object.assign(this, cfg);
+            this.rays = [];
+            for (let i = 0; i < this.count; i++) {
+                const s = this.count === 1 ? 0 : i / (this.count - 1);
+                const len = this.length * sampleProfile(this.lenProfile, s) * (1 + this.ragged[i]);
+                this.rays.push(new FinRay(this.segs, len / this.segs, this.phase, s));
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  BETTA
+    // ═══════════════════════════════════════════════════════════════════════
+
+    const NJ = 32;   // spine joints
+
+    class Betta {
+        constructor(idx, count) {
+            const r = () => random();
+
+            // ── genome (fixed by seed) ──────────────────────────────────
+            this.len = (232 + r() * 56) * params.bodyScale;
+            this.hueOffset = (r() - 0.5) * 20;
+            this.satBias   = 0.88 + r() * 0.20;
+            this.boldness  = 0.32 + r() * 0.62;
+            this.tempo     = 0.82 + r() * 0.42;
+            this.wanderSeed = r() * 400;
+            this.veil      = 0.86 + r() * 0.38;        // fin extravagance
+            this.tailSpread = 1.14 + r() * 0.30;       // ~65°–82° half-fan
+            this.z         = count === 1 ? 1 : 0.46 + (idx / Math.max(1, count - 1)) * 0.56 + (r() - 0.5) * 0.10;
+            this.z = clamp(this.z, 0.38, 1.06);
+            this.len *= lerpv(0.58, 1.04, this.z);
+
+            // ── state ───────────────────────────────────────────────────
+            this.x = W * (0.18 + r() * 0.64);
+            this.y = H * (0.22 + r() * 0.58);
+            this.head = r() * TAU;
+            this.speed = 0.6;
+            this.flip = Math.cos(this.head) >= 0 ? 1 : -1;
+            this.flipTarget = this.flip;
+            this.throttle = 0.4;
+            this.beatPhase = r() * TAU;
+            this.flare = 0;
+            this.air = r() * 0.75;                    // labyrinth organ: the debt to the surface
+            this.rise = 0;
+            this.hover = 0;
+            this.dart = 0;
+            this.dartCool = 40 + r() * 260;
+            this.mouth = 0;
+
+            this.ang = new Array(NJ).fill(this.head + Math.PI);
+            this.jx = new Array(NJ).fill(this.x);
+            this.jy = new Array(NJ).fill(this.y);
+            this.segL = this.len / (NJ - 1);
+            this.buildFins();
+            this.rebuildSpine();
+        }
+
+        buildFins() {
+            const L = this.len, v = this.veil * params.finFullness;
+            const rag = (n, amt) => { const a = []; for (let i = 0; i < n; i++) a.push((random() - 0.5) * amt); return a; };
+
+            // Caudal — the halfmoon. Rooted at the peduncle, fanned about the
+            // backward axis. The single most expensive thing to get right.
+            this.caudal = new Fin({
+                count: 23, segs: 12, length: L * 0.80 * v, phase: random() * 100,
+                lenProfile: [[0, 0.72], [0.16, 0.92], [0.5, 1.0], [0.84, 0.93], [1, 0.74]],
+                ragged: rag(23, 0.045)
+            });
+
+            // Dorsal — short at the front, trailing into a long veil at the rear.
+            this.dorsal = new Fin({
+                count: 15, segs: 10, length: L * 0.58 * v, phase: random() * 100,
+                lenProfile: [[0, 0.22], [0.3, 0.46], [0.62, 0.84], [0.86, 1.0], [1, 0.82]],
+                ragged: rag(15, 0.04)
+            });
+
+            // Anal — the longest fin on the animal, sweeping down and back.
+            this.anal = new Fin({
+                count: 18, segs: 11, length: L * 0.70 * v, phase: random() * 100,
+                lenProfile: [[0, 0.26], [0.28, 0.58], [0.6, 0.90], [0.87, 1.0], [1, 0.76]],
+                ragged: rag(18, 0.04)
+            });
+
+            // Pelvic — two ribbons under the throat. Almost no stiffness at all.
+            this.pelvic = new Fin({
+                count: 3, segs: 12, length: L * 0.56 * v, phase: random() * 100,
+                lenProfile: [[0, 1.0], [1, 0.80]],
+                ragged: rag(3, 0.06)
+            });
+
+            // Pectorals — the near-invisible fans that never stop beating.
+            this.pecN = new Fin({ count: 8, segs: 5, length: L * 0.27, phase: random() * 100,
+                lenProfile: [[0, 0.70], [0.45, 1.0], [1, 0.72]], ragged: rag(8, 0.03) });
+            this.pecF = new Fin({ count: 8, segs: 5, length: L * 0.25, phase: random() * 100,
+                lenProfile: [[0, 0.70], [0.45, 1.0], [1, 0.72]], ragged: rag(8, 0.03) });
+        }
+
+        // ── LOCOMOTION ─────────────────────────────────────────────────
+        rebuildSpine() {
+            this.jx[0] = this.x; this.jy[0] = this.y;
+            for (let i = 1; i < NJ; i++) {
+                this.jx[i] = this.jx[i - 1] + Math.cos(this.ang[i]) * this.segL;
+                this.jy[i] = this.jy[i - 1] + Math.sin(this.ang[i]) * this.segL;
+            }
+        }
+
+        // Drives, resolved by priority. Hunger outranks curiosity; curiosity
+        // outranks the need to breathe; underneath everything, a wander field.
+        think(dt, others) {
+            const nearSurface = this.y < SURFACE + this.len * 0.5;
+            // the debt accrues in tens of seconds, not minutes — a labyrinth fish
+            // that never has to surface is just a fish
+            this.air += dt * 0.030 * (0.6 + this.throttle);
+            let tx = null, ty = null, urgency = 0.5, feeding = false;
+
+            // 1. food
+            let best = -1, bestD = 1e9;
+            for (let i = 0; i < foods.length; i++) {
+                const f = foods[i];
+                const d = Math.hypot(f.x - this.x, f.y - this.y);
+                if (d < bestD) { bestD = d; best = i; }
+            }
+            if (best >= 0 && bestD < 520) {
+                tx = foods[best].x; ty = foods[best].y;
+                urgency = 1.0 + this.boldness * 0.55;
+                feeding = true;
+                if (bestD < this.len * 0.16) {
+                    foods.splice(best, 1);
+                    this.mouth = 1;
+                    this.air += 0.05;
+                    for (let k = 0; k < 3; k++) ripples.push(new Ripple(this.x, this.y, 8, 0.5));
+                }
+            }
+
+            // 2. curiosity at the glass
+            if (!feeding && pointer.inside && pointer.active > 0.08) {
+                const d = Math.hypot(pointer.x - this.x, pointer.y - this.y);
+                if (d < 460) {
+                    const stand = this.len * 0.85;
+                    const a = Math.atan2(pointer.y - this.y, pointer.x - this.x);
+                    tx = pointer.x - Math.cos(a) * stand;
+                    ty = pointer.y - Math.sin(a) * stand;
+                    urgency = 0.55 + this.boldness * 0.5;
+                    this.flare = Math.min(1, this.flare + dt * 1.6 * smoothstep(460, 200, d));
+                }
+            }
+
+            // 3. the labyrinth debt — rise, gulp, release
+            if (tx === null && this.air > 1) {
+                this.rise = 1;
+            }
+            if (this.rise > 0) {
+                tx = this.x + Math.cos(this.head) * 140;
+                ty = SURFACE + this.len * 0.20;
+                urgency = 0.85;
+                if (this.y < SURFACE + this.len * 0.34) {
+                    // breath taken
+                    this.air = 0; this.rise = 0; this.mouth = 1;
+                    const nb = 2 + Math.floor(random() * 3);
+                    for (let k = 0; k < nb; k++) {
+                        bubbles.push(new Bubble(this.x + (random() - 0.5) * 14, this.y - this.len * 0.1, 2 + random() * 3.4));
+                    }
+                    ripples.push(new Ripple(this.x, SURFACE + 3, 26, 1));
+                    // and, being what it is, it leaves a little architecture behind
+                    if (nest.length < 90 && random() < 0.62) {
+                        nest.push({ x: clamp(this.x + (random() - 0.5) * 90, 30, W - 30), r: 3 + random() * 6, a: 0, ph: random() * TAU });
+                    }
+                }
+            }
+
+            // 4. wander — layered noise, so no arc is ever traced twice
+            if (tx === null) {
+                const n1 = noise(this.wanderSeed, T * 0.052) - 0.5;
+                const n2 = noise(this.wanderSeed + 90, T * 0.017) - 0.5;
+                tx = W * 0.5 + n1 * W * 1.15 + n2 * W * 0.5;
+                ty = H * 0.52 + (noise(this.wanderSeed + 41, T * 0.043) - 0.5) * H * 1.15;
+                urgency = 0.30 + this.boldness * 0.34;
+                // hovering: bettas stall in place and simply hang there
+                const hv = noise(this.wanderSeed + 200, T * 0.09);
+                this.hover = lerpv(this.hover, hv > 0.63 ? 1 : 0, dt * 1.6);
+                urgency *= (1 - this.hover * 0.86);
+            } else {
+                this.hover = lerpv(this.hover, 0, dt * 3);
+            }
+
+            // territorial display toward a rival
+            for (const o of others) {
+                if (o === this) continue;
+                const d = Math.hypot(o.x - this.x, o.y - this.y);
+                if (d < this.len * 2.1) {
+                    this.flare = Math.min(1, this.flare + dt * 1.3 * this.boldness);
+                    // and a little personal space
+                    const a = Math.atan2(this.y - o.y, this.x - o.x);
+                    tx += Math.cos(a) * 160; ty += Math.sin(a) * 160;
+                }
+            }
+            this.flare = Math.max(0, this.flare - dt * 0.55);
+
+            // walls — the margin has to clear the veil, not the body. A betta's
+            // caudal reaches most of a body-length past the peduncle.
+            const m = this.len * 1.35;
+            if (this.x < m)         tx = Math.max(tx, m + 320);
+            if (this.x > W - m)     tx = Math.min(tx, W - m - 320);
+            if (this.y < SURFACE + m * 0.55 && this.rise <= 0) ty = Math.max(ty, SURFACE + m * 0.9);
+            if (this.y > H - m * 0.62) ty = Math.min(ty, H - m * 0.8);
+
+            // 5. the interruption — a dart. Never on a schedule, never random noise.
+            this.dartCool -= 1;
+            if (this.dart > 0) { this.dart = Math.max(0, this.dart - dt * 1.5); }
+            else if (this.dartCool < 0 && noise(this.wanderSeed + 700, T * 0.4) > 0.70) {
+                this.dart = 1;
+                this.dartCool = 90 + random() * 420;
+            }
+
+            // ── steer ──────────────────────────────────────────────────
+            const want = Math.atan2(ty - this.y, tx - this.x);
+            const dist = Math.hypot(tx - this.x, ty - this.y);
+            const turnRate = (0.055 + 0.045 * this.throttle) * (1 + this.dart * 0.6);
+            this.head += clamp(angDiff(want, this.head), -turnRate, turnRate) * dt * 60;
+
+            const arrive = smoothstep(0, this.len * 1.1, dist);
+            let target = urgency * arrive * (1 + this.dart * 2.1) * params.vigor * this.tempo;
+            target = clamp(target, 0.05, 3.2);
+            this.throttle = lerpv(this.throttle, target, dt * (target > this.throttle ? 4.5 : 1.9));
+
+            this.speed = this.throttle * this.len * 0.021;
+            this.x += Math.cos(this.head) * this.speed * dt * 60;
+            this.y += Math.sin(this.head) * this.speed * dt * 60;
+            this.x = clamp(this.x, this.len * 0.35, W - this.len * 0.35);
+            this.y = clamp(this.y, SURFACE + this.len * 0.20, H - this.len * 0.30);
+            this.mouth = Math.max(0, this.mouth - dt * 2.4);
+        }
+
+        // The one variable that carries both mirroring and foreshortening.
+        updateFlip(dt) {
+            const c = Math.cos(this.head);
+            if (c > 0.22) this.flipTarget = 1;
+            else if (c < -0.22) this.flipTarget = -1;
+            const rate = dt * 2.6;
+            this.flip += clamp(this.flipTarget - this.flip, -rate, rate);
+        }
+
+        updateSpine(dt) {
+            // tail beat — amplitude and frequency rise together, as in a real fish
+            const eff = clamp(this.throttle, 0, 3);
+            const freq = (0.9 + eff * 1.55) * this.tempo;
+            this.beatPhase += freq * dt * 6.0;
+            const amp = (0.020 + eff * 0.052) * (1 + this.hover * 0.35);
+            const waves = 1.15;
+
+            this.ang[0] = this.head + Math.PI;
+            for (let i = 1; i < NJ; i++) {
+                const u = i / (NJ - 1);
+                const curv = Math.sin(this.beatPhase - u * waves * TAU) * amp * Math.pow(u, 1.5)
+                           + (noise(this.wanderSeed + 12, u * 2.2, T * 0.5) - 0.5) * 0.022
+                           + this.flare * Math.sin(u * 2.4) * 0.020;
+                const target = this.ang[i - 1] + curv;
+                const follow = 0.30 + 0.22 * (1 - u);
+                this.ang[i] += angDiff(target, this.ang[i]) * clamp(follow * dt * 60, 0, 1);
+                const bend = clamp(angDiff(this.ang[i], this.ang[i - 1]), -0.30, 0.30);
+                this.ang[i] = this.ang[i - 1] + bend;
+            }
+            this.rebuildSpine();
+        }
+
+        // Local frame at joint i: forward (toward the head) and dorsal normal.
+        frame(i) {
+            let fx, fy;
+            if (i === 0) { fx = Math.cos(this.head); fy = Math.sin(this.head); }
+            else { fx = this.jx[i - 1] - this.jx[i]; fy = this.jy[i - 1] - this.jy[i];
+                   const d = Math.hypot(fx, fy) || 1; fx /= d; fy /= d; }
+            // signed by flip: as flip → 0 the animal turns edge-on and thins out
+            const f = this.flip;
+            return { fx, fy, nx: fy * f, ny: -fx * f };
+        }
+
+        pointAt(u, v) {
+            // u along the spine 0..1, v = signed offset in body half-widths (+ dorsal)
+            const fi = clamp(u * (NJ - 1), 0, NJ - 1.001);
+            const i = Math.floor(fi), t = fi - i;
+            const fr = this.frame(i), fr2 = this.frame(Math.min(NJ - 1, i + 1));
+            const x = lerpv(this.jx[i], this.jx[i + 1] !== undefined ? this.jx[i + 1] : this.jx[i], t);
+            const y = lerpv(this.jy[i], this.jy[i + 1] !== undefined ? this.jy[i + 1] : this.jy[i], t);
+            const nx = lerpv(fr.nx, fr2.nx, t), ny = lerpv(fr.ny, fr2.ny, t);
+            const fx = lerpv(fr.fx, fr2.fx, t), fy = lerpv(fr.fy, fr2.fy, t);
+            const pu = -0.075 + u * 1.075;
+            const w = (v >= 0 ? sampleProfile(TOP_PROFILE, pu) : sampleProfile(BOT_PROFILE, pu)) * this.len;
+            return { x: x + nx * w * v, y: y + ny * w * v, nx, ny, fx, fy, w };
+        }
+
+        update(dt, others) {
+            this.think(dt, others);
+            this.updateFlip(dt);
+            this.updateSpine(dt);
+            this.solveFins(dt);
+        }
+
+        // ── FIN SOLVING ────────────────────────────────────────────────
+        solveFins() {
+            const soft = params.finSoftness;
+            // stiff enough to hold the fan open, soft enough to trail
+            const stiffBase = lerpv(0.80, 0.30, soft);
+            const flutter = lerpv(0.10, 0.52, soft) * this.len * 0.012 + params.current * 0.22;
+            const cur = this.currentAt();
+            const flare = this.flare;
+
+            // caudal — fan about the backward axis at the peduncle
+            {
+                const p = this.pointAt(1.0, 0);
+                const bx = -p.fx, by = -p.fy;
+                const spread = this.tailSpread * (1 + flare * 0.16);
+                const f = this.caudal;
+                for (let i = 0; i < f.count; i++) {
+                    const s = (i / (f.count - 1)) * 2 - 1;
+                    const a = s * spread;
+                    // rotate the backward axis toward the dorsal normal by a
+                    const ca = Math.cos(a), sa = Math.sin(a);
+                    let dx = bx * ca + p.nx * sa * 1.0;
+                    let dy = by * ca + p.ny * sa * 1.0;
+                    const d = Math.hypot(dx, dy) || 1; dx /= d; dy /= d;
+                    const rx = p.x + p.nx * p.w * s * 0.55;
+                    const ry = p.y + p.ny * p.w * s * 0.55;
+                    f.rays[i].solve(rx, ry, dx, dy, stiffBase * 0.86, s * 0.004, flutter, cur);
+                }
+            }
+
+            // dorsal — rises clear of the back before trailing, so it reads as
+            // its own plane instead of dissolving into the caudal
+            this.solveEdgeFin(this.dorsal, +1, 0.34, 0.96, 1.58, 1.02, stiffBase * 0.78, flutter, cur, flare);
+            // anal
+            this.solveEdgeFin(this.anal,   -1, 0.36, 1.00, 1.22, 0.42, stiffBase * 0.64, flutter, cur, flare);
+            // pelvic ribbons
+            this.solveEdgeFin(this.pelvic, -1, 0.16, 0.23, 1.34, 1.12, stiffBase * 0.20, flutter * 1.5, cur, flare * 0.4);
+
+            // pectorals — driven, not passive. They beat whether or not the fish moves.
+            const beat = Math.sin(T * (7.5 + this.hover * 5.2) + this.wanderSeed);
+            const beat2 = Math.sin(T * (7.5 + this.hover * 5.2) + this.wanderSeed + 0.7);
+            this.solvePectoral(this.pecN, +0.34, beat, stiffBase, flutter, cur);
+            this.solvePectoral(this.pecF, -0.34, beat2, stiffBase, flutter, cur);
+        }
+
+        solveEdgeFin(f, side, u0, u1, sweep0, sweep1, stiff, flutter, cur, flare) {
+            for (let i = 0; i < f.count; i++) {
+                const s = f.count === 1 ? 0 : i / (f.count - 1);
+                const u = lerpv(u0, u1, s);
+                const p = this.pointAt(u, side * 0.97);
+                // sweep: PI/2 = straight out from the body, 0 = straight back
+                const sw = lerpv(sweep0, sweep1, s) * (1 + flare * 0.22);
+                const bx = -p.fx, by = -p.fy;
+                let dx = bx * Math.cos(sw) + side * p.nx * Math.sin(sw);
+                let dy = by * Math.cos(sw) + side * p.ny * Math.sin(sw);
+                const d = Math.hypot(dx, dy) || 1; dx /= d; dy /= d;
+                f.rays[i].solve(p.x, p.y, dx, dy, stiff, side * 0.012 * (1 - s), flutter, cur);
+            }
+        }
+
+        solvePectoral(f, depth, beat, stiff, flutter, cur) {
+            const p = this.pointAt(0.20, depth);
+            for (let i = 0; i < f.count; i++) {
+                const s = i / (f.count - 1);
+                const sw = lerpv(1.35, 0.35, s) + beat * 0.42;
+                const side = depth > 0 ? 1 : -1;
+                const bx = -p.fx, by = -p.fy;
+                let dx = bx * Math.cos(sw) + side * p.nx * Math.sin(sw) * 0.75 - p.fx * 0;
+                let dy = by * Math.cos(sw) + side * p.ny * Math.sin(sw) * 0.75;
+                const d = Math.hypot(dx, dy) || 1; dx /= d; dy /= d;
+                f.rays[i].solve(p.x, p.y, dx, dy, Math.max(0.45, stiff), 0.02, flutter * 0.4, cur);
+            }
+        }
+
+        currentAt() {
+            const c = params.current;
+            return {
+                x: (noise(this.x * 0.0016, this.y * 0.0016, T * 0.12) - 0.5) * c * 1.6,
+                y: (noise(this.x * 0.0016 + 40, this.y * 0.0016, T * 0.12) - 0.5) * c * 1.1
+            };
+        }
+
+        // ── RENDER ─────────────────────────────────────────────────────
+        get haze() { return clamp((this.z - 0.3) / 0.75, 0.18, 1); }
+
+        bodyColor(u, v) {
+            // v: 0 = dorsal ridge, 1 = ventral edge.  Lit from the surface above.
+            const irid = params.iridescence;
+            const shimmer = (noise(u * 2.4, v * 2.0, T * 0.40 + this.wanderSeed) - 0.5);
+
+            const hm  = sampleProfile(RAMP_HUE, v);
+            const sm  = sampleProfile(RAMP_SAT, v);
+            let   val = sampleProfile(RAMP_VAL, v);
+
+            let h = lerpHue(pal.deep[0], pal.sheen[0], hm) + this.hueOffset + shimmer * 26 * irid;
+            let s = lerpv(pal.deep[1], pal.sheen[1], hm) * sm * this.satBias;
+            val *= lerpv(clamp(pal.deep[2] * 1.5, 0.18, 1), pal.sheen[2], hm);
+
+            // The lateral band is a band, not a neon stripe: it fades in behind
+            // the gill, dies before the peduncle, and breaks up along its length.
+            const bandEnv = smoothstep(0.04, 0.30, u) * (1 - smoothstep(0.58, 0.94, u));
+            const bandBreak = 0.45 + 0.55 * noise(u * 3.6, T * 0.22 + this.wanderSeed);
+            const spec = Math.exp(-Math.pow((v - 0.44) / 0.21, 2));
+            val *= (0.84 + 0.16 * bandEnv * bandBreak);
+            val += spec * irid * 0.15 * bandEnv * bandBreak * (0.45 + shimmer);
+            // gill flush and the darker mask over the skull
+            const gill = smoothstep(0.24, 0.02, u);
+            h = lerpHue(h, pal.edge[0] + this.hueOffset, gill * 0.28);
+            val *= lerpv(1, 0.82, gill * 0.7);
+            // the peduncle darkens where the body gives way to the veil
+            val *= lerpv(1, 0.70, smoothstep(0.78, 1.0, u));
+
+            const hz = this.haze;
+            return hsv2rgb(h, clamp(s, 0, 1), clamp(val, 0, 1) * lerpv(0.52, 1, hz));
+        }
+
+        drawBody() {
+            const ctx = drawingContext;
+            const top = [], bot = [];
+            for (let i = 0; i < NJ; i++) {
+                const u = i / (NJ - 1);
+                top.push(this.pointAt(u, 1));
+                bot.push(this.pointAt(u, -1));
+            }
+
+            // solid silhouette first, so no slice seam can ever show black
+            const base = this.bodyColor(0.5, 0.5);
+            noStroke();
+            fill(base[0] * 0.75, base[1] * 0.75, base[2] * 0.75);
+            beginShape();
+            for (let i = 0; i < NJ; i++) vertex(top[i].x, top[i].y);
+            for (let i = NJ - 1; i >= 0; i--) vertex(bot[i].x, bot[i].y);
+            endShape(CLOSE);
+
+            // One true gradient per cross-section. Flat bands read as a printed
+            // decal; a continuous dorsal-ventral ramp reads as a rounded flank.
+            const STOPS = 9;
+            for (let i = 0; i < NJ - 1; i++) {
+                const u = (i + 0.5) / (NJ - 1);
+                const ax = (top[i].x + top[i + 1].x) * 0.5, ay = (top[i].y + top[i + 1].y) * 0.5;
+                const bx = (bot[i].x + bot[i + 1].x) * 0.5, by = (bot[i].y + bot[i + 1].y) * 0.5;
+                ctx.save();
+                const g = ctx.createLinearGradient(ax, ay, bx, by);
+                for (let k = 0; k < STOPS; k++) {
+                    const v = k / (STOPS - 1);
+                    const c = this.bodyColor(u, v);
+                    g.addColorStop(v, `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})`);
+                }
+                ctx.fillStyle = g;
+                ctx.beginPath();
+                ctx.moveTo(top[i].x, top[i].y);
+                ctx.lineTo(top[i + 1].x, top[i + 1].y);
+                ctx.lineTo(bot[i + 1].x, bot[i + 1].y);
+                ctx.lineTo(bot[i].x, bot[i].y);
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+            }
+
+            // wet specular — an elongated soft blob on the upper flank. This is
+            // what tells the eye the flank is curved rather than flat.
+            {
+                const sp = this.pointAt(0.34 + 0.05 * Math.sin(T * 0.4 + this.wanderSeed), 0.36);
+                const rr = this.len * 0.20;
+                ctx.save();
+                ctx.globalCompositeOperation = 'lighter';
+                const sc = hsv2rgb(pal.sheen[0] + this.hueOffset, 0.14, 1);
+                const gg = ctx.createRadialGradient(sp.x, sp.y, 1, sp.x, sp.y, rr);
+                gg.addColorStop(0, `rgba(${sc[0] | 0},${sc[1] | 0},${sc[2] | 0},${0.17 * this.haze})`);
+                gg.addColorStop(0.5, `rgba(${sc[0] | 0},${sc[1] | 0},${sc[2] | 0},${0.06 * this.haze})`);
+                gg.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = gg;
+                ctx.beginPath();
+                ctx.ellipse(sp.x, sp.y, rr, rr * 0.38, Math.atan2(sp.fy, sp.fx), 0, TAU);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            // ── RIM LIGHT ──────────────────────────────────────────────
+            // The single most important pass. An unlit background gives the
+            // silhouette nothing to sit against; the grazing light off the
+            // surface is what draws the animal's edge for us.
+            const hzR = this.haze;
+            const rimC = hsv2rgb(pal.sheen[0] + this.hueOffset, 0.26, 1);
+            const ambC = hsv2rgb(pal.sheen[0] + this.hueOffset, 0.45, 0.72);
+
+            // ambient contour — light scattered back out of the water column.
+            // Smoothed through segment midpoints: a polyline edge on a curved
+            // belly is the fastest way to look like a vector illustration.
+            noFill();
+            stroke(ambC[0], ambC[1], ambC[2], 44 * hzR);
+            strokeWeight(Math.max(0.8, this.len * 0.005));
+            const ring = top.concat(bot.slice().reverse());
+            const ctxR = drawingContext;
+            ctxR.beginPath();
+            ctxR.moveTo((ring[0].x + ring[ring.length - 1].x) * 0.5,
+                        (ring[0].y + ring[ring.length - 1].y) * 0.5);
+            for (let i = 0; i < ring.length; i++) {
+                const A = ring[i], B = ring[(i + 1) % ring.length];
+                ctxR.quadraticCurveTo(A.x, A.y, (A.x + B.x) * 0.5, (A.y + B.y) * 0.5);
+            }
+            ctxR.closePath();
+            ctxR.stroke();
+
+            // dorsal rim — brightest where the edge normal turns toward the surface
+            blendMode(ADD);
+            for (let i = 0; i < NJ - 1; i++) {
+                const u = i / (NJ - 1);
+                const fr = this.frame(i);
+                const upness = clamp(-fr.ny, 0, 1);
+                const taper = smoothstep(0, 0.10, u) * (1 - smoothstep(0.86, 1.0, u));
+                const a = Math.pow(upness, 1.3) * taper * 88 * hzR
+                        * (0.55 + 0.45 * noise(u * 3.4, T * 0.3 + this.wanderSeed));
+                if (a < 2) continue;
+                stroke(rimC[0], rimC[1], rimC[2], a);
+                strokeWeight(Math.max(0.9, this.len * 0.0085));
+                line(top[i].x, top[i].y, top[i + 1].x, top[i + 1].y);
+                // and a much fainter answer along the belly
+                const ab = Math.pow(clamp(fr.ny, 0, 1), 1.3) * taper * 52 * hzR;
+                if (ab > 2) {
+                    stroke(rimC[0], rimC[1], rimC[2], ab);
+                    line(bot[i].x, bot[i].y, bot[i + 1].x, bot[i + 1].y);
+                }
+            }
+            blendMode(BLEND);
+            noStroke();
+
+            // scale rows — individual arcs sampling the same interference field
+            const irid = params.iridescence;
+            if (irid > 0.02) {
+                const R = 6, C = 16, hz = this.haze;
+                noFill();
+                for (let r = 1; r < R; r++) {
+                    const v = 0.10 + (r / R) * 0.80;
+                    for (let c = 1; c < C; c++) {
+                        const u = 0.10 + (c / C) * 0.84;
+                        const p = this.pointAt(u, 1 - 2 * v);
+                        const sh = noise(u * 6.5, v * 5.0, T * 0.45 + this.wanderSeed * 0.3);
+                        // only the scales the light happens to catch, never a grid
+                        const a = Math.pow(Math.max(0, sh - 0.46), 1.3) * 760 * irid * hz
+                                * (0.30 + 0.70 * Math.exp(-Math.pow((v - 0.45) / 0.36, 2)));
+                        if (a < 4) continue;
+                        const col = hsv2rgb(pal.sheen[0] + this.hueOffset + (sh - 0.5) * 90, 0.28, 1);
+                        stroke(col[0], col[1], col[2], a);
+                        strokeWeight(Math.max(0.5, this.len * 0.005));
+                        const rad = this.len * 0.026 * (0.7 + p.w / (this.len * 0.2) * 0.4);
+                        const ang = Math.atan2(p.fy, p.fx);
+                        arc(p.x, p.y, rad * 2, rad * 2.4, ang + Math.PI * 0.62, ang + Math.PI * 1.38);
+                    }
+                }
+                noStroke();
+            }
+
+            // lateral specular ribbon — thin-film sheen travelling along the flank
+            const hz = this.haze;
+            blendMode(ADD);
+            noStroke();
+            for (let i = 0; i < NJ - 1; i++) {
+                const u = i / (NJ - 1);
+                const glow = Math.exp(-Math.pow((u - (0.34 + 0.12 * Math.sin(T * 0.5 + this.wanderSeed))) / 0.30, 2));
+                const a = glow * 46 * (0.4 + params.iridescence) * hz;
+                if (a < 2) continue;
+                const col = hsv2rgb(pal.sheen[0] + this.hueOffset, 0.22, 1);
+                fill(col[0], col[1], col[2], a);
+                const p0 = this.pointAt(u, 0.30), p1 = this.pointAt(u + 1 / (NJ - 1), 0.30);
+                const q0 = this.pointAt(u, -0.05), q1 = this.pointAt(u + 1 / (NJ - 1), -0.05);
+                quad(p0.x, p0.y, p1.x, p1.y, q1.x, q1.y, q0.x, q0.y);
+            }
+            blendMode(BLEND);
+        }
+
+        drawHead() {
+            const hz = this.haze, L = this.len;
+            const eyeP = this.pointAt(0.072, 0.30);
+            const R = L * 0.030 * clamp(Math.abs(this.flip) + 0.35, 0.4, 1.15);
+
+            // operculum seam
+            const g0 = this.pointAt(0.185, 0.92), g1 = this.pointAt(0.215, -0.55);
+            const gm = this.pointAt(0.235, 0.15);
+            stroke(0, 0, 0, 78 * hz);
+            strokeWeight(Math.max(0.8, L * 0.008));
+            noFill();
+            beginShape(); vertex(g0.x, g0.y); quadraticVertexSafe(gm, g1); endShape();
+
+            // the beard — opercular membrane, only really visible in display
+            if (this.flare > 0.18) {
+                const fl = smoothstep(0.18, 1.0, this.flare);
+                const col = hsv2rgb(pal.edge[0] + this.hueOffset, 0.66, 0.30);
+                noStroke(); fill(col[0], col[1], col[2], 150 * fl * hz);
+                beginShape();
+                for (let k = 0; k <= 8; k++) {
+                    const t = k / 8;
+                    const p = this.pointAt(lerpv(0.055, 0.215, t), -0.92 - 0.10 * Math.sin(t * Math.PI));
+                    const drop = L * 0.13 * fl * Math.sin(t * Math.PI);
+                    vertex(p.x - p.nx * drop - p.fx * drop * 0.35,
+                           p.y - p.ny * drop - p.fy * drop * 0.35);
+                }
+                for (let k = 8; k >= 0; k--) {
+                    const p = this.pointAt(lerpv(0.055, 0.215, k / 8), -0.92);
+                    vertex(p.x, p.y);
+                }
+                endShape(CLOSE);
+            }
+
+            // mouth — small, upturned, opens when it takes something
+            const m0 = this.pointAt(-0.004, -0.30), m1 = this.pointAt(0.038, -0.62);
+            stroke(0, 0, 0, 150 * hz);
+            strokeWeight(Math.max(0.9, L * 0.009));
+            const open = this.mouth * L * 0.035;
+            line(m0.x - m0.nx * open, m0.y - m0.ny * open, m1.x, m1.y);
+
+            // eye
+            noStroke();
+            const ring = hsv2rgb(pal.sheen[0] + this.hueOffset, 0.30, 0.95 * hz);
+            fill(ring[0], ring[1], ring[2], 220);
+            ellipse(eyeP.x, eyeP.y, R * 2.15, R * 2.15);
+            fill(6, 8, 14, 250);
+            ellipse(eyeP.x, eyeP.y, R * 1.62, R * 1.62);
+            const iris = hsv2rgb(pal.deep[0] + this.hueOffset + 20, 0.75, 0.36 * hz + 0.1);
+            fill(iris[0], iris[1], iris[2], 220);
+            ellipse(eyeP.x, eyeP.y, R * 1.15, R * 1.15);
+            fill(0, 0, 0, 255);
+            ellipse(eyeP.x, eyeP.y, R * 0.62, R * 0.62);
+            blendMode(ADD);
+            fill(255, 255, 255, 210 * hz);
+            ellipse(eyeP.x + eyeP.nx * R * 0.42 - eyeP.fx * R * 0.28,
+                    eyeP.y + eyeP.ny * R * 0.42 - eyeP.fy * R * 0.28, R * 0.42, R * 0.42);
+            blendMode(BLEND);
+        }
+
+        // A fin is one continuous membrane, not a lattice. Trace the silhouette
+        // once, fill it with a root→margin gradient, and let the rays read as
+        // structure *inside* the silk rather than as the silk itself.
+        drawFin(f, alphaScale, hueShift, edgeMix, satMul) {
+            const hz = this.haze;
+            const irid = params.iridescence;
+            const n = f.rays[0].n, C = f.count;
+            const ctx = drawingContext;
+
+            const H0 = pal.sheen[0] + this.hueOffset + hueShift;
+            const HE = pal.edge[0] + this.hueOffset + hueShift;
+            const H1 = lerpHue(H0, HE, edgeMix === undefined ? 1 : edgeMix);
+            const sat = this.satBias * (satMul === undefined ? 1 : satMul);
+            const dim = lerpv(0.48, 1, hz);
+            const rgba = (h, s, v, a) => {
+                const c = hsv2rgb(h, clamp(s, 0, 1), clamp(v, 0, 1));
+                return `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${clamp(a, 0, 1)})`;
+            };
+
+            // ── silhouette ────────────────────────────────────────────
+            const outline = () => {
+                ctx.beginPath();
+                const A = f.rays[0].p;
+                ctx.moveTo(A[0].x, A[0].y);
+                for (let j = 1; j <= n; j++) ctx.lineTo(A[j].x, A[j].y);
+                // the outer margin, smoothed through the ray tips
+                for (let i = 1; i < C - 1; i++) {
+                    const P = f.rays[i].p[n], Q = f.rays[i + 1].p[n];
+                    ctx.quadraticCurveTo(P.x, P.y, (P.x + Q.x) * 0.5, (P.y + Q.y) * 0.5);
+                }
+                const Z = f.rays[C - 1].p;
+                ctx.lineTo(Z[n].x, Z[n].y);
+                for (let j = n - 1; j >= 0; j--) ctx.lineTo(Z[j].x, Z[j].y);
+                for (let i = C - 2; i >= 1; i--) { const R = f.rays[i].p[0]; ctx.lineTo(R.x, R.y); }
+                ctx.closePath();
+            };
+
+            // radial gradient anchored at the attachment
+            const r0 = f.rays[0].p[0], r1 = f.rays[C - 1].p[0];
+            const cx = (r0.x + r1.x) * 0.5, cy = (r0.y + r1.y) * 0.5;
+            const reach = f.length * 1.05 + 1;
+            const breathe = 0.5 + 0.5 * Math.sin(T * 0.7 + f.phase);
+
+            // Tissue, not paint. Translucent at the attachment where it is
+            // thinnest, densest through the mid-web, thinning again at the
+            // margin — with the saturation peak sitting inboard of the edge.
+            ctx.save();
+            const g = ctx.createRadialGradient(cx, cy, reach * 0.04, cx, cy, reach);
+            g.addColorStop(0.00, rgba(H0, 0.50 * sat, 0.38 * dim, 0.20 * alphaScale));
+            g.addColorStop(0.22, rgba(lerpHue(H0, H1, 0.26) + irid * 12 * breathe, 0.68 * sat, 0.46 * dim, 0.30 * alphaScale));
+            g.addColorStop(0.52, rgba(lerpHue(H0, H1, 0.66), 0.86 * sat, 0.58 * dim, 0.40 * alphaScale));
+            g.addColorStop(0.80, rgba(H1, 0.92 * sat, 0.70 * dim, 0.34 * alphaScale));
+            g.addColorStop(0.95, rgba(H1, 0.86 * sat, 0.86 * dim, 0.18 * alphaScale));
+            g.addColorStop(1.00, rgba(H1, 0.80 * sat, 0.95 * dim, 0.05 * alphaScale));
+            ctx.fillStyle = g;
+            outline();
+            ctx.fill();
+            ctx.restore();
+
+            // ── the webbing ───────────────────────────────────────────
+            // Fin rays are the visible architecture of the fin. Without them
+            // a betta's caudal is a paper cut-out; with them it is tissue.
+            const wRay = Math.max(0.6, this.len * 0.0034);
+            for (let i = 0; i < C; i++) {
+                const P = f.rays[i].p;
+                const s = f.rays[i].coord;
+                // the sheet folds; light finds some rays and misses others
+                const fold = noise(s * 2.6, T * 0.42 + f.phase);
+                const bright = smoothstep(0.46, 0.86, fold);
+                const va = (0.12 + bright * 0.30) * alphaScale * hz;
+                ctx.save();
+                ctx.lineWidth = wRay * (0.8 + bright * 0.9);
+                ctx.lineCap = 'round';
+                // Drawn in three solid arcs rather than one gradient stroke:
+                // visually identical, and it spares us a gradient object per ray
+                // per frame — with six fins and a fleet, that is the whole budget.
+                // Rays must emerge from the body, never terminate against it —
+                // a hard root end reads as a black comb along the animal's back.
+                const SEG = [
+                    [0, 0.30, rgba(H0, 0.38 * sat, 0.80 * dim, va * 0.30)],
+                    [Math.max(1, Math.floor(n * 0.26)), 0.68, rgba(lerpHue(H0, H1, 0.5), 0.34 * sat, 0.95 * dim, va)],
+                    [Math.max(2, Math.floor(n * 0.62)), 1.00, rgba(H1, 0.28 * sat, 1.00 * dim, va * 0.82)]
+                ];
+                for (const [j0, jf, col] of SEG) {
+                    const j1 = Math.round(n * jf);
+                    if (j1 <= j0) continue;
+                    ctx.strokeStyle = col;
+                    ctx.beginPath();
+                    ctx.moveTo(P[j0].x, P[j0].y);
+                    for (let j = j0 + 1; j <= j1; j++) ctx.lineTo(P[j].x, P[j].y);
+                    ctx.stroke();
+                }
+                ctx.restore();
+            }
+
+            // ── luminous margin ───────────────────────────────────────
+            blendMode(ADD);
+            const cE = hsv2rgb(H1, 0.62, 1);
+            ctx.save();
+            ctx.strokeStyle = `rgba(${cE[0] | 0},${cE[1] | 0},${cE[2] | 0},${0.20 * alphaScale * hz})`;
+            ctx.lineWidth = Math.max(1.0, this.len * 0.0075);
+            ctx.lineJoin = 'round';
+            outline();
+            ctx.stroke();
+            ctx.restore();
+            blendMode(BLEND);
+            noStroke();
+        }
+
+        render() {
+            // pectorals are almost glass — they must not read as coloured fins
+            this.drawFin(this.pecF, 0.34, 6, 0.16, 0.34);
+            this.drawFin(this.caudal, 1.0, 0, 1.0, 1.0);
+            // the dorsal sits in front of the caudal — it needs its own hue and
+            // a lighter hand, or the two dissolve into a single coloured mass
+            this.drawFin(this.dorsal, 0.78, -14, 0.70, 0.92);
+            this.drawFin(this.anal, 0.90, 9, 0.94, 1.0);
+            this.drawFin(this.pelvic, 0.82, 12, 1.0, 0.92);
+            this.drawBody();
+            this.drawHead();
+            this.drawFin(this.pecN, 0.52, 6, 0.16, 0.34);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  WATER
+    // ═══════════════════════════════════════════════════════════════════════
+
+    class Mote {
+        constructor() { this.reset(true); }
+        reset(anywhere) {
+            this.x = random(W);
+            this.y = anywhere ? random(SURFACE, H) : random(SURFACE, H);
+            this.z = random(0.15, 1);
+            this.r = lerpv(0.5, 2.4, this.z) * random(0.6, 1.4);
+            this.ph = random(1000);
+            this.tw = random(TAU);
+        }
+        update(dt) {
+            const c = params.current;
+            this.x += (noise(this.ph, T * 0.09) - 0.5) * 2.4 * c * this.z + 0.10 * c * this.z;
+            this.y += (noise(this.ph + 50, T * 0.09) - 0.5) * 1.9 * c * this.z - 0.09 * this.z;
+            // pushed by the pointer
+            if (pointer.inside) {
+                const dx = this.x - pointer.x, dy = this.y - pointer.y;
+                const d2 = dx * dx + dy * dy;
+                if (d2 < 26000 && d2 > 1) {
+                    const f = (1 - d2 / 26000) * 0.9;
+                    this.x += pointer.vx * f * 0.35 + dx / Math.sqrt(d2) * f * 1.4;
+                    this.y += pointer.vy * f * 0.35 + dy / Math.sqrt(d2) * f * 1.4;
+                }
+            }
+            if (this.x < -20) this.x = W + 20; if (this.x > W + 20) this.x = -20;
+            if (this.y < SURFACE - 20) this.y = H + 20; if (this.y > H + 20) this.y = SURFACE - 20;
+            this.tw += dt * 2;
+        }
+        draw() {
+            const a = (28 + 62 * this.z) * (0.55 + 0.45 * Math.sin(this.tw + this.ph));
+            fill(186, 214, 236, a);
+            ellipse(this.x, this.y, this.r * 2, this.r * 2);
+        }
+    }
+
+    class Bubble {
+        constructor(x, y, r) { this.x = x; this.y = y; this.r = r; this.ph = random(TAU); this.dead = false; }
+        update(dt) {
+            this.y -= (0.9 + this.r * 0.42) * dt * 60 * 0.55;
+            this.x += Math.sin(T * 2.4 + this.ph) * 0.55;
+            if (this.y < SURFACE + this.r) {
+                this.dead = true;
+                ripples.push(new Ripple(this.x, SURFACE + 2, this.r * 5, 0.7));
+            }
+        }
+        draw() {
+            noFill();
+            stroke(180, 226, 255, 105);
+            strokeWeight(1.1);
+            ellipse(this.x, this.y, this.r * 2, this.r * 2);
+            noStroke();
+            fill(255, 255, 255, 120);
+            ellipse(this.x - this.r * 0.32, this.y - this.r * 0.34, this.r * 0.5, this.r * 0.5);
+        }
+    }
+
+    class Food {
+        constructor(x, y) {
+            this.x = x; this.y = y; this.ph = random(1000);
+            this.r = 1.6 + random() * 2.2;
+            this.rot = random(TAU);
+            this.life = 1;
+        }
+        update(dt) {
+            this.y += 0.42 + Math.sin(T * 1.6 + this.ph) * 0.14;
+            this.x += (noise(this.ph, T * 0.2) - 0.5) * 1.5;
+            this.rot += 0.02;
+            if (this.y > H - 6) this.life -= dt * 0.35;
+        }
+        draw() {
+            push();
+            translate(this.x, this.y);
+            rotate(this.rot);
+            noStroke();
+            fill(214, 158, 96, 210 * clamp(this.life, 0, 1));
+            ellipse(0, 0, this.r * 2.4, this.r * 1.5);
+            pop();
+        }
+    }
+
+    class Ripple {
+        constructor(x, y, r, strength) { this.x = x; this.y = y; this.r0 = r; this.r = r; this.a = 1; this.s = strength; }
+        update(dt) { this.r += dt * 60 * 1.6 * this.s; this.a -= dt * 1.3; }
+        draw() {
+            if (this.a <= 0) return;
+            noFill();
+            stroke(160, 216, 255, this.a * 70 * this.s);
+            strokeWeight(1.2);
+            ellipse(this.x, this.y, this.r * 2, this.r * 0.7);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  SCENE
+    // ═══════════════════════════════════════════════════════════════════════
+
+    function initializeSystem() {
+        randomSeed(params.seed);
+        noiseSeed(params.seed);
+        rebuildPalette();
+
+        T = 0;
+        fishes = []; bubbles = []; foods = []; nest = []; ripples = [];
+        const n = Math.round(params.fishCount);
+        for (let i = 0; i < n; i++) fishes.push(new Betta(i, n));
+        // deeper fish first, so the near ones occlude correctly
+        fishes.sort((a, b) => a.z - b.z);
+
+        motes = [];
+        for (let i = 0; i < 460; i++) motes.push(new Mote());
+
+        hintFade = 1;
+        background(0);
+    }
+
+    function setup() {
+        const c = createCanvas(W, H);
+        c.parent('canvas-container');
+        pixelDensity(1);
+        initializeSystem();
+        const l = document.querySelector('.loading');
+        if (l) l.style.display = 'none';
+    }
+
+    function paintWater(alpha) {
+        const ctx = drawingContext;
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        const g = ctx.createLinearGradient(0, 0, 0, H);
+        g.addColorStop(0.00, 'rgb(9,20,34)');
+        g.addColorStop(0.10, 'rgb(5,12,22)');
+        g.addColorStop(0.45, 'rgb(2,5,10)');
+        g.addColorStop(1.00, 'rgb(0,1,3)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, W, H);
+        const r = ctx.createRadialGradient(W * 0.46, -H * 0.18, 20, W * 0.46, H * 0.05, H * 1.15);
+        r.addColorStop(0, 'rgba(46,104,150,0.42)');
+        r.addColorStop(0.4, 'rgba(14,38,62,0.16)');
+        r.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = r;
+        ctx.fillRect(0, 0, W, H);
+        ctx.restore();
+        ctx.globalAlpha = 1;
+    }
+
+    function drawShafts() {
+        const s = params.lightShafts;
+        if (s <= 0.01) return;
+        const ctx = drawingContext;
+        blendMode(ADD);
+        ctx.save();
+        // Each shaft is laid down three times at decreasing width and rising
+        // intensity. Hard-edged wedges read as cut paper; nested falloff reads
+        // as light scattering through a volume.
+        for (let i = 0; i < 5; i++) {
+            const nx = noise(i * 13.1, T * 0.040);
+            const x = nx * W * 1.3 - W * 0.15;
+            const wBase = 70 + noise(i * 7.7, T * 0.026) * 190;
+            const skew = (noise(i * 3.3, T * 0.018) - 0.5) * 460;
+            const inten = (0.055 + noise(i * 21.5, T * 0.07) * 0.085) * s;
+            for (let k = 0; k < 2; k++) {
+                const shrink = 1 - k * 0.38;
+                const w = wBase * shrink;
+                const a = inten * (0.70 + k * 0.62);
+                const g = ctx.createLinearGradient(0, SURFACE, 0, H * (0.80 + k * 0.07));
+                g.addColorStop(0.00, `rgba(150,212,255,${a})`);
+                g.addColorStop(0.22, `rgba(112,182,246,${a * 0.62})`);
+                g.addColorStop(0.58, `rgba(66,132,206,${a * 0.22})`);
+                g.addColorStop(1.00, 'rgba(0,0,0,0)');
+                ctx.fillStyle = g;
+                ctx.beginPath();
+                ctx.moveTo(x - w * 0.16, SURFACE);
+                ctx.lineTo(x + w * 0.16, SURFACE);
+                ctx.lineTo(x + w + skew, H);
+                ctx.lineTo(x - w + skew, H);
+                ctx.closePath();
+                ctx.fill();
+            }
+        }
+        ctx.restore();
+        blendMode(BLEND);
+    }
+
+    function drawSurface() {
+        blendMode(ADD);
+        noFill();
+        for (let k = 0; k < 3; k++) {
+            const a = 26 - k * 7;
+            stroke(150, 210, 255, a * (0.5 + params.lightShafts * 0.6));
+            strokeWeight(1.6 - k * 0.4);
+            beginShape();
+            for (let x = 0; x <= W; x += 14) {
+                const y = SURFACE
+                        + Math.sin(x * 0.011 + T * 1.1 + k) * 2.6
+                        + (noise(x * 0.003, T * 0.35 + k * 3) - 0.5) * 9
+                        - k * 3.2;
+                vertex(x, y);
+            }
+            endShape();
+        }
+        // the accumulated architecture of breath
+        noStroke();
+        for (const b of nest) {
+            b.a = Math.min(1, b.a + 0.01);
+            const yy = SURFACE + 3 + Math.sin(T * 1.3 + b.ph) * 1.4;
+            fill(150, 205, 245, 34 * b.a);
+            ellipse(b.x, yy, b.r * 2, b.r * 1.7);
+            fill(255, 255, 255, 42 * b.a);
+            ellipse(b.x - b.r * 0.3, yy - b.r * 0.35, b.r * 0.5, b.r * 0.45);
+        }
+        blendMode(BLEND);
+    }
+
+    function drawVignette() {
+        const ctx = drawingContext;
+        ctx.save();
+        const g = ctx.createRadialGradient(W * 0.5, H * 0.46, Math.min(W, H) * 0.18,
+                                           W * 0.5, H * 0.5, Math.max(W, H) * 0.76);
+        g.addColorStop(0, 'rgba(0,0,0,0)');
+        g.addColorStop(0.62, 'rgba(0,0,0,0.34)');
+        g.addColorStop(1, 'rgba(0,0,0,0.86)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, W, H);
+        ctx.restore();
+    }
+
+    function draw() {
+        const dt = paused ? 0 : Math.min(0.05, deltaTime / 1000);
+        if (!paused) T += dt;
+
+        // pointer state — nothing is "at the glass" until a hand actually moves
+        const inC = pointer.everMoved && mouseX >= 0 && mouseX <= W && mouseY >= 0 && mouseY <= H;
+        pointer.inside = inC;
+        if (inC) {
+            pointer.px = pointer.x; pointer.py = pointer.y;
+            pointer.x = mouseX; pointer.y = mouseY;
+            pointer.vx = pointer.x - pointer.px;
+            pointer.vy = pointer.y - pointer.py;
+            pointer.active = lerpv(pointer.active, Math.min(1, Math.hypot(pointer.vx, pointer.vy) * 0.12 + 0.3), 0.08);
+        } else {
+            pointer.active = lerpv(pointer.active, 0, 0.05);
+        }
+
+        // persistence of the previous frame — the silk of a long exposure
+        const fade = lerpv(1.0, 0.055, params.persistence);
+        paintWater(fade);
+
+        drawShafts();
+
+        // motes
+        noStroke();
+        const mCount = Math.min(motes.length, Math.round(params.motes));
+        for (let i = 0; i < mCount; i++) { if (!paused) motes[i].update(dt); motes[i].draw(); }
+
+        // food
+        for (let i = foods.length - 1; i >= 0; i--) {
+            if (!paused) foods[i].update(dt);
+            foods[i].draw();
+            if (foods[i].life <= 0) foods.splice(i, 1);
+        }
+
+        // fish
+        if (!paused) for (const f of fishes) f.update(dt, fishes);
+        for (const f of fishes) f.render();
+
+        // bubbles
+        for (let i = bubbles.length - 1; i >= 0; i--) {
+            if (!paused) bubbles[i].update(dt);
+            bubbles[i].draw();
+            if (bubbles[i].dead) bubbles.splice(i, 1);
+        }
+
+        // ripples
+        for (let i = ripples.length - 1; i >= 0; i--) {
+            if (!paused) ripples[i].update(dt);
+            ripples[i].draw();
+            if (ripples[i].a <= 0) ripples.splice(i, 1);
+        }
+
+        drawSurface();
+        drawVignette();
+
+        if (hintFade > 0) {
+            if (!paused) hintFade -= dt * 0.10;
+            noStroke();
+            fill(210, 228, 244, clamp(hintFade, 0, 1) * 110);
+            textAlign(CENTER, BOTTOM);
+            textSize(16);
+            textFont('Poppins, sans-serif');
+            text('click to feed  ·  move slowly to be followed', W / 2, H - 30);
+        }
+    }
+
+    function quadraticVertexSafe(ctrl, end) {
+        quadraticVertex(ctrl.x, ctrl.y, end.x, end.y);
+    }
+
+    function mouseMoved() { pointer.everMoved = true; }
+
+    function mousePressed() {
+        pointer.everMoved = true;
+        if (mouseX < 0 || mouseX > W || mouseY < 0 || mouseY > H) return;
+        for (let i = 0; i < 5 + Math.floor(Math.random() * 4); i++) {
+            foods.push(new Food(mouseX + (Math.random() - 0.5) * 42, mouseY + (Math.random() - 0.5) * 26));
+        }
+        ripples.push(new Ripple(mouseX, mouseY, 6, 1.2));
+        hintFade = Math.min(hintFade, 0.25);
+        return false;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  UI
+    // ═══════════════════════════════════════════════════════════════════════
+
+    const LIVE = ['vigor', 'iridescence', 'persistence', 'motes', 'lightShafts', 'current', 'finSoftness'];
+    const DECIMALS = { fishCount: 0, motes: 0 };
+
+    function fmt(name, v) {
+        const d = DECIMALS[name] !== undefined ? DECIMALS[name] : 2;
+        return Number(v).toFixed(d);
+    }
+
+    function updateParam(name, value) {
+        params[name] = parseFloat(value);
+        const el = document.getElementById(name + '-value');
+        if (el) el.textContent = fmt(name, value);
+        if (!LIVE.includes(name)) initializeSystem();
+    }
+
+    function updateColor(id, value) {
+        const idx = { color1: 0, color2: 1, color3: 2 }[id];
+        params.colorPalette[idx] = value;
+        document.getElementById(id + '-value').textContent = value;
+        rebuildPalette();
+    }
+
+    function applyPreset(a, b, c) {
+        const set = (id, v) => {
+            document.getElementById(id).value = v;
+            document.getElementById(id + '-value').textContent = v;
+        };
+        set('color1', a); set('color2', b); set('color3', c);
+        params.colorPalette = [a, b, c];
+        rebuildPalette();
+    }
+
+    function togglePause() {
+        paused = !paused;
+        document.getElementById('pause-btn').textContent = paused ? '▶ Play' : '‖ Pause';
+    }
+
+    function downloadPNG() {
+        saveCanvas('labyrinth-currents-' + params.seed, 'png');
+    }
+
+    function regenerate() { initializeSystem(); }
+
+    // ── Seed controls ──────────────────────────────────────────────────
+    function updateSeedDisplay() { document.getElementById('seed-input').value = params.seed; }
+
+    function updateSeed() {
+        const v = parseInt(document.getElementById('seed-input').value);
+        if (v && v > 0) { params.seed = v; initializeSystem(); }
+        else updateSeedDisplay();
+    }
+
+    function previousSeed() { params.seed = Math.max(1, params.seed - 1); updateSeedDisplay(); initializeSystem(); }
+    function nextSeed()     { params.seed = params.seed + 1; updateSeedDisplay(); initializeSystem(); }
+    function randomSeedAndUpdate() {
+        params.seed = Math.floor(Math.random() * 999999) + 1;
+        updateSeedDisplay(); initializeSystem();
+    }
+
+    function resetParameters() {
+        params = JSON.parse(JSON.stringify(defaultParams));
+        for (const k of ['fishCount', 'bodyScale', 'vigor', 'finFullness', 'finSoftness',
+                         'iridescence', 'persistence', 'motes', 'lightShafts', 'current']) {
+            document.getElementById(k).value = params[k];
+            document.getElementById(k + '-value').textContent = fmt(k, params[k]);
+        }
+        applyPreset(params.colorPalette[0], params.colorPalette[1], params.colorPalette[2]);
+        updateSeedDisplay();
+        initializeSystem();
+    }
+
+    window.addEventListener('load', updateSeedDisplay);
+    </script>
+</body>
+</html>
