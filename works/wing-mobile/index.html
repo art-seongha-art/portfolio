@@ -42,7 +42,7 @@
           line-height:1.7; transition:opacity .2s; }
   #hint.hidden { opacity:0; }
   #hint b { color:#98a0ad; font-weight:600; }
-  #stat { position:fixed; left:14px; top:12px; z-index:10; font-size:11px; color:#5d646e;
+  #stat { position:fixed; left:14px; top:52px; z-index:10; font-size:11px; color:#5d646e;
           font-variant-numeric:tabular-nums; transition:opacity .2s; }
   #stat.hidden { opacity:0; }
   #boot { position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
@@ -57,14 +57,33 @@
   button.act { width:100%; margin-top:9px; padding:7px; border-radius:7px; cursor:pointer;
         background:#232830; color:#cfd3da; border:1px solid rgba(255,255,255,.1); font-size:11.5px; }
   button.act:hover { background:#2b313a; }
+  #tools { position:fixed; left:12px; top:12px; z-index:12; display:flex; gap:7px; transition:opacity .2s; }
+  #tools.hidden { opacity:0; pointer-events:none; }
+  #tools button { width:32px; height:32px; display:flex; align-items:center; justify-content:center;
+        border-radius:9px; cursor:pointer; color:#aeb6c2;
+        background:rgba(14,16,20,.62); backdrop-filter:blur(10px);
+        border:1px solid rgba(255,255,255,.10); transition:.15s; }
+  #tools button:hover { color:#fff; background:rgba(30,34,42,.85); border-color:rgba(255,255,255,.2); }
+  #tools button.on { color:#fff; background:rgba(52,60,74,.9); border-color:rgba(255,255,255,.28); }
 </style>
 
 <canvas id="c"></canvas>
 <video id="cam" class="hidden" playsinline muted></video>
 
-<div id="stat"></div>
+<div id="tools">
+  <button id="btnGear" title="설정 (H)">
+    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7"
+         stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.14.31.4.55.71.66H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+  </button>
+  <button id="btnFull" title="전체화면 (F)">
+    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9"
+         stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M16 21h3a2 2 0 0 0 2-2v-3M8 21H5a2 2 0 0 1-2-2v-3"/></svg>
+  </button>
+</div>
 
-<div id="panel">
+<div id="stat" class="hidden"></div>
+
+<div id="panel" class="hidden">
   <h2>날개 모빌</h2>
   <div id="controls"></div>
   <button class="act" id="btnSeed">배치 다시 뽑기</button>
@@ -162,7 +181,7 @@ const P = {
   '색 띠 개수': { v: 5,    min: 2,   max: 12,   step: 1 },   // 「층」 방식일 때만 쓰인다
 
   노출:        { v: 1.15, min: .2,  max: 3,    step: .01 },
-  '위에서 보기': { v: true },                                  // 배치를 위에서 내려다보는 작은 창
+  '위에서 보기': { v: false },                                 // 배치를 위에서 내려다보는 작은 창
   '위뷰 크기':   { v: 0.16, min: .10, max: .40, step: .01 },
   아웃포커싱:   { v: true },                                   // 초점은 가장 가까운 유닛에 맞는다
   흐림시작:     { v: 4.0,  min: .5,  max: 12,   step: .1 },    // 초점이 이 거리보다 가까워야 흐려진다
@@ -1451,7 +1470,6 @@ async function 웹캠켜기() {
     const stream = await navigator.mediaDevices.getUserMedia({
       video: { width: 640, height: 480, facingMode: 'user' }, audio: false });
     video.srcObject = stream; await video.play();
-    video.classList.remove('hidden');
     if (!손인식) {
       const { HandLandmarker, FilesetResolver } = await import('./libs/mediapipe/vision_bundle.mjs');
       const fs = await FilesetResolver.forVisionTasks('./libs/mediapipe/wasm');
@@ -1462,18 +1480,19 @@ async function 웹캠켜기() {
     }
     손켬 = true;
     document.getElementById('btnCam').textContent = '웹캠 끄기';
+    화면갱신();
   } catch (err) {
     console.error(err);
     // 손인식 만들기가 실패해도 이미 열린 스트림은 반드시 닫는다 — 안 그러면 누를 때마다 샌다
     if (video.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); video.srcObject = null; }
-    video.classList.add('hidden');
     손켬 = false;
+    화면갱신();
     document.getElementById('btnCam').textContent = '웹캠 실패 — ' + (err.name || '오류') + ' (다시 누르기)';
   }
 }
 function 웹캠끄기() {
   손켬 = false;
-  video.classList.add('hidden');
+  화면갱신();
   if (video.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); video.srcObject = null; }
   손[1].live = 손[2].live = false;
   document.getElementById('btnCam').textContent = '웹캠 켜기';
@@ -1644,9 +1663,30 @@ document.getElementById('btnShake').onclick = () => {
 };
 
 const panel = document.getElementById('panel'), hint = document.getElementById('hint'), stat = document.getElementById('stat');
+const 도구모음 = document.getElementById('tools'), 톱니 = document.getElementById('btnGear'), 전체버튼 = document.getElementById('btnFull');
+
+// 요소마다 따로 토글하면 처음 상태가 제각각일 때 어긋난다 (설정은 닫혀 있고 힌트는 켜져 있는 식).
+// 상태 둘을 두고 화면은 늘 거기서 다시 그린다.
+let 설정열림 = false, 화면정리 = false;
+function 화면갱신() {
+  const 보임 = !화면정리;
+  도구모음.classList.toggle('hidden', !보임);
+  hint  .classList.toggle('hidden', !보임);
+  panel .classList.toggle('hidden', !(보임 && 설정열림));
+  stat  .classList.toggle('hidden', !(보임 && 설정열림));
+  video .classList.toggle('hidden', !(보임 && 손켬));
+  톱니.classList.toggle('on', 설정열림);
+  전체버튼.classList.toggle('on', !!document.fullscreenElement);
+}
+톱니.onclick = () => { 설정열림 = !설정열림; 화면갱신(); };
+전체버튼.onclick = () =>
+  document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+document.addEventListener('fullscreenchange', 화면갱신);
+화면갱신();
+
 addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
-  if (k === 'h') [panel,hint,stat,video].forEach(el => el.classList.toggle('hidden'));
+  if (k === 'h') { 화면정리 = !화면정리; 화면갱신(); }
   if (k === 'f') document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
   if (k === 'c') 웹캠켜기();
   if (k === 'm') 조절.소리 = !조절.소리;
@@ -1849,6 +1889,15 @@ function 프레임(now) {
 requestAnimationFrame(프레임);
 
 setTimeout(() => { boot.classList.add('gone'); setTimeout(()=>boot.remove(), 600); }, 350);
+
+// 열자마자 웹캠을 켠다. 허락이 이미 있으면 조용히 켜지고, 처음이면 브라우저가 물어본다.
+// 거절·카메라 없음은 웹캠켜기 안에서 이미 잡으므로 마우스로 그대로 쓸 수 있다.
+setTimeout(() => 웹캠켜기(), 500);
+
+// 소리는 사용자가 한 번 건드리기 전에는 브라우저가 못 내게 막는다.
+// 웹캠을 자동으로 켤 때 만들어진 오디오는 잠들어 있으므로 첫 손짓에 깨운다.
+['pointerdown','keydown'].forEach(t =>
+  addEventListener(t, () => { if (ac && ac.state === 'suspended') ac.resume(); }, { once: true }));
 
 // 진단용 창구 — 무엇이 폭주하는지 눈이 아니라 숫자로 보려면 필요하다
 window.모빌 = { get N(){return N}, 점, 옛점, 앵커, 마디, 마디길이, 비틀림각, 비틀림속,
