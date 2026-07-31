@@ -38,11 +38,16 @@
         border:1px solid rgba(255,255,255,.1); border-radius:5px; padding:2px 4px; }
   .extent { margin:2px 0 7px; font-size:10.5px; line-height:1.5; color:#6b7381;
             padding:5px 7px; border-radius:6px; background:rgba(255,255,255,.035); }
+  #cammsg { position:fixed; left:12px; right:12px; bottom:56px; z-index:11; font-size:11.5px;
+            line-height:1.5; color:#e6c98a; padding:7px 10px; border-radius:8px;
+            background:rgba(20,17,12,.82); backdrop-filter:blur(10px);
+            border:1px solid rgba(230,201,138,.22); transition:opacity .2s; }
+  #cammsg.hidden { opacity:0; pointer-events:none; }
   #hint { position:fixed; left:14px; bottom:12px; z-index:10; font-size:11.5px; color:#6d747f;
           line-height:1.7; transition:opacity .2s; }
   #hint.hidden { opacity:0; }
   #hint b { color:#98a0ad; font-weight:600; }
-  #stat { position:fixed; left:14px; top:52px; z-index:10; font-size:11px; color:#5d646e;
+  #stat { position:fixed; left:14px; top:52px; z-index:10; max-width:calc(100% - 300px); font-size:11px; color:#5d646e;
           font-variant-numeric:tabular-nums; transition:opacity .2s; }
   #stat.hidden { opacity:0; }
   #boot { position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
@@ -91,6 +96,8 @@
   <button class="act" id="btnShake">한번 흔들기 (스페이스)</button>
 </div>
 
+<div id="cammsg" class="hidden"></div>
+
 <div id="hint">
   <b>드래그</b> 모빌 치기 · <b>클릭+끌기</b> 잡아서 옮기기 · <b>휠</b> 다가가기<br>
   <b>H</b> 화면 정리 · <b>F</b> 전체화면 · <b>C</b> 웹캠 · <b>R</b> 재우기 · <b>M</b> 음소거
@@ -120,6 +127,11 @@ import { ShaderPass }     from 'three/addons/postprocessing/ShaderPass.js';
 // ────────────────────────────────────────────────────────────────
 // 조절값 — 패널에 그대로 뜬다
 // ────────────────────────────────────────────────────────────────
+// 휴대폰 판정. 미디어파이프의 GPU 델리게이트는 createFromOptions 가 검사하지 않고
+// **첫 프레임을 밀어 넣을 때** 비로소 GL 을 만진다 — 그래서 못 쓰는 기기에서는 만들기는 성공하고
+// 인식만 조용히 실패한다. 폰은 기다리지 말고 처음부터 CPU 로 간다
+const 손닿는기기 = matchMedia('(pointer:coarse)').matches || navigator.maxTouchPoints > 1;
+
 const P = {
   // ── 배치. 축을 이름에 박아둔다. Z는 "카메라에서 멀어지는 앞뒤 축"이다
   // 갈래마다 **개수를 직접** 넣는다. 전체는 합으로 나온다
@@ -189,6 +201,7 @@ const P = {
   손뼈보이기:   { v: true },
   손깊이자동:   { v: true },                                   // 손을 겨냥한 유닛의 깊이로 데려간다
   손겨냥반경:   { v: 0.09, min: .02, max: .3,   step: .005 },
+  손인식CPU:    { v: 손닿는기기 },                              // 폰은 처음부터 CPU. GPU 는 폰에서 조용히 빈 결과만 준다
   LED밝기:      { v: 1.3,  min: 0,   max: 8,    step: .1 },
   LED바탕:      { v: 0.10, min: 0,   max: .6,   step: .01 },   // 안 켜졌을 때의 몸빛 — 살짝 미색    // 너무 높이면 톤매핑에서 파랑이 넘쳐 보라가 된다
   잠자리원본:   { v: false },
@@ -214,6 +227,14 @@ const renderer = new THREE.WebGLRenderer({
   preserveDrawingBuffer: true,          // 31번 교훈 8: 프레임 하나 걸러도 검정이 안 낀다
 });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+// 이 페이지에는 WebGL2 컨텍스트가 둘이다 — 여기와, 미디어파이프가 자기 캔버스에 따로 여는 것
+// (델리게이트와 무관하다. 영상 프레임을 GL 텍스처로 올리기 때문이다).
+// 폰 메모리 천장에서 어느 쪽이 먼저 죽는지 이름을 달아 둔다. 고치는 코드가 아니라 보는 코드다
+canvas.addEventListener('webglcontextlost', e => {
+  e.preventDefault(); console.error('three.js 컨텍스트 유실');
+  if (typeof 진단 !== 'undefined') 진단.오류 = '그래픽 컨텍스트가 끊겼습니다 — 새로고침하세요';
+});
+canvas.addEventListener('webglcontextrestored', () => console.error('three.js 컨텍스트 복구'));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 조절.노출;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -1461,24 +1482,62 @@ addEventListener('wheel', e => {
 
 // ── 웹캠 + 미디어파이프
 const video = document.getElementById('cam');
+const 캠말 = document.getElementById('cammsg');
 let 손인식 = null, 손켬 = false, 손다음 = 0;
+
+// 폰에는 개발자 콘솔이 없다. 무엇이 잘못됐는지 **화면에** 남겨야 작가가 읽을 수 있다.
+const 진단 = { 델리게이트: '', 시도: 0, 잡힘: 0, 오류: '', 켠시각: 0, 갈아타는중: false, 연속실패: 0 };
+
+async function 손인식만들기(델리게이트) {
+  const { HandLandmarker, FilesetResolver } = await import('./libs/mediapipe/vision_bundle.mjs');
+  const fs = await FilesetResolver.forVisionTasks('./libs/mediapipe/wasm');
+  const 것 = await HandLandmarker.createFromOptions(fs, {
+    baseOptions: { modelAssetPath: './libs/mediapipe/models/hand_landmarker.task', delegate: 델리게이트 },
+    numHands: 2, runningMode: 'VIDEO',
+  });
+  진단.델리게이트 = 델리게이트;
+  return 것;
+}
+
+// createFromOptions 는 delegate 값을 적어두기만 하고 GL 을 건드리지 않는다.
+// **첫 프레임을 밀어 넣을 때** 비로소 webgl2 표면을 만든다 — 그래서 못 쓰는 GPU 는
+// 만들 때가 아니라 detectForVideo 에서야 터진다. 그때 CPU 로 갈아탄다.
+async function 델리게이트바꾸기(어느것, 까닭) {
+  if (진단.갈아타는중 || 진단.델리게이트 === 어느것) return;
+  진단.갈아타는중 = true;
+  캠말보이기('손인식을 ' + 어느것 + ' 로 바꾸는 중… (' + 까닭 + ')');
+  try {
+    const 옛 = 손인식;
+    손인식 = await 손인식만들기(어느것);
+    옛?.close?.();
+    진단.오류 = ''; 진단.연속실패 = 0; 진단.시도 = 0; 진단.잡힘 = 0;
+    진단.켠시각 = performance.now();
+  } catch (err) {
+    진단.오류 = 어느것 + ' 도 실패 — ' + (err?.message || err?.name || err);
+  }
+  진단.갈아타는중 = false;
+}
+
 async function 웹캠켜기() {
   if (손켬) { 웹캠끄기(); return; }
   try {
     소리켜기();
     document.getElementById('btnCam').textContent = '웹캠 준비 중…';
+    캠말보이기('카메라 여는 중…');
     const stream = await navigator.mediaDevices.getUserMedia({
       video: { width: 640, height: 480, facingMode: 'user' }, audio: false });
     video.srcObject = stream; await video.play();
-    if (!손인식) {
-      const { HandLandmarker, FilesetResolver } = await import('./libs/mediapipe/vision_bundle.mjs');
-      const fs = await FilesetResolver.forVisionTasks('./libs/mediapipe/wasm');
-      손인식 = await HandLandmarker.createFromOptions(fs, {
-        baseOptions: { modelAssetPath: './libs/mediapipe/models/hand_landmarker.task', delegate: 'GPU' },
-        numHands: 2, runningMode: 'VIDEO',
-      });
+    // 폰은 화면이 꺼지거나 다른 앱으로 갔다 오면 트랙이 조용히 죽는다.
+    // 죽은 줄 모르면 "카메라는 켜져 있는데 손만 안 잡힘"으로 보인다
+    for (const t of stream.getVideoTracks()) {
+      t.onended = () => { 진단.오류 = '카메라 트랙이 끊겼습니다 (다시 켜세요)'; };
+      t.onmute  = () => { 진단.오류 = '카메라가 잠시 멈췄습니다'; };
+      t.onunmute = () => { if (진단.오류.startsWith('카메라가 잠시')) 진단.오류 = ''; };
     }
+    캠말보이기('손인식 준비 중… (17 MB)');
+    if (!손인식) 손인식 = await 손인식만들기(조절.손인식CPU ? 'CPU' : 'GPU');
     손켬 = true;
+    진단.켠시각 = performance.now(); 진단.시도 = 0; 진단.잡힘 = 0; 진단.오류 = ''; 진단.연속실패 = 0;
     document.getElementById('btnCam').textContent = '웹캠 끄기';
     화면갱신();
   } catch (err) {
@@ -1487,7 +1546,12 @@ async function 웹캠켜기() {
     if (video.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); video.srcObject = null; }
     손켬 = false;
     화면갱신();
-    document.getElementById('btnCam').textContent = '웹캠 실패 — ' + (err.name || '오류') + ' (다시 누르기)';
+    const 왜 = err?.name === 'NotAllowedError' ? '카메라를 허락하지 않았습니다'
+             : err?.name === 'NotFoundError'   ? '카메라를 찾지 못했습니다'
+             : (err?.message || err?.name || String(err));
+    진단.오류 = 왜;
+    캠말보이기('카메라 실패 — ' + 왜);
+    document.getElementById('btnCam').textContent = '웹캠 실패 — ' + (err?.name || '오류') + ' (다시 누르기)';
   }
 }
 function 웹캠끄기() {
@@ -1495,8 +1559,31 @@ function 웹캠끄기() {
   화면갱신();
   if (video.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); video.srcObject = null; }
   손[1].live = 손[2].live = false;
+  캠말숨기기();
   document.getElementById('btnCam').textContent = '웹캠 켜기';
 }
+
+// 할 말이 있을 때만 뜨고, 손이 잡히면 저절로 사라진다
+let 캠말타이머 = 0;
+function 캠말보이기(글, 자동숨김) {
+  캠말.textContent = 글; 캠말.classList.remove('hidden');
+  clearTimeout(캠말타이머);
+  if (자동숨김) 캠말타이머 = setTimeout(캠말숨기기, 자동숨김);
+}
+function 캠말숨기기() { clearTimeout(캠말타이머); 캠말.classList.add('hidden'); }
+
+// 카메라는 켜졌는데 손이 한 번도 안 잡히면 작가가 원인을 볼 수 있어야 한다
+function 캠말갱신(now) {
+  if (!손켬) return;
+  if (진단.오류) { 캠말보이기('카메라 — ' + 진단.오류); return; }
+  if (진단.잡힘 > 0) { 캠말숨기기(); return; }
+  if (진단.갈아타는중) return;
+  if (now - 진단.켠시각 < 4000) return;                 // 처음 몇 초는 기다린다
+  캠말보이기('손을 못 찾는 중 · ' + 진단.델리게이트 + ' · 시도 ' + 진단.시도
+    + ' · 영상 ' + video.videoWidth + '×' + video.videoHeight
+    + (진단.델리게이트 === 'GPU' ? ' — 설정 › 손보기 › 손인식CPU 를 켜보세요' : ''));
+}
+
 document.getElementById('btnCam').onclick = 웹캠켜기;
 
 // 탭이 뒤로 가면 프레임이 멈춰 현(지속음)을 재울 사람이 없어진다. 소리를 통째로 재운다
@@ -1518,12 +1605,29 @@ function 정규화된손을월드로(nx, ny, z, out) {
 
 const _hv = new THREE.Vector3();
 function 손읽기(now) {
-  if (!손켬 || !손인식 || video.readyState < 2) return;
+  if (!손켬 || !손인식 || 진단.갈아타는중) return;
+  // readyState 만 보면 부족하다 — 폰에서는 크기가 0×0 인 채로 2 까지 올라오는 일이 있고,
+  // 그 프레임을 밀어 넣으면 미디어파이프가 조용히 빈 결과를 준다
+  if (video.readyState < 2 || !video.videoWidth || !video.videoHeight || video.paused) return;
   if (now < 손다음) return;
   손다음 = now + 33;                                  // 30fps로 묶는다. 매 프레임 돌리면 GPU를 뺏긴다
   let res;
-  try { res = 손인식.detectForVideo(video, now); } catch { return; }
+  진단.시도++;
+  try {
+    res = 손인식.detectForVideo(video, now);
+    진단.연속실패 = 0;
+    if (진단.오류 && !진단.오류.startsWith('카메라')) 진단.오류 = '';
+  } catch (err) {
+    // 오류를 통째로 삼키면 폰에서는 "카메라는 켜졌는데 손만 안 잡힘"으로만 보인다.
+    // 반드시 남겨서 화면에 띄운다
+    진단.오류 = (err?.message || err?.name || String(err)).slice(0, 90);
+    // 인식이 죽었는데 live 를 두면 마지막 뼈대가 화면에 얼어붙은 채 계속 힘을 준다
+    손[1].live = 손[2].live = false; 손[1].뼈있음 = 손[2].뼈있음 = false;
+    if (++진단.연속실패 === 3 && 진단.델리게이트 === 'GPU') 델리게이트바꾸기('CPU', 'GPU 오류');
+    return;
+  }
   const lms = res?.landmarks || [];
+  if (lms.length) 진단.잡힘++;
   for (let k = 0; k < 2; k++) {
     const H = 손[1 + k], lm = lms[k];
     if (!lm) { H.live = false; H.뼈있음 = false; continue; }
@@ -1564,7 +1668,7 @@ const 묶음 = {
   '부딪힘':['부딪히기','실도부딪힘','반발','회전전달'],
   '손':   ['손세기','치기문턱','잡기범위'],
   '보기':  ['아웃포커싱','흐림시작','흐림세기','위에서 보기','위뷰 크기'],
-  '손보기':['손뼈보이기','손깊이자동','손겨냥반경'],
+  '손보기':['손뼈보이기','손깊이자동','손겨냥반경','손인식CPU'],
   '그 밖':['장신구','노출','잠자리원본','소리','음량'],
 };
 const 값칸 = {};
@@ -1593,7 +1697,8 @@ for (const g in 묶음) {
       row.appendChild(sel);
     } else if (typeof d.v === 'boolean') {
       const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = d.v;
-      cb.oninput = () => { 조절[k] = cb.checked; 조절보임(); };
+      cb.oninput = () => { 조절[k] = cb.checked; 조절보임();
+        if (k === '손인식CPU' && 손인식) 델리게이트바꾸기(cb.checked ? 'CPU' : 'GPU', '설정에서 바꿈'); };
       row.appendChild(cb);
     } else {
       const r = document.createElement('input'); r.type = 'range';
@@ -1674,7 +1779,7 @@ function 화면갱신() {
   hint  .classList.toggle('hidden', !보임);
   panel .classList.toggle('hidden', !(보임 && 설정열림));
   stat  .classList.toggle('hidden', !(보임 && 설정열림));
-  video .classList.toggle('hidden', !(보임 && 손켬));
+  video .classList.toggle('hidden', !(보임 && 손켬 && 설정열림));   // 프리뷰는 설정을 폈을 때만
   톱니.classList.toggle('on', 설정열림);
   전체버튼.classList.toggle('on', !!document.fullscreenElement);
 }
@@ -1880,7 +1985,9 @@ function 프레임(now) {
       stat.textContent = `유닛 ${N} · ${fps.toFixed(0)} fps · 걸음 ${걸음수}`
         + ` · 가까이 ${통계.lod[0]} 중간 ${통계.lod[1]} 멀리 ${통계.lod[2]}`
         + ` · 속도 평균 ${평균속.toFixed(2)} 최대 ${최대.toFixed(2)} m/s · 회전 ${평균회전.toFixed(2)} rad/s`
-        + (손켬 ? ` · 손 ${손[1].live?1:0}${손[2].live?'+1':''}` : '');
+        + (손켬 ? ` · 손 ${손[1].live?1:0}${손[2].live?'+1':''}`
+                 + ` (${진단.델리게이트} 시도 ${진단.시도} 잡힘 ${진단.잡힘})` : '');
+      캠말갱신(now);
     }
   } catch (err) {                                    // 31번 교훈 8: 예외로 루프를 빠져나가면 화면이 검게 남는다
     console.error(err);
