@@ -1,0 +1,1861 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>날개 모빌 — 웹캠으로 만지는 모빌</title>
+
+<style>
+  :root { color-scheme: dark; }
+  html,body { margin:0; height:100%; background:#0a0b0d; overflow:hidden;
+              font:13px/1.5 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif; color:#cfd3da; }
+  #c { position:fixed; inset:0; width:100%; height:100%; display:block; touch-action:none; }
+
+  #panel { position:fixed; top:12px; right:12px; width:250px; max-height:calc(100vh - 24px);
+           overflow-y:scroll; padding:12px 6px 14px 13px; border-radius:11px;
+           scrollbar-width:thin; scrollbar-color:#5a6474 rgba(255,255,255,.05);
+           background:rgba(14,16,20,.82); backdrop-filter:blur(14px);
+           border:1px solid rgba(255,255,255,.09); z-index:10; transition:opacity .2s; }
+  #panel.hidden { opacity:0; pointer-events:none; }
+  #panel::-webkit-scrollbar { width:9px; }
+  #panel::-webkit-scrollbar-track { background:rgba(255,255,255,.05); border-radius:5px; margin:6px 0; }
+  #panel::-webkit-scrollbar-thumb { background:#5a6474; border-radius:5px; border:2px solid transparent;
+                                    background-clip:content-box; }
+  #panel::-webkit-scrollbar-thumb:hover { background:#7b8697; background-clip:content-box; }
+  #panel h2 { margin:0 0 9px; font-size:12px; font-weight:600; letter-spacing:.02em; color:#eef1f5; }
+  #panel h3 { margin:9px 0 4px; font-size:10.5px; font-weight:600; letter-spacing:.05em;
+              color:#8a93a2; border-top:1px solid rgba(255,255,255,.07); padding-top:8px; }
+  #panel h3:first-of-type { border-top:0; }
+  #panel h3.fold { cursor:pointer; user-select:none; }
+  #panel h3.fold:hover { color:#cfd6e0; }
+  #panel .body[hidden] { display:none; }
+  .row { display:flex; align-items:center; gap:7px; margin:5px 0; }
+  .row label { flex:1 1 auto; font-size:11.5px; color:#a9b0bc; }
+  .row .val { flex:0 0 42px; text-align:right; font-variant-numeric:tabular-nums; font-size:11px; color:#7f8794; }
+  .row input[type=range] { flex:0 0 96px; height:3px; -webkit-appearance:none; background:#2b3038; border-radius:2px; }
+  .row input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:11px; height:11px;
+       border-radius:50%; background:#c8ced8; cursor:pointer; }
+  .row input[type=checkbox] { accent-color:#7d8896; }
+  .row[hidden] { display:none; }
+  .row select.pick { flex:0 0 104px; background:#22262e; color:#cfd3da; font-size:11px;
+        border:1px solid rgba(255,255,255,.1); border-radius:5px; padding:2px 4px; }
+  .extent { margin:2px 0 7px; font-size:10.5px; line-height:1.5; color:#6b7381;
+            padding:5px 7px; border-radius:6px; background:rgba(255,255,255,.035); }
+  #hint { position:fixed; left:14px; bottom:12px; z-index:10; font-size:11.5px; color:#6d747f;
+          line-height:1.7; transition:opacity .2s; }
+  #hint.hidden { opacity:0; }
+  #hint b { color:#98a0ad; font-weight:600; }
+  #stat { position:fixed; left:14px; top:12px; z-index:10; font-size:11px; color:#5d646e;
+          font-variant-numeric:tabular-nums; transition:opacity .2s; }
+  #stat.hidden { opacity:0; }
+  #boot { position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+          flex-direction:column; gap:14px; z-index:20; background:#0a0b0d; transition:opacity .5s; }
+  #boot.gone { opacity:0; pointer-events:none; }
+  #boot p { margin:0; color:#79808c; font-size:12.5px; }
+  #boot .bar { width:190px; height:2px; background:#20242b; border-radius:1px; overflow:hidden; }
+  #boot .bar i { display:block; height:100%; width:0; background:#8d95a3; transition:width .3s; }
+  #cam { position:fixed; right:12px; bottom:12px; width:168px; border-radius:8px; z-index:10;
+         transform:scaleX(-1); opacity:.34; border:1px solid rgba(255,255,255,.08); transition:opacity .2s; }
+  #cam.hidden { opacity:0; }
+  button.act { width:100%; margin-top:9px; padding:7px; border-radius:7px; cursor:pointer;
+        background:#232830; color:#cfd3da; border:1px solid rgba(255,255,255,.1); font-size:11.5px; }
+  button.act:hover { background:#2b313a; }
+</style>
+
+<canvas id="c"></canvas>
+<video id="cam" class="hidden" playsinline muted></video>
+
+<div id="stat"></div>
+
+<div id="panel">
+  <h2>날개 모빌</h2>
+  <div id="controls"></div>
+  <button class="act" id="btnSeed">배치 다시 뽑기</button>
+  <button class="act" id="btnCam">웹캠 켜기</button>
+  <button class="act" id="btnShake">한번 흔들기 (스페이스)</button>
+</div>
+
+<div id="hint">
+  <b>드래그</b> 모빌 치기 · <b>클릭+끌기</b> 잡아서 옮기기 · <b>휠</b> 다가가기<br>
+  <b>H</b> 화면 정리 · <b>F</b> 전체화면 · <b>C</b> 웹캠 · <b>R</b> 재우기 · <b>M</b> 음소거
+</div>
+
+<div id="boot"><p id="bootMsg">준비하는 중…</p><div class="bar"><i id="bootBar"></i></div></div>
+
+<script type="importmap">
+{"imports":{
+  "three":"./libs/three/three.module.js",
+  "three/addons/":"./libs/three/addons/"
+}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader }  from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { HDRLoader }   from 'three/addons/loaders/HDRLoader.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass }     from 'three/addons/postprocessing/RenderPass.js';
+import { BokehPass }      from 'three/addons/postprocessing/BokehPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass }     from 'three/addons/postprocessing/OutputPass.js';
+import { ShaderPass }     from 'three/addons/postprocessing/ShaderPass.js';
+
+// ────────────────────────────────────────────────────────────────
+// 조절값 — 패널에 그대로 뜬다
+// ────────────────────────────────────────────────────────────────
+const P = {
+  // ── 배치. 축을 이름에 박아둔다. Z는 "카메라에서 멀어지는 앞뒤 축"이다
+  // 갈래마다 **개수를 직접** 넣는다. 전체는 합으로 나온다
+  '공 개수':     { v: 45,   min: 0,   max: 1200, step: 5 },
+  '나비 개수':   { v: 45,   min: 0,   max: 1200, step: 5 },
+  '잠자리 개수': { v: 30,   min: 0,   max: 1200, step: 5 },
+  'LED 개수':    { v: 30,   min: 0,   max: 1200, step: 5 },
+  '배치 씨앗':   { v: 1,    min: 1,   max: 9999, step: 1 },     // 같은 씨앗이면 같은 배열
+  '배치 모양':   { v: '네모', 목록: ['네모','화면꼴','동그라미','타원','고리','하트','나선','꽈배기'] },
+  '고리 안쪽':   { v: 0.55, min: 0,   max: .95,  step: .01 },   // 「고리」일 때 가운데 빈 비율
+  '감김 수':     { v: 3.0,  min: .5,  max: 12,   step: .5 },    // 「나선·꽈배기」가 몇 바퀴 도나
+  '선 두께 m':   { v: 0.25, min: 0,   max: 3,    step: .05 },   // 「나선·꽈배기」 줄기의 굵기
+  '위 폭 배':    { v: 1.0,  min: 0,   max: 2,    step: .05 },   // 「꽈배기」 맨 위의 굵기 배수
+  '아래 폭 배':  { v: 0.3,  min: 0,   max: 2,    step: .05 },   // 「꽈배기」 맨 아래의 굵기 배수
+  '유닛 크기':   { v: 1.0,  min: .25, max: 4,    step: .05 },  // 크면 크게 보인다 (카메라가 다가온다)
+  '카메라 높이 m': { v: 0,  min: -10, max: 10,   step: .1 },   // 올리면 위에서, 내리면 아래에서 본다
+  // 아래 셋은 **미터**다. ± 값이라 「가로 3.8」이면 x 가 −3.8 ~ +3.8 m 에 깔린다
+  '가로 퍼짐 m': { v: 3.8,  min: .2,  max: 30,   step: .1 },
+  '높이 퍼짐 m': { v: 2.7,  min: .2,  max: 20,   step: .1 },
+  '깊이 퍼짐 m': { v: 3.0,  min: 0,   max: 30,   step: .1 },
+  '천장 여유 m': { v: 0.6,  min: 0,   max: 10,   step: .1 },   // 공 맨 위에서 앵커까지 더 올라가는 높이
+  '크기 편차':   { v: 0.55, min: 0,   max: 1,    step: .01 },  // 유닛마다 크기가 얼마나 다른가
+
+  실보이기:     { v: true },
+  실장력:       { v: 10,   min: 1,   max: 24,   step: 1 },    // 구속 반복 — 적으면 끝만 꺾인다
+  '실 진하기':   { v: 0.04, min: 0,   max: 1,    step: .01 },
+
+  중력:        { v: 9.8,  min: 0,   max: 30,   step: .1 },
+  공기저항:     { v: 0.32, min: 0,   max: 3,    step: .01 },
+  비틀림:       { v: 0.9,  min: 0,   max: 6,    step: .05 },
+  바람:        { v: 0.12, min: 0,   max: 1,    step: .005 },
+
+  부딪히기:     { v: true },
+  실도부딪힘:   { v: true },                                   // 공이 이웃의 실을 헤치고 지나간다
+  반발:        { v: 0.25, min: 0,   max: .95,  step: .01 },
+  회전전달:     { v: 0.6,  min: 0,   max: 4,    step: .05 },
+
+  장신구:      { v: true },
+  손세기:      { v: 1.0,  min: 0,   max: 6,    step: .05 },
+  치기문턱:     { v: 0.9,  min: 0,   max: 4,    step: .05 },   // m/s. 이보다 느리면 밀리기만 한다
+  잡기범위:     { v: 0.28, min: .05, max: 1.2,  step: .01 },
+
+  // ── 빛. LED 는 공간을 흐르는 색의 장에서 제 색을 읽는다
+  LED팔레트:    { v: '심해', 목록: ['심해','오로라','성운','노을','무지개'] },
+  LED속도:      { v: 1.0,  min: 0,   max: 4,    step: .05 },
+  LED얼룩:      { v: 1.0,  min: 0,   max: 3,    step: .05 },   // 물결에 섞이는 불규칙함
+  LED결:        { v: 0.35, min: 0,   max: 2,    step: .01 },   // 공간에 따른 색 변화의 촘촘함
+  숨쉬기:       { v: 0.45, min: 0,   max: 1,    step: .01 },
+  번쩍세기:     { v: 1.6,  min: 0,   max: 6,    step: .1 },    // 부딪히면 밝아진다
+  블룸:        { v: true },
+  블룸세기:     { v: 0.02, min: 0,   max: .05,  step: .001 },
+  블룸문턱:     { v: 0.60, min: 0,   max: 3,    step: .02 },   // LED 겹에만 걸리므로 낮아도 된다
+  블룸번짐:     { v: 0.55, min: 0,   max: 1.5,  step: .05 },
+
+  // ── 스텐볼 캔디 도장. 금속의 기본색은 반사 색조라 색을 주면 그대로 색거울이 된다
+  스텐색칠:     { v: '높이', 목록: ['없음','무작위','높이','깊이','층','물결'] },
+  스텐팔레트:   { v: '사탕', 목록: ['사탕','보석','파스텔','금속','바다'] },
+  스텐진하기:   { v: 0.75, min: 0,   max: 1,    step: .01 },
+  '색 띠 개수': { v: 5,    min: 2,   max: 12,   step: 1 },   // 「층」 방식일 때만 쓰인다
+
+  노출:        { v: 1.15, min: .2,  max: 3,    step: .01 },
+  '위에서 보기': { v: true },                                  // 배치를 위에서 내려다보는 작은 창
+  '위뷰 크기':   { v: 0.16, min: .10, max: .40, step: .01 },
+  아웃포커싱:   { v: true },                                   // 초점은 가장 가까운 유닛에 맞는다
+  흐림시작:     { v: 4.0,  min: .5,  max: 12,   step: .1 },    // 초점이 이 거리보다 가까워야 흐려진다
+  흐림세기:     { v: 1.0,  min: .1,  max: 3,    step: .05 },
+  손뼈보이기:   { v: true },
+  손깊이자동:   { v: true },                                   // 손을 겨냥한 유닛의 깊이로 데려간다
+  손겨냥반경:   { v: 0.09, min: .02, max: .3,   step: .005 },
+  LED밝기:      { v: 1.3,  min: 0,   max: 8,    step: .1 },
+  LED바탕:      { v: 0.10, min: 0,   max: .6,   step: .01 },   // 안 켜졌을 때의 몸빛 — 살짝 미색    // 너무 높이면 톤매핑에서 파랑이 넘쳐 보라가 된다
+  잠자리원본:   { v: false },
+  소리:        { v: true },
+  음량:        { v: 1.0,  min: 0,   max: 2,    step: .05 },
+};
+
+const 조절 = {};                       // 패널이 쓰는 실제 값
+for (const k in P) 조절[k] = P[k].v;
+// 유닛 크기는 사실 카메라가 얼마나 다가와 있는가다. 배치가 그 거리의 화면을 채우므로
+// 거리를 줄이면 유닛이 크게 보인다 — 그래서 이름도 뜻도 '크기' 로 뒤집었다
+const 기준거리 = () => 9.5 / 조절['유닛 크기'];
+// 가로·세로가 화면 기준이므로 깊이도 같은 자로 잰다 (1 = 카메라까지 거리의 절반쯤)
+const 깊이범위 = () => 조절['깊이 퍼짐 m'];
+
+// ────────────────────────────────────────────────────────────────
+// 기본 골격
+// ────────────────────────────────────────────────────────────────
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({
+  canvas, antialias: true, alpha: false,
+  powerPreference: 'high-performance',
+  preserveDrawingBuffer: true,          // 31번 교훈 8: 프레임 하나 걸러도 검정이 안 낀다
+});
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 조절.노출;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+const scene  = new THREE.Scene();
+scene.background = new THREE.Color(0x07080a);
+const camera = new THREE.PerspectiveCamera(35, 1, 0.05, 200);
+camera.position.set(0, 0, 9.5);
+
+// ── 블룸은 **LED 만** 번지게 한다.
+// 문턱만 올려서는 못 가른다. 거울(거칠기 0.01)이 HDRI 광원을 비추면 밝기가 수십까지
+// 올라가서 어떤 문턱을 잡아도 크롬 하이라이트가 먼저 걸린다.
+// 그래서 LED 를 따로 한 겹(layer 1)에 두고, 그 겹만 그려서 번지게 한 뒤 더한다.
+const 빛겹 = 1;
+const 블룸컴포저 = new EffectComposer(renderer);
+블룸컴포저.renderToScreen = false;
+블룸컴포저.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.9, 0.55, 0.0);
+블룸컴포저.addPass(bloom);
+
+// 아웃포커싱 — 멀리서는 전부 또렷하고, 다가갈수록 흐려진다
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bokeh = new BokehPass(scene, camera, { focus: 9.5, aperture: 0.0006, maxblur: 0.012 });
+bokeh.enabled = false;
+composer.addPass(bokeh);
+// 번진 빛을 더한다. 톤매핑(OutputPass) **앞**이라 밝기가 자연스럽게 눌린다
+const 블룸합성 = new ShaderPass(new THREE.ShaderMaterial({
+  // 셰이더 안의 이름은 영문이어야 한다 — GLSL 은 한글 식별자를 못 읽는다
+  uniforms: { baseTexture: { value: null }, bloomTex: { value: 블룸컴포저.renderTarget2.texture },
+              amount: { value: 1 } },
+  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+  fragmentShader: 'uniform sampler2D baseTexture; uniform sampler2D bloomTex; uniform float amount; varying vec2 vUv;\n' +
+                  'void main(){ gl_FragColor = texture2D(baseTexture, vUv) + amount * texture2D(bloomTex, vUv); }',
+}), 'baseTexture');
+composer.addPass(블룸합성);
+composer.addPass(new OutputPass());
+
+// LED 만 빛겹에 올린다
+function 빛겹세우기() {
+  for (const per of 인스턴스) for (const ms of per) for (const m of ms)
+    if (m.발광) m.layers.enable(빛겹);
+}
+const _옛배경 = scene.background;
+function 블룸그리기() {
+  if (!조절.블룸) return;
+  camera.layers.set(빛겹);                     // 이 겹에 올린 것만 그린다
+  scene.background = null;
+  블룸컴포저.render();
+  scene.background = _옛배경;
+  camera.layers.set(0);
+}
+
+// 31번 교훈 8: window의 resize만 듣지 말고 캔버스를 직접 감시한다
+function resize() {
+  const w = canvas.clientWidth || innerWidth, h = canvas.clientHeight || innerHeight;
+  renderer.setSize(w, h, false);
+  composer.setSize(w, h);
+  블룸컴포저.setSize(w, h);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(canvas);
+addEventListener('resize', resize);
+resize();
+
+const boot = document.getElementById('boot');
+const bootMsg = document.getElementById('bootMsg');
+const bootBar = document.getElementById('bootBar');
+const setBoot = (msg, pct) => { bootMsg.textContent = msg; bootBar.style.width = pct + '%'; };
+// 최상위 await 가 거부되면 모듈이 통째로 멈춘다. 그대로 두면 '준비하는 중…' 이 영원히 남는다
+function 부팅실패(무엇) {
+  bootMsg.textContent = '불러오지 못했습니다 — ' + 무엇;
+  bootMsg.style.color = '#e08a8a';
+  bootBar.style.background = '#7a4a4a';
+}
+addEventListener('unhandledrejection', e => 부팅실패((e.reason && e.reason.message) || e.reason));
+addEventListener('error', e => 부팅실패(e.message || '알 수 없는 오류'));
+
+// ────────────────────────────────────────────────────────────────
+// 자산 불러오기
+// ────────────────────────────────────────────────────────────────
+setBoot('환경을 굽는 중…', 8);
+
+const pmrem = new THREE.PMREMGenerator(renderer);
+pmrem.compileEquirectangularShader();
+
+const hdr = await new HDRLoader().loadAsync('./assets/hdri/studio_small_09_1k.hdr');
+hdr.mapping = THREE.EquirectangularReflectionMapping;
+const envRT = pmrem.fromEquirectangular(hdr);
+scene.environment = envRT.texture;
+hdr.dispose();
+
+setBoot('모빌 유닛을 불러오는 중…', 30);
+
+const spec = await (await fetch('./assets/mobile.json')).json();
+
+const draco = new DRACOLoader().setDecoderPath('./libs/three/libs/draco/gltf/');
+const gltf = await new GLTFLoader().setDRACOLoader(draco).loadAsync('./assets/mobile.glb');
+draco.dispose();
+
+// 부품을 **노드 이름**으로 거둔다.
+// 주의: GLTFLoader 는 프리미티브가 하나면 Mesh 를 노드 이름으로 만들지만,
+// 재질이 갈려 프리미티브가 둘 이상이면 **Group** 을 만들고 자식 Mesh 이름은
+// 노드가 아니라 *메시* 이름(led1_lod0.001 → 점이 지워져 led1_lod0001)에서 짓는다.
+// 이름 짐작으로 찾으면 led 유닛이 통째로 사라진다 — 실제로 그렇게 됐었다.
+// 그래서 부모를 타고 올라가 노드 이름을 쓴다.
+const 부품 = {};                             // 노드이름 -> [{형상, 재질}, …]
+const 재질전부 = new Set();
+gltf.scene.updateMatrixWorld(true);
+gltf.scene.traverse(o => {
+  if (!o.isMesh) return;
+  let 마디이름 = o.name, p = o;
+  while (p.parent && p.parent !== gltf.scene) p = p.parent;   // 씬 바로 아래 = 노드
+  마디이름 = p.name || o.name;
+  const g = o.geometry.clone();
+  g.applyMatrix4(o.matrixWorld);            // 노드 변환을 형상에 굽는다
+  g.computeBoundingSphere();
+  const m = Array.isArray(o.material) ? o.material[0] : o.material;
+  재질전부.add(m);
+  (부품[마디이름] || (부품[마디이름] = [])).push({ 형상: g, 재질: m });
+});
+
+const 크롬 = (부품['b1_lod0'] && 부품['b1_lod0'][0].재질) || [...재질전부][0];
+const 발광재질 = [];
+for (const m of 재질전부) {
+  if (m.transparent || (m.map && (m.name || '').startsWith('dragonfly'))) {
+    m.transparent = false;                  // 수천 개를 정렬할 수 없다
+    m.alphaTest = 0.5;                      // 대신 잘라낸다
+    m.side = THREE.DoubleSide;
+  }
+  if (m.emissive && (m.emissive.r + m.emissive.g + m.emissive.b) > 0) {
+    발광재질.push(m);
+    // 인스턴스마다 다른 색으로 빛나게 한다.
+    // three 는 instanceColor 를 **정점 셰이더에서만** vColor 에 넣고, 프래그먼트 쪽에는
+    // USE_COLOR 일 때만 varying 을 선언한다. 그 한 줄을 끼워 넣어 발광에 곱한다.
+    // "자체로 밝다" = 확산·반사를 거의 0 으로. 화면에 보이는 것이 발광뿐이라 색이 안 섞인다.
+    // 다만 완전한 검정은 몸이 없어 보이므로 아주 옅은 **미색**을 남긴다
+    m.color.setRGB(1, .96, .90);
+    m.emissive.setRGB(1, 1, 1);            // 색은 전부 인스턴스가 정한다
+    m.metalness = 0; m.roughness = 1;
+    m.onBeforeCompile = sh => {
+      // three 는 USE_INSTANCING_COLOR 를 **정점 앞머리에만** 정의한다. 프래그먼트에서
+      // 그 매크로로 감싸면 늘 거짓이라 주입이 통째로 빠진다. 그렇다고 vColor 를 직접
+      // 선언하면 USE_COLOR 가 켜져 있을 때 중복 선언이 되어 컴파일이 깨진다.
+      // 그래서 **이름이 겹치지 않는 내 varying** 을 만들어 직접 나른다.
+      sh.vertexShader = sh.vertexShader
+        .replace('#include <common>', '#include <common>\nvarying vec3 vLED;')
+        .replace('#include <begin_vertex>',
+          '#include <begin_vertex>\n#ifdef USE_INSTANCING_COLOR\n vLED = instanceColor;\n#else\n vLED = vec3(1.0);\n#endif');
+      sh.fragmentShader = sh.fragmentShader
+        .replace('#include <common>', '#include <common>\nvarying vec3 vLED;')
+        .replace('#include <emissivemap_fragment>',
+          '#include <emissivemap_fragment>\ntotalEmissiveRadiance *= vLED;');
+    };
+    m.customProgramCacheKey = () => 'led-instance-emissive';
+    m.envMapIntensity = 0;                  // 환경이 조금이라도 섞이면 색이 탁해진다
+  }
+  else m.envMapIntensity = 1.0;
+}
+function LED밝기적용() {
+  for (const m of 발광재질) {
+    m.emissiveIntensity = 조절.LED밝기;
+    const v = 조절.LED바탕;
+    m.color.setRGB(v, v * .96, v * .90);     // 미색 — 값이 낮을수록 발광만 남는다
+  }
+}
+LED밝기적용();
+
+// ────────────────────────────────────────────────────────────────
+// LED 색의 장 — 공간을 흐르는 색을 유닛이 제자리에서 읽는다
+// ────────────────────────────────────────────────────────────────
+// 팔레트는 코사인 식 하나로 만든다: c(t) = a + b·cos(2π(f·t + p)).
+// 계수 넷만 바꾸면 완전히 다른 분위기가 나오고, 어떤 t 에서도 색이 끊기지 않는다.
+// 색상(hue)만 훑고 채도는 높게 고정한다. 어느 값에서도 맑은 색이 나온다
+const 팔레트정의 = {
+  심해:   { 색상: [205, 232, 262, 288, 196], 채도: .92, 밝기: .56 },
+  오로라: { 색상: [148, 168, 190, 262, 132], 채도: .88, 밝기: .58 },
+  성운:   { 색상: [276, 302, 328, 352, 258], 채도: .86, 밝기: .58 },
+  노을:   { 색상: [ 12,  32,  50, 340, 356], 채도: .90, 밝기: .58 },
+  무지개: { 색상: [  0,  72, 144, 216, 288], 채도: .90, 밝기: .58 },
+};
+const 팔레트칸 = 256;
+const 팔레트표 = {};
+{
+  const c = new THREE.Color();
+  for (const 이름 in 팔레트정의) {
+    const d = 팔레트정의[이름], 끝 = d.색상.length, arr = new Float32Array(팔레트칸 * 3);
+    for (let i = 0; i < 팔레트칸; i++) {
+      const p = i / 팔레트칸 * 끝;              // 색상 사이를 짧은 쪽으로 돈다
+      const a = Math.floor(p) % 끝, b = (a + 1) % 끝, w = p - Math.floor(p);
+      let h1 = d.색상[a], h2 = d.색상[b], dh = ((h2 - h1 + 540) % 360) - 180;
+      const h = ((h1 + dh * w) % 360 + 360) % 360;
+      c.setHSL(h / 360, d.채도, d.밝기, THREE.SRGBColorSpace);
+      arr[i*3] = c.r; arr[i*3+1] = c.g; arr[i*3+2] = c.b;
+    }
+    팔레트표[이름] = arr;
+  }
+}
+
+setBoot('유닛을 배치하는 중…', 60);
+
+// ────────────────────────────────────────────────────────────────
+// 유닛 종류
+// ────────────────────────────────────────────────────────────────
+const 종류 = [];
+for (const key in spec['유닛']) {
+  const u = spec['유닛'][key];
+  const 메시들 = u['메시'] || [];
+  const lods = [];
+  for (const n of 메시들) {
+    const parts = 부품[n];                   // 노드 이름 그대로. 여러 재질이면 조각이 여럿
+    if (parts && parts.length) lods.push(parts);
+  }
+  if (메시들.length && lods.length !== 메시들.length)
+    console.warn('부품을 못 찾은 단계가 있다:', key, 메시들, Object.keys(부품));
+  let 반지름 = 0;
+  for (const p of (lods[0] || [])) 반지름 = Math.max(반지름, p.형상.boundingSphere.radius);
+  반지름 = Math.max(반지름, u['공반지름_m'] || 0);
+  종류.push({
+    이름: key,
+    공반지름: u['공반지름_m'],           // null이면 공이 메시 안에 있다
+    실길이: u['실길이_m'],
+    날개: u['날개'],
+    lods,
+    반지름,                              // 충돌·화면크기 판정용
+    장신구: u['장신구'] === 'drop',
+    잠자리: u['날개'] === '잠자리',
+  });
+}
+const 종류수 = 종류.length;
+
+// ────────────────────────────────────────────────────────────────
+// 그리는 것들 — 전부 인스턴스
+// ────────────────────────────────────────────────────────────────
+const MAX = 3000;
+const 인스턴스 = [];                       // [종류][단계] = [InstancedMesh, …]
+for (const t of 종류) {
+  const per = [];
+  for (const parts of t.lods) {
+    const ms = parts.map(p => {
+      const im = new THREE.InstancedMesh(p.형상, p.재질, MAX);
+      im.발광 = 발광재질.indexOf(p.재질) >= 0;   // LED 부품만 인스턴스 색을 쓴다
+      // 색 버퍼를 **만들 때 미리** 붙인다. 나중에 처음 setColorAt 이 불릴 때 붙이면
+      // 그 전에 컴파일된 프로그램에는 vColor 가 없어 색이 안 먹는다
+      if (im.발광) im.instanceColor =
+        new THREE.InstancedBufferAttribute(new Float32Array(MAX * 3).fill(1), 3).setUsage(THREE.DynamicDrawUsage);
+      im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      im.frustumCulled = false;
+      im.count = 0;
+      scene.add(im);
+      return im;
+    });
+    per.push(ms);
+  }
+  인스턴스.push(per);
+}
+
+// 공은 프로시저럴 — 종류마다 반지름만 다르므로 하나로 묶는다.
+// 캔디 도장: 금속의 기본색은 확산색이 아니라 **반사 색조**다. 그래서 색을 주면
+// 그대로 색거울이 된다 (제프 쿤스의 투명 도장이 물리적으로 이것이다).
+// 인스턴스마다 색을 주려면 프래그먼트 쪽에 vColor 선언을 끼워 넣어야 한다.
+const 공재질 = 크롬.clone();
+공재질.color.setRGB(1, 1, 1);                  // 색은 전부 인스턴스가 정한다
+공재질.onBeforeCompile = sh => {
+  sh.vertexShader = sh.vertexShader
+    .replace('#include <common>', '#include <common>\nvarying vec3 vLED;')
+    .replace('#include <begin_vertex>',
+      '#include <begin_vertex>\n#ifdef USE_INSTANCING_COLOR\n vLED = instanceColor;\n#else\n vLED = vec3(1.0);\n#endif');
+  sh.fragmentShader = sh.fragmentShader
+    .replace('#include <common>', '#include <common>\nvarying vec3 vLED;')
+    .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb *= vLED;');
+};
+공재질.customProgramCacheKey = () => 'candy-instance-tint';
+
+const 공형상 = new THREE.SphereGeometry(1, 40, 24);
+const 공메시 = new THREE.InstancedMesh(공형상, 공재질, MAX);
+공메시.instanceColor =
+  new THREE.InstancedBufferAttribute(new Float32Array(MAX * 3).fill(.52), 3).setUsage(THREE.DynamicDrawUsage);
+공메시.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+공메시.frustumCulled = false; 공메시.count = 0;
+scene.add(공메시);
+
+// 장신구
+const 장신구형상 = 부품['drop_lod0'] && 부품['drop_lod0'][0].형상;
+const 장신구목록 = spec['장신구']['목록'];
+const 장신구수  = 장신구목록.length;
+const MAXDROP = 20000;
+const 장신구메시 = 장신구형상
+  ? new THREE.InstancedMesh(장신구형상, 크롬, MAXDROP) : null;
+if (장신구메시) {
+  장신구메시.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  장신구메시.frustumCulled = false; 장신구메시.count = 0;
+  scene.add(장신구메시);
+}
+
+빛겹세우기();
+
+// 실
+const 마디 = 8;
+const 실형상 = new THREE.BufferGeometry();
+const 실점 = new Float32Array(MAX * 마디 * 2 * 3);
+실형상.setAttribute('position', new THREE.BufferAttribute(실점, 3));
+실형상.setDrawRange(0, 0);
+const 실재질 = new THREE.LineBasicMaterial({ color: 0x8e949c, transparent: true, opacity: 0.5,
+                                            depthWrite: false });
+const 실메시 = new THREE.LineSegments(실형상, 실재질);
+실메시.frustumCulled = false;
+scene.add(실메시);
+
+// ────────────────────────────────────────────────────────────────
+// 유닛 상태 — 평평한 배열로 (수천 개를 견디려면)
+// ────────────────────────────────────────────────────────────────
+const N최대 = MAX;
+const 점   = new Float32Array(N최대 * (마디 + 1) * 3);   // 실 사슬 + 끝점(유닛)
+const 옛점 = new Float32Array(N최대 * (마디 + 1) * 3);
+const 앵커 = new Float32Array(N최대 * 3);
+const 종류색인 = new Int32Array(N최대);
+const 크기   = new Float32Array(N최대);
+const 마디길이 = new Float32Array(N최대);
+const 비틀림각 = new Float32Array(N최대);
+const 비틀림속 = new Float32Array(N최대);
+const 위상   = new Float32Array(N최대);
+const 잡힘   = new Int32Array(N최대);          // -1 = 안 잡힘, 그 외 = 손 번호
+const 충돌반지름 = new Float32Array(N최대);
+const 번쩍 = new Float32Array(N최대);   // 부딪히면 솟았다 잦아드는 밝기
+const 기준각 = new Float32Array(N최대);  // 유닛이 걸려 있는 제 방향 (세로축 기준 360도)
+let N = 0;
+
+// 씨앗을 다시 뿌릴 수 있어야 같은 배열을 되부르고 새로 뽑을 수 있다
+let 난수상태 = 20260801;
+function 씨뿌리기(v) { 난수상태 = ((v | 0) >>> 0) || 1; }
+function rnd() { 난수상태 = (난수상태 * 1103515245 + 12345) & 0x7fffffff; return 난수상태 / 0x7fffffff; }
+
+// 배치 규칙 — 축을 분명히 해둔다.
+//   전부 **미터**다. ± 값이라 '가로 퍼짐 m' = 3.8 이면 x 가 −3.8 ~ +3.8 m 에 깔린다.
+//   X (가로) : 좌우
+//   Y (높이) : 공이 놓이는 높이. 앵커(천장)는 거기서 '천장 여유 m' 만큼 더 위
+//   Z (앞뒤) : 카메라에서 멀어지는 축. +쪽이 카메라에 가깝다.
+//              카메라는 z = 기준거리() 에 있고 −Z를 본다
+// 깊이마다 화면 크기가 다르므로 그 깊이의 절두체 안에서 고른다.
+// 이래야 개수를 아무리 올려도 구도가 무너지지 않고, 서로 끼어 밀어내지 않는다.
+const 배치범위 = { x: 0, y: 0, z: 0, 기준거리: 9.5 };
+// 갈래 — 무게 비율로 개수를 나눈다. 무게가 0이면 그 갈래는 화면에서 사라진다.
+// 토글과 비율을 따로 두면 조작이 두 겹이 된다. 하나로 합쳤다.
+const 갈래정의 = [
+  { 이름: '공',     개수키: '공 개수',     종류: ['s1','s2','s3'] },
+  { 이름: '나비',   개수키: '나비 개수',   종류: ['b1','b2','b3'] },
+  { 이름: '잠자리', 개수키: '잠자리 개수', 종류: ['d1','d2'] },
+  { 이름: 'LED',    개수키: 'LED 개수',    종류: ['led1','led2'] },
+];
+const 종류번호 = {}; 종류.forEach((t, i) => 종류번호[t.이름] = i);
+let 배정 = [];                                  // 유닛 하나하나가 어떤 종류인지
+const 총개수 = () => Math.min(N최대,
+  갈래정의.reduce((a, g) => a + Math.max(0, 조절[g.개수키] | 0), 0));
+function 배정다시() {
+  배정 = [];
+  for (const g of 갈래정의) {
+    const n = Math.max(0, 조절[g.개수키] | 0);
+    for (let k = 0; k < n && 배정.length < N최대; k++)
+      배정.push(종류번호[g.종류[k % g.종류.length]]);
+  }
+  // **섞는다.** 안 섞으면 공을 다 넣고 나비를 다 넣는 순서 그대로 남는데,
+  // 나선·꽈배기는 번호를 매개변수로 쓰므로 아래는 LED, 그다음은 잠자리처럼 띠가 생긴다
+  for (let i = 배정.length - 1; i > 0; i--) {
+    const j = (rnd() * (i + 1)) | 0;
+    const t = 배정[i]; 배정[i] = 배정[j]; 배정[j] = t;
+  }
+}
+
+// 정면(XY)에서 본 실루엣을 정한다. 깊이(Z)는 따로.
+// 면을 채우는 모양은 **기각 표본**으로 뽑는다 — 식만 있으면 어떤 모양이든 같은 방법이 통한다.
+// 선을 따라가는 모양(나선·꽈배기)은 번호를 매개변수로 쓴다.
+const _자리 = { x: 0, y: 0, z: 0 };
+function 자리뽑기(i, n, 기준, out) {
+  const A = 조절['가로 퍼짐 m'], B = 조절['높이 퍼짐 m'], C = 조절['깊이 퍼짐 m'];
+  const 모양 = 조절['배치 모양'];
+  let x = 0, y = 0, z = (rnd() - .5) * 2 * C;
+
+  if (모양 === '나선' || 모양 === '꽈배기') {
+    const 감김 = 조절['감김 수'];
+    const t = (n <= 1 ? 0 : i / (n - 1));
+    const 각 = t * 감김 * Math.PI * 2;
+    const 흔들 = (rnd() - .5) * 2 * 조절['선 두께 m'];
+    const 흔들2 = (rnd() - .5) * 2 * 조절['선 두께 m'];
+    if (모양 === '나선') {                       // 골뱅이 — 정면에서 안쪽부터 감겨 나온다
+      const r = t;
+      x = Math.cos(각) * r * A + 흔들;
+      y = Math.sin(각) * r * B + 흔들2;
+    } else {                                     // 꽈배기 — 두 가닥이 서로 꼬이며 내려온다
+      const 가닥 = (i % 2) * Math.PI;
+      // 위와 아래의 굵기를 따로 준다. 둘을 다르게 하면 소용돌이처럼 좁아지며 내려온다
+      const 폭 = 조절['위 폭 배'] * (1 - t) + 조절['아래 폭 배'] * t;
+      x = Math.cos(각 + 가닥) * A * 폭 + 흔들;
+      z = Math.sin(각 + 가닥) * C * 폭 + 흔들2;
+      y = (1 - t * 2) * B;
+    }
+  } else if (모양 === '네모' || 모양 === '화면꼴') {
+    const 폭배 = (모양 === '네모') ? 1 : Math.max(기준 - z, .5) / 기준;
+    x = (rnd() - .5) * 2 * A * 폭배;
+    y = (rnd() * 2 - 1) * B;
+  } else {
+    // 면을 채우는 모양 — 들어올 때까지 다시 뽑는다
+    for (let 시도 = 0; 시도 < 60; 시도++) {
+      const u = (rnd() - .5) * 2, v = (rnd() * 2 - 1);
+      let 들어옴 = false;
+      if (모양 === '타원' || 모양 === '동그라미') {
+        const s = (모양 === '동그라미') ? Math.min(1, B / Math.max(A, 1e-6)) : 1;
+        들어옴 = (u / s) * (u / s) + v * v <= 1;
+      } else if (모양 === '고리') {
+        const r2 = u * u + v * v;
+        들어옴 = r2 <= 1 && r2 >= 조절['고리 안쪽'] * 조절['고리 안쪽'];
+      } else if (모양 === '하트') {
+        // (x²+y²−1)³ − x²y³ ≤ 0. 이 식은 **이미 바로 선 하트**다 (봉우리가 위, 뾰족한 끝이 아래).
+        // 부호를 뒤집으면 거꾸로 선다 — 실제로 그렇게 되어 있었다.
+        // 세로로 −1.25 ~ +1.0 을 차지하므로 가운데를 조금 내려 맞춘다
+        const hx = u * 1.15, hy = v * 1.13 - .13;
+        const q = hx * hx + hy * hy - 1;
+        들어옴 = q * q * q - hx * hx * hy * hy * hy <= 0;
+      } else 들어옴 = true;
+      if (들어옴) { x = u * A; y = v * B; break; }
+      if (시도 === 59) { x = u * A * .3; y = v * B * .3; }
+    }
+  }
+  out.x = x; out.y = y; out.z = z;
+}
+
+function 배치(n) {
+  n = Math.min(n, N최대);
+  const 기준 = 기준거리();
+  씨뿌리기(조절['배치 씨앗']);                   // 같은 씨앗이면 늘 같은 배열이 나온다
+  배치범위.기준거리 = 기준; 배치범위.x = 0; 배치범위.y = 0; 배치범위.z = 깊이범위();
+  if (N === 0) 배정다시();
+  for (let i = N; i < n; i++) {
+    const t = 배정[i] !== undefined ? 배정[i] : (i % 종류수);
+    종류색인[i] = t;
+    크기[i] = Math.max(.25, 1 + (rnd() - .5) * 2 * 조절['크기 편차']);
+
+    자리뽑기(i, n, 기준, _자리);
+    const ax = _자리.x, 공높이 = _자리.y, az = _자리.z;
+    const 천장 = 조절['높이 퍼짐 m'] + 조절['천장 여유 m'];
+    const 길이 = Math.max(.15, 천장 - 공높이);
+    if (Math.abs(ax) > 배치범위.x) 배치범위.x = Math.abs(ax);
+    if (Math.abs(공높이) > 배치범위.y) 배치범위.y = Math.abs(공높이);
+
+    앵커[i*3] = ax; 앵커[i*3+1] = 천장; 앵커[i*3+2] = az;
+    마디길이[i] = 길이 / 마디;
+    위상[i] = rnd() * Math.PI * 2;
+    // 걸려 있는 방향은 유닛마다 제각각이다. 비틀림은 **이 각도로** 되감긴다.
+    // 0 으로 되감으면 결국 전부 같은 쪽을 보게 된다 — 실제로 그렇게 되어 있었다
+    기준각[i] = rnd() * Math.PI * 2;
+    비틀림각[i] = 기준각[i] + (rnd() - .5) * .6;
+    비틀림속[i] = 0;
+    번쩍[i] = 0;
+    잡힘[i] = -1;
+    충돌반지름[i] = 종류[t].반지름 * 크기[i] * .8;
+    for (let k = 0; k <= 마디; k++) {
+      const o = (i * (마디 + 1) + k) * 3;
+      점[o]   = 옛점[o]   = ax + (rnd() - .5) * .01;
+      점[o+1] = 옛점[o+1] = 천장 - 마디길이[i] * k;
+      점[o+2] = 옛점[o+2] = az + (rnd() - .5) * .01;
+    }
+  }
+  N = n;
+}
+function 다시배치() {
+  for (const H of 손) { H.grabbed = -1; H.겨냥 = -1; }   // 옛 색인이 남으면 유령이 끌려다닌다
+  N = 0; 배치(총개수()); 배치표시(); 기둥다시();
+}
+function 배치표시() {
+  const el = document.getElementById('extent');
+  if (!el) return;
+  const B = 배치범위;
+  el.textContent = `모두 ${N}개 · 실제 범위 X ±${B.x.toFixed(2)} m · Y ±${B.y.toFixed(2)} m · `
+    + `Z ±${B.z.toFixed(2)} m · 카메라는 z=${B.기준거리.toFixed(1)} m 에서 −Z를 본다`;
+}
+배치(총개수());
+
+// ────────────────────────────────────────────────────────────────
+// 물리
+// ────────────────────────────────────────────────────────────────
+let 시각 = 0;
+// dt는 언제나 고정값(걸음)으로 들어온다. 베를레는 시간간격이 변하면 틀리기 때문이다 —
+// `점 − 옛점`은 지난 프레임의 변위인데, 이번 dt가 다르면 그대로 쓸 수 없다.
+function 물리(dt) {
+  const g = -조절.중력 * dt * dt;
+  const damp = Math.max(0, 1 - 조절.공기저항 * dt);
+  const 바람세기 = 조절.바람;
+
+  for (let i = 0; i < N; i++) {
+    const base = i * (마디 + 1) * 3;
+    // 앵커 고정
+    점[base] = 앵커[i*3]; 점[base+1] = 앵커[i*3+1]; 점[base+2] = 앵커[i*3+2];
+    옛점[base] = 점[base]; 옛점[base+1] = 점[base+1]; 옛점[base+2] = 점[base+2];
+
+    // 바람은 공간을 지나가는 물결이다. 유닛마다 제멋대로인 위상을 주면
+    // 각자 따로 떨어 잡음처럼 보인다. 앵커 자리로 위상을 정하면
+    // 이웃끼리 같이 움직여 **발(門簾)이 물결치듯** 보인다
+    const ph = 시각 * 1.05 - 앵커[i*3] * .62 - 앵커[i*3+2] * .28 + 위상[i] * .12;
+    const w  = 바람세기 * (Math.sin(ph) + .42 * Math.sin(ph * 2.37 + 1.7)) * dt * dt;
+    const w2 = 바람세기 * .40 * Math.sin(ph * .73 + 2.1) * dt * dt;
+
+    for (let k = 1; k <= 마디; k++) {
+      const o = base + k * 3;
+      const vx = (점[o]   - 옛점[o])   * damp;
+      const vy = (점[o+1] - 옛점[o+1]) * damp;
+      const vz = (점[o+2] - 옛점[o+2]) * damp;
+      옛점[o] = 점[o]; 옛점[o+1] = 점[o+1]; 옛점[o+2] = 점[o+2];
+      점[o]   += vx + w;
+      점[o+1] += vy + g;
+      점[o+2] += vz + w2;
+    }
+  }
+
+  // 거리 구속 — 실은 늘어나지 않는다(최대 길이만 강제, 줄어들 수는 있어 처진다).
+  //
+  // 중요: 자식만 끌어당기면 앵커 쪽이 무한히 뻣뻣해져서 **끝부분만 꺾인다.**
+  // 두 점을 반씩 움직여야 공의 움직임이 위로 전해져 뿌리에서부터 휜다.
+  // 앵커에 붙은 첫 마디만 예외로 자식만 옮긴다(앵커는 고정이므로).
+  const iter = 조절.실장력 | 0;
+  for (let it = 0; it < iter; it++) {
+    for (let i = 0; i < N; i++) {
+      const base = i * (마디 + 1) * 3;
+      const L = 마디길이[i];
+      for (let k = 1; k <= 마디; k++) {
+        const a = base + (k - 1) * 3, b = base + k * 3;
+        const dx = 점[b] - 점[a], dy = 점[b+1] - 점[a+1], dz = 점[b+2] - 점[a+2];
+        const d = Math.hypot(dx, dy, dz);
+        if (d <= L || d === 0) continue;
+        const f = (d - L) / d;
+        if (k === 1) {                       // 앵커는 안 움직인다
+          점[b] -= dx*f; 점[b+1] -= dy*f; 점[b+2] -= dz*f;
+        } else {
+          const hf = f * .5;
+          점[a] += dx*hf; 점[a+1] += dy*hf; 점[a+2] += dz*hf;
+          점[b] -= dx*hf; 점[b+1] -= dy*hf; 점[b+2] -= dz*hf;
+        }
+      }
+    }
+  }
+
+  // 비틀림 — 모빌은 좌우로 흔들리는 것보다 천천히 돌다 되감기는 데서 성격이 나온다
+  const kt = 조절.비틀림;
+  for (let i = 0; i < N; i++) {
+    비틀림속[i] += (-kt * (비틀림각[i] - 기준각[i]) + 바람세기 * .8 * Math.sin(시각 * .29 + 위상[i])) * dt;
+    비틀림속[i] *= Math.max(0, 1 - .55 * dt);
+    번쩍[i] *= Math.max(0, 1 - 3.2 * dt);            // 솟았다 1초 안에 잦아든다
+    if (번쩍[i] > 3) 번쩍[i] = 3;
+    if (비틀림속[i] >  2.2) 비틀림속[i] =  2.2;      // 초당 1/3바퀴 넘게는 안 돈다
+    if (비틀림속[i] < -2.2) 비틀림속[i] = -2.2;
+    비틀림각[i] += 비틀림속[i] * dt;
+  }
+  시각 += dt;
+}
+
+// 충돌 — 대용 구 하나로 근사. 부딪히면 밀려나고 서로 돈다.
+// 칸 하나가 가장 큰 유닛의 지름이므로, 이웃 27칸까지 봐야 빠뜨리지 않는다.
+const 격자 = new Map();
+const 칸좌표 = new Int32Array(N최대 * 3);
+const 키 = (a,b,c) => (a*73856093) ^ (b*19349663) ^ (c*83492791);
+// 자기 칸 + 앞쪽 13칸. 뒤쪽은 상대편이 이미 본다
+const 반이웃 = new Int8Array([
+   0,0,0,   1,0,0,  -1,1,0,   0,1,0,   1,1,0,
+  -1,-1,1,  0,-1,1,  1,-1,1, -1,0,1,   0,0,1,
+   1,0,1,  -1,1,1,   0,1,1,   1,1,1,
+]);
+function 충돌(dt) {
+  if (!조절.부딪히기) return;
+  const end = 마디 * 3;
+  let cell = 0;
+  for (let i = 0; i < N; i++) if (충돌반지름[i] > cell) cell = 충돌반지름[i];
+  cell = Math.max(cell * 2, .05);
+  const inv = 1 / cell;
+
+  격자.clear();
+  for (let i = 0; i < N; i++) {
+    const o = i * (마디 + 1) * 3 + end;
+    const a = Math.floor(점[o]*inv), b = Math.floor(점[o+1]*inv), c = Math.floor(점[o+2]*inv);
+    칸좌표[i*3] = a; 칸좌표[i*3+1] = b; 칸좌표[i*3+2] = c;
+    const k = 키(a,b,c);
+    let arr = 격자.get(k); if (!arr) 격자.set(k, arr = []);
+    arr.push(i);
+  }
+
+  const 반발 = 조절.반발, 회전 = 조절.회전전달;
+  for (let i = 0; i < N; i++) {
+    const a = 칸좌표[i*3], b = 칸좌표[i*3+1], c = 칸좌표[i*3+2];
+    const oi = i * (마디 + 1) * 3 + end;
+    for (let n = 0; n < 14; n++) {                  // 앞쪽 반쪽만 본다 — 27칸이 아니라 14칸
+      const da = 반이웃[n*3], db = 반이웃[n*3+1], dc = 반이웃[n*3+2];
+      const arr = 격자.get(키(a+da, b+db, c+dc));
+      if (!arr) continue;
+      const 같은칸 = (n === 0);
+      for (let y = 0; y < arr.length; y++) {
+        const j = arr[y];
+        if (같은칸 ? j <= i : false) continue;       // 한 쌍은 한 번만
+        const oj = j * (마디 + 1) * 3 + end;
+        const dx = 점[oj] - 점[oi], dy = 점[oj+1] - 점[oi+1], dz = 점[oj+2] - 점[oi+2];
+        const R = 충돌반지름[i] + 충돌반지름[j];
+        const d2 = dx*dx + dy*dy + dz*dz;
+        if (d2 >= R*R || d2 < 1e-12) continue;
+        const d = Math.sqrt(d2), nx = dx/d, ny = dy/d, nz = dz/d;
+        // 겹침을 떼어낸다. 베를레에서는 위치를 옮기면 그것이 곧 속도 변화이므로
+        // 옛점도 같이 옮겨 **속도는 건드리지 않는다**. 이걸 안 하면 아래 반발 충격량과
+        // 이중으로 들어가 에너지가 계속 불어난다 — 그게 폭주의 원인이었다.
+        const push = (R - d) * .5;
+        if (잡힘[i] < 0) { 점[oi] -= nx*push; 점[oi+1] -= ny*push; 점[oi+2] -= nz*push;
+                           옛점[oi] -= nx*push; 옛점[oi+1] -= ny*push; 옛점[oi+2] -= nz*push; }
+        if (잡힘[j] < 0) { 점[oj] += nx*push; 점[oj+1] += ny*push; 점[oj+2] += nz*push;
+                           옛점[oj] += nx*push; 옛점[oj+1] += ny*push; 옛점[oj+2] += nz*push; }
+
+        const vix = 점[oi]-옛점[oi], viy = 점[oi+1]-옛점[oi+1], viz = 점[oi+2]-옛점[oi+2];
+        const vjx = 점[oj]-옛점[oj], vjy = 점[oj+1]-옛점[oj+1], vjz = 점[oj+2]-옛점[oj+2];
+        const rvn = (vjx-vix)*nx + (vjy-viy)*ny + (vjz-viz)*nz;
+        if (rvn < 0) {
+          const jimp = -(1 + 반발) * rvn * .5;
+          if (잡힘[i] < 0) { 옛점[oi] += nx*jimp; 옛점[oi+1] += ny*jimp; 옛점[oi+2] += nz*jimp; }
+          if (잡힘[j] < 0) { 옛점[oj] -= nx*jimp; 옛점[oj+1] -= ny*jimp; 옛점[oj+2] -= nz*jimp; }
+          const 번쩍량 = Math.min(1.4, -rvn / Math.max(dt, 1e-4) * .5);
+          번쩍[i] += 번쩍량; 번쩍[j] += 번쩍량;
+          소리부딪힘(-rvn / Math.max(dt, 1e-4), 점[oi+1]);
+        }
+        // 스쳐 지나가면 서로 돈다. 맞닿아 있는 동안 프레임마다 쌓이지 않게 상한을 둔다
+        const tx = (vjx-vix) - rvn*nx, tz = (vjz-viz) - rvn*nz;
+        let spin = (tx*nz - tz*nx) * 회전;
+        if (spin >  .05) spin =  .05; else if (spin < -.05) spin = -.05;
+        비틀림속[i] += spin; 비틀림속[j] -= spin;
+      }
+    }
+  }
+}
+
+// 공이 이웃의 실을 헤치고 지나간다 — 발(門簾)을 가르는 느낌.
+// 실은 거의 수직이므로 앵커의 (x,z)만으로 2차원 격자를 만들면 후보를 싸게 고를 수 있고,
+// 후보마다 공과 **실 마디(선분)** 사이 최단거리를 재면 마디 사이로 새지 않는다.
+const 기둥격자 = new Map();
+const 기둥칸 = 0.55;
+function 기둥키(a, c) { return a * 73856093 ^ c * 83492791; }
+function 기둥다시() {
+  기둥격자.clear();
+  const inv = 1 / 기둥칸;
+  for (let i = 0; i < N; i++) {
+    const k = 기둥키(Math.floor(앵커[i*3]*inv), Math.floor(앵커[i*3+2]*inv));
+    let a = 기둥격자.get(k); if (!a) 기둥격자.set(k, a = []);
+    a.push(i);
+  }
+}
+function 실헤치기(dt) {
+  if (!조절.부딪히기 || !조절.실도부딪힘) return;
+  // 기둥격자는 앵커로만 만들어지고 앵커는 배치 뒤 변하지 않는다.
+  // 매 걸음 다시 지으면 헛일이다 — 배치가 바뀔 때만 다시 짓는다
+  const inv = 1 / 기둥칸, end = 마디 * 3, 실반지름 = .012;
+  for (let i = 0; i < N; i++) {
+    const oi = i * (마디 + 1) * 3 + end;
+    const px = 점[oi], py = 점[oi+1], pz = 점[oi+2];
+    const R = 충돌반지름[i] + 실반지름;
+    const ca = Math.floor(px*inv), cc = Math.floor(pz*inv);
+    for (let da = -1; da <= 1; da++) for (let dc = -1; dc <= 1; dc++) {
+      const arr = 기둥격자.get(기둥키(ca+da, cc+dc));
+      if (!arr) continue;
+      for (let y = 0; y < arr.length; y++) {
+        const j = arr[y];
+        if (j === i) continue;
+        const bj = j * (마디 + 1) * 3;
+        for (let k = 1; k < 마디; k++) {          // 끝 마디(공)는 공끼리 충돌이 맡는다
+          const a = bj + (k-1)*3, b = bj + k*3;
+          const ax = 점[a], ay = 점[a+1], az = 점[a+2];
+          const ex = 점[b]-ax, ey = 점[b+1]-ay, ez = 점[b+2]-az;
+          const ee = ex*ex + ey*ey + ez*ez;
+          if (ee < 1e-9) continue;
+          let t = ((px-ax)*ex + (py-ay)*ey + (pz-az)*ez) / ee;
+          t = t < 0 ? 0 : t > 1 ? 1 : t;
+          const qx = ax + ex*t, qy = ay + ey*t, qz = az + ez*t;
+          let dx = px-qx, dy = py-qy, dz = pz-qz;
+          const d2 = dx*dx + dy*dy + dz*dz;
+          if (d2 >= R*R || d2 < 1e-12) continue;
+          const d = Math.sqrt(d2), f = (R - d) / d;
+          // 실이 훨씬 가벼우므로 실이 많이 비켜준다
+          const 공몫 = 잡힘[i] < 0 ? .22 : 0, 실몫 = 1 - 공몫;
+          점[oi]   += dx*f*공몫; 점[oi+1] += dy*f*공몫; 점[oi+2] += dz*f*공몫;
+          옛점[oi] += dx*f*공몫; 옛점[oi+1] += dy*f*공몫; 옛점[oi+2] += dz*f*공몫;
+          // 마디 0 은 앵커라 절대 움직이면 안 된다. k=1 이면 아래쪽 점만 비켜준다
+          const wa = (k === 1) ? 0 : (1-t)*실몫*f;
+          const wb = ((k === 1) ? 실몫*f : t*실몫*f);
+          // 옛점도 같이 옮긴다 — 위치만 옮기면 그것이 곧 속도가 되어 에너지가 들어간다
+          점[a]   -= dx*wa; 점[a+1] -= dy*wa; 점[a+2] -= dz*wa;
+          옛점[a] -= dx*wa; 옛점[a+1] -= dy*wa; 옛점[a+2] -= dz*wa;
+          점[b]   -= dx*wb; 점[b+1] -= dy*wb; 점[b+2] -= dz*wb;
+          옛점[b] -= dx*wb; 옛점[b+1] -= dy*wb; 옛점[b+2] -= dz*wb;
+        }
+      }
+    }
+  }
+}
+
+// 속도 상한 — 손짓·충돌 뒤에 한 번 건다. 마지막 안전장치다
+function 속도제한(dt) {
+  const 최대 = 5 * dt;                       // 초속 5 m
+  for (let i = 0; i < N; i++) {
+    const base = i * (마디 + 1) * 3;
+    for (let k = 1; k <= 마디; k++) {
+      const o = base + k * 3;
+      const vx = 점[o]-옛점[o], vy = 점[o+1]-옛점[o+1], vz = 점[o+2]-옛점[o+2];
+      const s2 = vx*vx + vy*vy + vz*vz;
+      if (s2 > 최대*최대) {
+        const f = 최대 / Math.sqrt(s2);
+        옛점[o] = 점[o] - vx*f; 옛점[o+1] = 점[o+1] - vy*f; 옛점[o+2] = 점[o+2] - vz*f;
+      }
+    }
+  }
+}
+
+// ────────────────────────────────────────────────────────────────
+// 그리기
+// ────────────────────────────────────────────────────────────────
+const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion();
+const _p = new THREE.Vector3(), _s = new THREE.Vector3(), _up = new THREE.Vector3(0,1,0);
+const _dir = new THREE.Vector3(), _tmp = new THREE.Vector3(), _c = new THREE.Color();
+const 유닛회전 = [];  for (let i=0;i<N최대;i++) 유닛회전.push(new THREE.Quaternion());
+const 유닛위치 = new Float32Array(N최대*3);
+let 화면높이계수 = 1;
+
+function 단계고르기(px, 잠자리) {
+  if (px > 230) return 0;
+  if (px > 75)  return (잠자리 && !조절.잠자리원본) ? 2 : 1;
+  return 2;
+}
+
+// 캔디 도장 팔레트 — 크롬 위에 얹는 색조. 0.52 회색이 원래의 스테인레스다
+const 캔디정의 = {
+  사탕:   [[.92,.28,.52],[.96,.72,.24],[.42,.86,.42],[.30,.62,.95],[.72,.40,.92]],
+  보석:   [[.72,.12,.24],[.16,.44,.72],[.10,.52,.36],[.62,.44,.10],[.44,.14,.56]],
+  파스텔: [[.96,.78,.82],[.98,.92,.74],[.78,.92,.82],[.76,.84,.96],[.88,.80,.96]],
+  금속:   [[.90,.72,.36],[.86,.54,.38],[.72,.74,.78],[.62,.66,.60],[.84,.82,.66]],
+  바다:   [[.20,.52,.62],[.16,.66,.68],[.34,.78,.74],[.12,.36,.58],[.46,.84,.80]],
+};
+const _캔디 = { r: .52, g: .52, b: .52 };
+function 캔디색(i, x, y, z, t) {
+  const 방식 = 조절.스텐색칠;
+  if (방식 === '없음') { _캔디.r = _캔디.g = _캔디.b = .52; return _캔디; }
+  const 표 = 캔디정의[조절.스텐팔레트] || 캔디정의['사탕'];
+  const 반높이 = Math.max(배치범위.y, .001);
+  let f;                                        // 0..1 — 어느 색을 쓸지
+  if (방식 === '무작위') f = ((i * 2654435761) % 1000) / 1000;
+  else if (방식 === '높이') f = (y / 반높이 + 1) * .5;
+  else if (방식 === '깊이') f = (z / Math.max(배치범위.z, .001) + 1) * .5;
+  else if (방식 === '층')   f = Math.floor((y / 반높이 + 1) * .5 * 조절['색 띠 개수']) / Math.max(1, 조절['색 띠 개수'] - 1);
+  else /* 물결 */          f = ((x * .09 + y * .13 + z * .07 + t * .05) % 1 + 1) % 1;
+  f = f < 0 ? 0 : f > 1 ? 1 : f;
+  // 팔레트 칸 사이를 부드럽게 잇는다 (층 방식만 딱딱 끊긴다)
+  const 끝 = 표.length - 1, p = f * 끝;
+  const a = Math.min(끝, Math.floor(p)), b = Math.min(끝, a + 1);
+  const w = (방식 === '층') ? 0 : p - a;
+  const 진 = 조절.스텐진하기;
+  for (let c = 0; c < 3; c++) {
+    const v = 표[a][c] * (1 - w) + 표[b][c] * w;
+    const 섞 = .52 * (1 - 진) + v * 진;         // 진하기 0 이면 원래 스테인레스
+    if (c === 0) _캔디.r = 섞; else if (c === 1) _캔디.g = 섞; else _캔디.b = 섞;
+  }
+  return _캔디;
+}
+
+// 색의 장 — 좌에서 우로, 아래에서 위로, 멀리서 가까이로 동시에 흐른다.
+// 결이 다른 사인 셋을 겹쳐 물결에 얼룩을 섞는다(격자 무늬가 안 생기게 주기를 서로
+// 나누어떨어지지 않게 골랐다). 유닛은 제자리에서 그 장의 값을 읽을 뿐이다.
+const _led = { r: 0, g: 0, b: 0 };
+function LED색(x, y, z, t) {
+  const s = 조절.LED속도, k = 조절.LED결;
+  let u = (x * .11 + y * .075 + z * .14) * k + t * .055 * s;
+  const n = Math.sin(x * .61 * k + z * .37 * k + t * .13 * s)
+          + Math.sin(y * .47 * k - x * .29 * k + t * .09 * s) * .70
+          + Math.sin(z * .83 * k + y * .31 * k - t * .17 * s) * .50;
+  u += n * 조절.LED얼룩 * .16;
+  const tab = 팔레트표[조절.LED팔레트] || 팔레트표['심해'];
+  let f = u - Math.floor(u);
+  const idx = (f * 팔레트칸) | 0, o = (idx % 팔레트칸) * 3;
+  // 숨 — 전체가 느리게 부풀었다 가라앉는다. 자리마다 아주 조금씩 어긋나게
+  const 숨 = 1 + 조절.숨쉬기 * .30 * Math.sin(t * .55 + (x + y) * .18);
+  _led.r = tab[o] * 숨; _led.g = tab[o+1] * 숨; _led.b = tab[o+2] * 숨;
+  return _led;
+}
+
+let 통계 = { 삼각형: 0, lod: [0,0,0] };
+function 그리기() {
+  화면높이계수 = renderer.domElement.height / (2 * Math.tan(camera.fov * Math.PI / 360));
+  for (const per of 인스턴스) for (const ms of per) for (const m of ms) m.count = 0;
+  공메시.count = 0;
+  let dropN = 0;
+  통계.lod = [0,0,0];
+
+  const end = 마디 * 3;
+  let 실n = 0;
+
+  for (let i = 0; i < N; i++) {
+    const base = i * (마디 + 1) * 3, o = base + end;
+    const t = 종류색인[i], T = 종류[t], sc = 크기[i];
+    _p.set(점[o], 점[o+1], 점[o+2]);
+    유닛위치[i*3] = _p.x; 유닛위치[i*3+1] = _p.y; 유닛위치[i*3+2] = _p.z;
+
+    // 실 방향으로 기울고, 그 축으로 비틀린다
+    _dir.set(점[o] - 점[o-3], 점[o+1] - 점[o-3+1], 점[o+2] - 점[o-3+2]);
+    if (_dir.lengthSq() < 1e-10) _dir.set(0, -1, 0);
+    _dir.normalize().negate();                     // 유닛의 위쪽 = 실이 올라가는 쪽
+    _q.setFromUnitVectors(_up, _dir);
+    _q2.setFromAxisAngle(_up, 비틀림각[i]);
+    _q.multiply(_q2);
+    유닛회전[i].copy(_q);
+
+    const dist = camera.position.distanceTo(_p);
+    const px = (T.반지름 * sc / Math.max(dist, .01)) * 화면높이계수 * 2;
+    const lod = Math.min(단계고르기(px, T.잠자리), Math.max(0, T.lods.length - 1));
+    if (T.lods.length) 통계.lod[lod]++;         // 공뿐인 유닛은 단계가 없다
+
+    _s.setScalar(sc);
+    _m.compose(_p, _q, _s);
+
+    if (T.lods.length) for (const m of 인스턴스[t][lod]) {
+      const idx = m.count++;
+      m.setMatrixAt(idx, _m);
+      if (m.발광) {                             // LED — 공간을 흐르는 색의 장에서 제 색을 읽는다
+        const c = LED색(_p.x, _p.y, _p.z, 시각);
+        const 세 = 1 + 번쩍[i] * 조절.번쩍세기;   // 부딪히면 더 밝아진다
+        _c.setRGB(c.r * 세, c.g * 세, c.b * 세);
+        m.setColorAt(idx, _c);
+      }
+    }
+
+    if (T.공반지름 != null) {
+      _s.setScalar(T.공반지름 * sc);
+      _m.compose(_p, _q, _s);
+      const idx = 공메시.count++;
+      공메시.setMatrixAt(idx, _m);
+      const k = 캔디색(i, _p.x, _p.y, _p.z, 시각);
+      const 세 = 1 + 번쩍[i] * 조절.번쩍세기 * .35;   // 스텐볼도 부딪히면 조금 밝아진다
+      _c.setRGB(k.r * 세, k.g * 세, k.b * 세);
+      공메시.setColorAt(idx, _c);
+    }
+
+    // 장신구 — 부착점의 가속도로 흔들리는 작은 진자
+    if (조절.장신구 && T.장신구 && 장신구메시 && px > 90 && dropN + 장신구수 < MAXDROP) {
+      for (let k = 0; k < 장신구수; k++) {
+        const a = 장신구목록[k];
+        _tmp.set(a['부착점'][0], a['부착점'][1], a['부착점'][2]).multiplyScalar(sc)
+            .applyQuaternion(_q).add(_p);
+        const ph = 위상[i] + k * 1.7;
+        const sw = 비틀림속[i] * .3 + Math.sin(시각 * 7.5 + ph) * .12 * (1 + Math.abs(비틀림속[i]));
+        _q2.setFromEuler(new THREE.Euler(Math.sin(시각*9.1+ph)*.1*(1+Math.abs(비틀림속[i])), 0, sw));
+        _m.compose(_tmp, _q2.premultiply(_q), _s.setScalar(sc));
+        장신구메시.setMatrixAt(dropN++, _m);
+        if (Math.abs(sw) > .19) 소리짤랑(_tmp.y);
+      }
+    }
+
+    // 실
+    if (조절.실보이기) {
+      for (let k = 0; k < 마디; k++) {
+        const a = base + k*3, b = base + (k+1)*3;
+        실점[실n++] = 점[a];   실점[실n++] = 점[a+1]; 실점[실n++] = 점[a+2];
+        실점[실n++] = 점[b];   실점[실n++] = 점[b+1]; 실점[실n++] = 점[b+2];
+      }
+    }
+  }
+
+  // 쓰는 만큼만 올린다. MAX 크기 버퍼를 통째로 올리면 유닛이 열 개여도 프레임마다 몇 MB가 흐른다
+  const 올림 = (m) => {
+    const a = m.instanceMatrix;
+    a.clearUpdateRanges();
+    if (m.count) { a.addUpdateRange(0, m.count * 16); a.needsUpdate = true; }
+    const c = m.instanceColor;
+    if (c) { c.clearUpdateRanges(); if (m.count) { c.addUpdateRange(0, m.count * 3); c.needsUpdate = true; } }
+  };
+  for (const per of 인스턴스) for (const ms of per) for (const m of ms) 올림(m);
+  올림(공메시);
+  if (장신구메시) { 장신구메시.count = dropN; 올림(장신구메시); }
+  실형상.attributes.position.needsUpdate = true;
+  실형상.setDrawRange(0, 실n / 3);
+  실재질.opacity = 조절['실 진하기'];
+  실메시.visible = 조절.실보이기 && 실n > 0;
+}
+
+// ────────────────────────────────────────────────────────────────
+// 소리 — 음원 파일 없이 합성한다.
+// 5음계(도 레 미 솔 라)만 쓰고 근음이 천천히 옮겨가므로, 몇 개가 겹쳐 울려도
+// 부딪히지 않고 화음이 된다. 음높이는 화면에서의 높이로 정한다 —
+// 위에 있는 것이 높은 음이라 소리와 그림이 같은 이야기를 한다.
+// ────────────────────────────────────────────────────────────────
+let ac = null, 마스터 = null, 울림수 = 0, 현게인 = null, 현오실 = [];
+const 음정 = [0, 2, 4, 7, 9];                 // 도 레 미 솔 라
+const 근음행진 = [0, -3, 5, -5];              // 근음이 9초마다 옮겨간다 (I · vi · IV · V)
+function 지금근음() { return 근음행진[Math.floor(시각 / 9) % 근음행진.length]; }
+function 음높이(단계, 옥타브) {
+  const s = 음정[((단계 % 음정.length) + 음정.length) % 음정.length];
+  const 옥 = 옥타브 + Math.floor(단계 / 음정.length);
+  return 261.626 * Math.pow(2, (지금근음() + s) / 12 + 옥);
+}
+
+const 피아노부분음 = [[1,1],[2,.42],[3,.20],[4.02,.11],[5.06,.05]];   // 살짝 어긋난 배음 = 현의 느낌
+const 종부분음    = [[1,1],[2.76,.48],[5.40,.26],[8.93,.10]];         // 종·글로켄슈필의 비율
+
+function 소리켜기() {
+  if (ac) { if (ac.state === 'suspended') ac.resume(); return; }
+  ac = new (window.AudioContext || window.webkitAudioContext)();
+  마스터 = ac.createGain(); 마스터.gain.value = .5;
+
+  const 리미터 = ac.createDynamicsCompressor();
+  리미터.threshold.value = -14; 리미터.knee.value = 8; 리미터.ratio.value = 9;
+  리미터.attack.value = .004; 리미터.release.value = .28;
+
+  // 잔향 — 잡음을 지수로 재운 충격응답을 그 자리에서 만든다. 음원 파일이 필요 없다
+  const 초 = 2.8, len = Math.floor(ac.sampleRate * 초);
+  const ir = ac.createBuffer(2, len, ac.sampleRate);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = ir.getChannelData(ch), 앞 = ac.sampleRate * .02;
+    for (let i = 0; i < len; i++) {
+      const t = i / len;
+      d[i] = (Math.random()*2-1) * Math.pow(1-t, 2.7) * (i < 앞 ? i/앞 : 1);
+    }
+  }
+  const 잔향 = ac.createConvolver(); 잔향.buffer = ir;
+  const 보냄 = ac.createGain(); 보냄.gain.value = .45;
+
+  마스터.connect(리미터);
+  마스터.connect(보냄); 보냄.connect(잔향); 잔향.connect(리미터);
+  리미터.connect(ac.destination);
+  현시작();
+}
+
+// 지속되는 현 — 전체가 흔들릴수록 살며시 부풀어 바탕 화음을 깔아준다
+function 현시작() {
+  현게인 = ac.createGain(); 현게인.gain.value = 0;
+  const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 780; lp.Q.value = .4;
+  현오실 = [];
+  const 밑0 = 261.626 * Math.pow(2, 지금근음()/12 - 2);
+  for (const 배 of [1, 1.5, 2, 3]) for (const 디튠 of [-7, 7]) {
+    const o = ac.createOscillator(); o.type = 'triangle'; o.detune.value = 디튠;
+    o.frequency.value = 밑0 * 배;            // 안 정하면 440Hz에서 미끄러져 내려오는 소리가 들린다
+    const g = ac.createGain(); g.gain.value = .3 / 배;
+    o.connect(g); g.connect(lp); o.start();
+    현오실.push({ o, 배 });
+  }
+  lp.connect(현게인); 현게인.connect(마스터);
+}
+let 현목표 = 0, 옛근음 = 999;
+function 현갱신(평균속) {
+  if (!ac || !현게인) return;
+  현목표 = 조절.소리 ? Math.min(.09, 평균속 * .10) * 조절.음량 : 0;
+  현게인.gain.setTargetAtTime(현목표, ac.currentTime, 1.2);
+  const 근 = 지금근음();
+  if (근 !== 옛근음) {                          // 화음이 바뀌면 부드럽게 미끄러진다
+    옛근음 = 근;
+    const 밑 = 261.626 * Math.pow(2, 근/12 - 2);
+    for (const s of 현오실) s.o.frequency.setTargetAtTime(밑 * s.배, ac.currentTime, .9);
+  }
+}
+
+function 울림(f, 세기, 길이, 부분음, 밝기) {
+  if (!ac || !조절.소리 || 조절.음량 <= 0 || 울림수 >= 12) return;     // 목소리 수 제한 — 없으면 소음이 된다
+  const t = ac.currentTime;
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(세기 * 조절.음량, t + .004);
+  g.gain.exponentialRampToValueAtTime(1e-4, t + 길이);
+  const lp = ac.createBiquadFilter(); lp.type = 'lowpass';
+  lp.frequency.setValueAtTime(밝기, t);
+  lp.frequency.exponentialRampToValueAtTime(Math.max(320, 밝기 * .22), t + 길이 * .75);
+  울림수++;
+  for (const [배, 크기] of 부분음) {
+    const o = ac.createOscillator(); o.type = 'sine';
+    o.frequency.value = f * 배;
+    const og = ac.createGain(); og.gain.value = 크기;
+    o.connect(og); og.connect(lp);
+    o.start(t); o.stop(t + 길이);
+  }
+  lp.connect(g); g.connect(마스터);
+  setTimeout(() => { 울림수--; try { g.disconnect(); lp.disconnect(); } catch {} }, 길이 * 1000 + 60);
+}
+
+// 화면 높이를 음계 단계로 — 위가 높은 음
+function 높이를단계로(y) { return Math.round((y + 3.2) / 6.4 * 12); }
+
+let 짤랑쿨 = 0;
+function 소리짤랑(y) {                              // 장신구 — 유리종
+  if (!조절.소리 || !ac) return;
+  const t = ac.currentTime; if (t < 짤랑쿨) return;
+  // 음은 텍스처가 아니라 **사건**이어야 한다. 성기게 울려야 화음으로 들린다
+  짤랑쿨 = t + .24 + Math.random() * .30;
+  울림(음높이(높이를단계로(y) + 5, 2), .022, .9 + Math.random()*.5, 종부분음, 7000);
+}
+let 텅쿨 = 0;
+function 소리부딪힘(v, y) {                          // 유닛끼리 — 피아노
+  if (!조절.소리 || !ac || v < .5) return;
+  const t = ac.currentTime; if (t < 텅쿨) return;
+  텅쿨 = t + .19 + Math.random() * .14;
+  const 세기 = Math.min(.11, v * .05);
+  울림(음높이(높이를단계로(y), 0), 세기, 1.3 + Math.random()*.7, 피아노부분음, 2600);
+}
+
+// ────────────────────────────────────────────────────────────────
+// 손 — 웹캠(미디어파이프)과 마우스가 같은 통로를 쓴다
+// ────────────────────────────────────────────────────────────────
+const 손 = [];                            // {pos, prev, vel, pinch, grabbed}
+for (let i = 0; i < 3; i++) 손.push({
+  pos: new THREE.Vector3(), prev: new THREE.Vector3(),
+  초속: new THREE.Vector3(),              // 초당 속도 — 프레임률과 무관하게 만든다
+  vel: new THREE.Vector3(),               // 이번 걸음의 변위
+  live: false, pinch: false, grabbed: -1,
+  뼈: new Float32Array(21 * 3), 뼈있음: false,
+  깊이: 0, 겨냥: -1,                       // 깊이는 겨냥한 유닛에서 빌려온다
+  집점: new THREE.Vector3(),              // 엄지끝과 검지끝의 한가운데 — 여기로만 잡는다
+  이전ndc: new THREE.Vector2(), 갱신시각: 0,
+});
+
+// 손 위치와 속도를 한 자리에서 정한다.
+// 속도를 프레임 dt 로 나누면 안 된다 — 웹캠 손은 33 ms 마다만 갱신되므로
+// 120 fps 에서는 [0, 4v, 0, 0, 0, 4v …] 로 튀어 치기문턱이 무력해진다.
+// **위치가 실제로 갱신된 간격**으로 나눈다.
+// 또 하나: 깊이는 겨냥한 유닛에서 빌려오므로 겨냥이 바뀌면 위치가 훌쩍 옮겨간다.
+// 그것은 손이 움직인 것이 아니다. 그래서 이전 위치를 **지금 깊이에서 다시 계산**해
+// 화면 위 움직임만 속도로 센다.
+// 겨냥(과 깊이)은 **엄지·검지 사이**로 잰다. 잡히는 자리와 고리가 뜨는 자리가 같아야 한다.
+// 휘젓는 힘은 **손바닥**이 낸다 — 손 전체로 헤치는 것이니 손바닥이 맞다.
+// 그래서 점 두 개를 따로 받는다.
+function 손위치갱신(H, 손바닥X, 손바닥Y, 집X, 집Y, 기본z, 즉시, now) {
+  const z = 손깊이맞추기(H, 집X, 집Y, 기본z, 즉시);   // 겨냥은 집는 자리로
+  const 반높이 = Math.tan(camera.fov * Math.PI / 360) * Math.max(camera.position.z - z, .1);
+  const 반너비 = 반높이 * camera.aspect;
+  const 높 = camera.position.y;
+  if (!H.live) { H.이전ndc.set(손바닥X, 손바닥Y); H.갱신시각 = now - 16; }
+  H.prev.set(H.이전ndc.x * 반너비, H.이전ndc.y * 반높이 + 높, z);
+  H.pos.set(손바닥X * 반너비, 손바닥Y * 반높이 + 높, z);   // 후려치는 자리
+  H.집점.set(집X * 반너비, 집Y * 반높이 + 높, z);          // 잡는 자리
+  const dt = Math.max((now - H.갱신시각) / 1000, 1e-3);
+  H.초속.subVectors(H.pos, H.prev).divideScalar(dt);
+  if (H.초속.length() > 12) H.초속.setLength(12);      // 순간이동 방지
+  H.이전ndc.set(손바닥X, 손바닥Y);
+  H.갱신시각 = now;
+  H.live = true;
+  return z;
+}
+// 소식이 끊기면 속도를 빠르게 재운다. 안 그러면 마지막 속도가 계속 힘을 준다
+function 손속도재우기(now) {
+  for (const H of 손) {
+    if (!H.live) { H.초속.set(0, 0, 0); continue; }
+    if (now - H.갱신시각 > 60) H.초속.multiplyScalar(.45);
+  }
+}
+
+// 손을 겨냥한 유닛의 깊이로 데려간다.
+// 미디어파이프는 절대 깊이를 못 준다(z가 손목 기준 상대값). 손 크기로 어림하면
+// 깊이로 겹쳐 있는 유닛 중 어느 것을 짚는지 알 수 없다.
+// 화면에서 겨냥한 유닛의 깊이를 빌려오면 **보이는 대로** 잡힌다.
+function 손깊이맞추기(H, ndcX, ndcY, 기본z, 즉시) {
+  let 목표 = 기본z;
+  if (H.grabbed >= 0 && H.grabbed < N) {                  // 잡은 동안은 그것을 따라간다
+    목표 = 점[H.grabbed * (마디 + 1) * 3 + 마디 * 3 + 2];
+    H.겨냥 = H.grabbed;
+  } else if (조절.손깊이자동) {
+    const 맞음 = 겨냥(ndcX, ndcY, 조절.손겨냥반경);
+    H.겨냥 = 맞음 ? 맞음.i : -1;
+    if (맞음) 목표 = 맞음.z;
+  } else H.겨냥 = -1;
+  // 손을 처음 대는 순간에는 바로 붙는다. 서서히 다가가면 첫 프레임에 잡기 범위를 벗어나
+  // 집는 동작이 실패한다
+  H.깊이 = 즉시 ? 목표 : H.깊이 + (목표 - H.깊이) * .30;
+  return H.깊이;
+}
+
+// 손 UI 는 **별도 씬**에 둔다. 같은 씬에 두면 아웃포커싱이 켜지는 순간
+// 뼈대와 고리까지 같이 흐려져 어디를 겨냥하는지 안 보인다
+const 겹침씬 = new THREE.Scene();
+
+// 손뼈대 — 웹캠을 켜면 어디를 휘젓고 어디를 잡는지 눈에 보여야 한다
+const 손연결 = [0,1, 1,2, 2,3, 3,4,  0,5, 5,6, 6,7, 7,8,  5,9, 9,10, 10,11, 11,12,
+                9,13, 13,14, 14,15, 15,16,  13,17, 17,18, 18,19, 19,20,  0,17];
+const 뼈점 = new Float32Array(2 * 손연결.length * 3);
+const 뼈형상 = new THREE.BufferGeometry();
+뼈형상.setAttribute('position', new THREE.BufferAttribute(뼈점, 3));
+뼈형상.setDrawRange(0, 0);
+const 뼈메시 = new THREE.LineSegments(뼈형상, new THREE.LineBasicMaterial({
+  color: 0x8fd8ff, transparent: true, opacity: .85, depthTest: false, depthWrite: false }));
+뼈메시.frustumCulled = false;
+겹침씬.add(뼈메시);
+
+const 마디형상 = new THREE.SphereGeometry(1, 10, 7);
+const 마디재질 = new THREE.MeshBasicMaterial({ color: 0xcfefff, transparent: true, opacity: .9,
+                                              depthTest: false, depthWrite: false });
+const 관절 = new THREE.InstancedMesh(마디형상, 마디재질, 42);
+관절.frustumCulled = false; 관절.count = 0;
+겹침씬.add(관절);
+
+// 겨냥한 유닛을 고리로 표시한다 — 어느 것을 잡을지 눈에 보여야 한다
+const 겨냥고리 = new THREE.InstancedMesh(
+  new THREE.TorusGeometry(1, .085, 8, 32),
+  new THREE.MeshBasicMaterial({ color: 0xffc477, transparent: true, opacity: .8,
+                                depthTest: false, depthWrite: false }), 3);
+겨냥고리.frustumCulled = false; 겨냥고리.count = 0;
+겹침씬.add(겨냥고리);
+
+const _q0 = new THREE.Quaternion();
+const _bm = new THREE.Matrix4(), _bp = new THREE.Vector3(), _bs = new THREE.Vector3();
+function 손뼈그리기() {
+  let n = 0, m = 0, g = 0;
+  const end = 마디 * 3;
+  for (const H of 손) {
+    if (!H.live || H.겨냥 < 0 || H.겨냥 >= N) continue;
+    const o = H.겨냥 * (마디 + 1) * 3 + end;
+    _bp.set(점[o], 점[o+1], 점[o+2]);
+    const r = Math.max(충돌반지름[H.겨냥] * 1.55, .05);
+    _bm.compose(_bp, camera.quaternion, _bs.setScalar(r));   // 고리가 늘 정면을 본다
+    겨냥고리.setMatrixAt(g++, _bm);
+  }
+  겨냥고리.count = g;
+  겨냥고리.instanceMatrix.needsUpdate = true;
+  겨냥고리.visible = g > 0;
+  겨냥고리.material.color.setHex(손.some(H => H.live && H.pinch) ? 0xffa040 : 0xffc477);
+
+  if (조절.손뼈보이기) {
+    for (let h = 1; h <= 2; h++) {
+      const H = 손[h];
+      if (!H.live || !H.뼈있음) continue;
+      for (let c = 0; c < 손연결.length; c += 2) {
+        for (const idx of [손연결[c], 손연결[c+1]]) {
+          뼈점[n++] = H.뼈[idx*3]; 뼈점[n++] = H.뼈[idx*3+1]; 뼈점[n++] = H.뼈[idx*3+2];
+        }
+      }
+      const 굵기 = H.pinch ? .028 : .016;
+      for (let k = 0; k < 21; k++) {
+        _bp.set(H.뼈[k*3], H.뼈[k*3+1], H.뼈[k*3+2]);
+        const r = (k === 4 || k === 8) ? 굵기 * 1.7 : 굵기;   // 엄지끝·검지끝을 크게
+        _bm.compose(_bp, _q0, _bs.setScalar(r));
+        관절.setMatrixAt(m++, _bm);
+      }
+    }
+  }
+  뼈형상.attributes.position.needsUpdate = true;
+  뼈형상.setDrawRange(0, n / 3);
+  뼈메시.visible = n > 0;
+  관절.count = m;
+  관절.instanceMatrix.needsUpdate = true;
+  관절.visible = m > 0;
+  마디재질.color.setHex(손[1].pinch || 손[2].pinch ? 0xffd9a0 : 0xcfefff);
+  뼈메시.material.color.setHex(손[1].pinch || 손[2].pinch ? 0xffc477 : 0x8fd8ff);
+}
+
+function 손적용(dt) {
+  const end = 마디 * 3;
+  for (let h = 0; h < 손.length; h++) {
+    const H = 손[h];
+    if (!H.live) { if (H.grabbed >= 0) { 잡힘[H.grabbed] = -1; H.grabbed = -1; } continue; }
+    H.vel.copy(H.초속).multiplyScalar(dt);
+    const 집 = H.집점 || H.pos;                  // 잡는 자리는 엄지와 검지 사이다
+
+    if (H.pinch) {
+      if (H.grabbed < 0) {
+        // 고리가 걸린 것을 먼저 집는다 — 보이는 것과 잡히는 것이 달라서는 안 된다
+        if (H.겨냥 >= 0 && H.겨냥 < N && 잡힘[H.겨냥] < 0) {
+          H.grabbed = H.겨냥; 잡힘[H.겨냥] = h;
+        }
+      }
+      if (H.grabbed < 0) {                       // 그래도 없으면 집는 지점에서 가장 가까운 것
+        let best = -1, bd = 조절.잡기범위 * 조절.잡기범위;
+        for (let i = 0; i < N; i++) {
+          if (잡힘[i] >= 0) continue;
+          const o = i*(마디+1)*3 + end;
+          const dx = 점[o]-집.x, dy = 점[o+1]-집.y, dz = 점[o+2]-집.z;
+          const d2 = dx*dx+dy*dy+dz*dz;
+          if (d2 < bd) { bd = d2; best = i; }
+        }
+        if (best >= 0) { H.grabbed = best; 잡힘[best] = h; }
+      }
+      if (H.grabbed >= 0) {                      // 잡은 동안은 손가락이 위치를 정한다
+        const i = H.grabbed, o = i*(마디+1)*3 + end;
+        // 먼저 자리를 옮기고 **그 다음** 옛점을 잡아야 한다. 순서를 바꾸면
+        // 저장된 변위가 (새자리 − 옛자리) + 손속도 가 되어 놓을 때 두 배로 날아간다
+        번쩍[i] = Math.max(번쩍[i], 1.6);        // 쥐고 있는 동안은 계속 밝다
+        점[o] = 집.x; 점[o+1] = 집.y; 점[o+2] = 집.z;
+        옛점[o]   = 점[o]   - H.vel.x;           // 놓는 순간 손 속도가 그대로 전달되도록
+        옛점[o+1] = 점[o+1] - H.vel.y;
+        옛점[o+2] = 점[o+2] - H.vel.z;
+        비틀림속[i] += H.vel.x * 2;
+      }
+    } else if (H.grabbed >= 0) {
+      잡힘[H.grabbed] = -1; H.grabbed = -1;
+    }
+
+    // 손이 스치는 것과 후려치는 것은 다르다.
+    //  · 닿기만 하면 **밀려나기만** 한다 (위치만 옮기고 속도는 안 준다).
+    //    옛점도 같이 옮기므로 손을 가만히 대고 있어도 튀지 않는다
+    //  · 문턱을 넘는 스윙에만 힘이 실리고, 넘은 만큼 **제곱으로** 커진다
+    const sp = H.초속.length();
+    const 넘음 = Math.max(0, sp - 조절.치기문턱);
+    const 타격 = 넘음 * 넘음 * 조절.손세기 * 1.2;   // 넘은 만큼 제곱 — 살짝 넘으면 살짝만
+    const R접촉 = .13, R타격 = .36, R타격2 = R타격 * R타격;
+    for (let i = 0; i < N; i++) {
+      if (잡힘[i] >= 0) continue;
+      const o = i*(마디+1)*3 + end;
+      const dx = 점[o]-H.pos.x, dy = 점[o+1]-H.pos.y, dz = 점[o+2]-H.pos.z;
+      const d2 = dx*dx+dy*dy+dz*dz;
+      if (d2 > R타격2) continue;
+      const d = Math.sqrt(d2);
+
+      // 손이 **닿기만 해도** 빛이 확 오른다. 치는 것과 별개로, 만지면 반응해야 한다
+      번쩍[i] += (1 - d / R타격) * dt * 6;
+      const R = R접촉 + 충돌반지름[i];
+      if (d < R && d > 1e-6) {                   // 닿음 — 밀어내되 속도는 그대로
+        const f = (R - d) / d;
+        점[o]   += dx*f; 점[o+1] += dy*f; 점[o+2] += dz*f;
+        옛점[o] += dx*f; 옛점[o+1] += dy*f; 옛점[o+2] += dz*f;
+      }
+      if (타격 > 0) {                            // 후려치기
+        const 세기 = (1 - d / R타격) * 타격;
+        const 임펄스 = 세기 * dt * dt;            // 베를레에서 속도를 바꾸려면 dt를 한 번 더 곱한다
+        옛점[o]   -= H.초속.x * 임펄스;
+        옛점[o+1] -= H.초속.y * 임펄스;
+        옛점[o+2] -= H.초속.z * 임펄스;
+        비틀림속[i] += (H.초속.x * dz - H.초속.z * dx) * 세기 * dt * 2;
+        번쩍[i] += 세기 * dt * 2.5;      // 후려치면 확 밝아진다
+      }
+    }
+  }
+}
+
+// ── 마우스·터치 — 손과 똑같이 겨냥한 유닛의 깊이로 간다
+const 마우스손 = 손[0];
+function 포인터를손으로(e, 즉시) {
+  const r = canvas.getBoundingClientRect();
+  const ndcX =  ((e.clientX - r.left) / r.width)  * 2 - 1;
+  const ndcY = -(((e.clientY - r.top) / r.height) * 2 - 1);
+  손위치갱신(마우스손, ndcX, ndcY, ndcX, ndcY, 0, 즉시, performance.now());
+  마우스손.뼈있음 = false;
+}
+addEventListener('pointerdown', e => {
+  소리켜기();
+  if (e.target !== canvas) return;          // 패널·버튼을 누른 것은 모빌을 만진 게 아니다
+  포인터를손으로(e, true);
+  마우스손.pinch = e.shiftKey || e.button === 0;
+});
+addEventListener('pointermove', e => { if (마우스손.live) 포인터를손으로(e, false); });
+addEventListener('pointerup', () => { 마우스손.pinch = false; 마우스손.live = false; 마우스손.겨냥 = -1; });
+// 휠은 **보는 거리**만 바꾼다. 배치는 '유닛 크기' 를 기준으로 이미 깔려 있으므로
+// 다시 깔지 않는다 (휠 한 칸마다 다시 깔면 화면이 튄다)
+addEventListener('wheel', e => {
+  camera.position.z = THREE.MathUtils.clamp(camera.position.z + e.deltaY * .004, .6, 40);
+}, { passive: true });
+
+// ── 웹캠 + 미디어파이프
+const video = document.getElementById('cam');
+let 손인식 = null, 손켬 = false, 손다음 = 0;
+async function 웹캠켜기() {
+  if (손켬) { 웹캠끄기(); return; }
+  try {
+    소리켜기();
+    document.getElementById('btnCam').textContent = '웹캠 준비 중…';
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: 640, height: 480, facingMode: 'user' }, audio: false });
+    video.srcObject = stream; await video.play();
+    video.classList.remove('hidden');
+    if (!손인식) {
+      const { HandLandmarker, FilesetResolver } = await import('./libs/mediapipe/vision_bundle.mjs');
+      const fs = await FilesetResolver.forVisionTasks('./libs/mediapipe/wasm');
+      손인식 = await HandLandmarker.createFromOptions(fs, {
+        baseOptions: { modelAssetPath: './libs/mediapipe/models/hand_landmarker.task', delegate: 'GPU' },
+        numHands: 2, runningMode: 'VIDEO',
+      });
+    }
+    손켬 = true;
+    document.getElementById('btnCam').textContent = '웹캠 끄기';
+  } catch (err) {
+    console.error(err);
+    // 손인식 만들기가 실패해도 이미 열린 스트림은 반드시 닫는다 — 안 그러면 누를 때마다 샌다
+    if (video.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); video.srcObject = null; }
+    video.classList.add('hidden');
+    손켬 = false;
+    document.getElementById('btnCam').textContent = '웹캠 실패 — ' + (err.name || '오류') + ' (다시 누르기)';
+  }
+}
+function 웹캠끄기() {
+  손켬 = false;
+  video.classList.add('hidden');
+  if (video.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); video.srcObject = null; }
+  손[1].live = 손[2].live = false;
+  document.getElementById('btnCam').textContent = '웹캠 켜기';
+}
+document.getElementById('btnCam').onclick = 웹캠켜기;
+
+// 탭이 뒤로 가면 프레임이 멈춰 현(지속음)을 재울 사람이 없어진다. 소리를 통째로 재운다
+document.addEventListener('visibilitychange', () => {
+  if (!ac) return;
+  if (document.hidden) ac.suspend(); else ac.resume();
+});
+
+// 카메라가 (0,0,camZ)에서 −Z를 보고 있으므로, 어떤 깊이 z에서의 월드 좌표는
+// 화면 비율만으로 정확히 나온다. z=0 평면에 광선을 쏘고 깊이만 따로 넣으면
+// x·y가 그 깊이와 어긋난다 (전에 그렇게 되어 있었다)
+function 정규화된손을월드로(nx, ny, z, out) {
+  const 반높이 = Math.tan(camera.fov * Math.PI / 360) * Math.max(camera.position.z - z, .1);
+  const 반너비 = 반높이 * camera.aspect;
+  // 카메라가 오르내리면 화면 가운데가 그만큼 옮겨간다
+  out.set((1 - nx * 2) * 반너비, (1 - ny * 2) * 반높이 + camera.position.y, z);
+  return out;
+}
+
+const _hv = new THREE.Vector3();
+function 손읽기(now) {
+  if (!손켬 || !손인식 || video.readyState < 2) return;
+  if (now < 손다음) return;
+  손다음 = now + 33;                                  // 30fps로 묶는다. 매 프레임 돌리면 GPU를 뺏긴다
+  let res;
+  try { res = 손인식.detectForVideo(video, now); } catch { return; }
+  const lms = res?.landmarks || [];
+  for (let k = 0; k < 2; k++) {
+    const H = 손[1 + k], lm = lms[k];
+    if (!lm) { H.live = false; H.뼈있음 = false; continue; }
+    // 손 크기로 깊이를 어림한다 — 미디어파이프의 z는 손목 기준 상대값이라 절대 깊이가 아니다
+    let minx=1,maxx=0,miny=1,maxy=0;
+    for (const p of lm) { minx=Math.min(minx,p.x); maxx=Math.max(maxx,p.x); miny=Math.min(miny,p.y); maxy=Math.max(maxy,p.y); }
+    const span = Math.max(maxx-minx, maxy-miny);
+    const 어림z = THREE.MathUtils.clamp((span - .12) / .30, 0, 1) * 2.6 - .8;  // 크면 앞으로
+    // 거울상이라 x를 뒤집는다. 손바닥(9)은 후려치는 자리, 엄지끝(4)·검지끝(8) 사이는 잡는 자리
+    const 손바닥X = 1 - lm[9].x * 2, 손바닥Y = 1 - lm[9].y * 2;
+    const 집X = 1 - (lm[4].x + lm[8].x) * .5 * 2, 집Y = 1 - (lm[4].y + lm[8].y) * .5 * 2;
+    const 처음 = !H.live;
+    if (처음) H.깊이 = 어림z;
+    const z = 손위치갱신(H, 손바닥X, 손바닥Y, 집X, 집Y, 어림z, 처음, now);
+    for (let n = 0; n < 21; n++) {
+      정규화된손을월드로(lm[n].x, lm[n].y, z, _hv);
+      H.뼈[n*3] = _hv.x; H.뼈[n*3+1] = _hv.y; H.뼈[n*3+2] = _hv.z;
+    }
+    H.뼈있음 = true;
+    // 집기 — 엄지끝(4)과 검지끝(8)의 거리를 손 크기로 나눈다
+    const dx = lm[4].x - lm[8].x, dy = lm[4].y - lm[8].y;
+    H.pinch = Math.hypot(dx, dy) / Math.max(span, 1e-3) < .32;
+  }
+}
+
+// ────────────────────────────────────────────────────────────────
+// 패널
+// ────────────────────────────────────────────────────────────────
+const 컨트롤 = document.getElementById('controls');
+const 묶음 = {
+  '무엇을 몇 개': ['공 개수','나비 개수','잠자리 개수','LED 개수','배치 씨앗'],
+  '배치 (미터)': ['배치 모양','고리 안쪽','감김 수','선 두께 m','위 폭 배','아래 폭 배','유닛 크기','카메라 높이 m','가로 퍼짐 m','높이 퍼짐 m','깊이 퍼짐 m','천장 여유 m','크기 편차'],
+  '스텐볼 캔디 도장': ['스텐색칠','스텐팔레트','스텐진하기','색 띠 개수'],
+  'LED 빛': ['LED팔레트','LED속도','LED얼룩','LED결','숨쉬기','번쩍세기','LED밝기','LED바탕'],
+  '블룸 (LED만 번진다)': ['블룸','블룸세기','블룸문턱','블룸번짐'],
+  '실':   ['실보이기','실장력','실 진하기'],
+  '움직임':['중력','공기저항','비틀림','바람'],
+  '부딪힘':['부딪히기','실도부딪힘','반발','회전전달'],
+  '손':   ['손세기','치기문턱','잡기범위'],
+  '보기':  ['아웃포커싱','흐림시작','흐림세기','위에서 보기','위뷰 크기'],
+  '손보기':['손뼈보이기','손깊이자동','손겨냥반경'],
+  '그 밖':['장신구','노출','잠자리원본','소리','음량'],
+};
+const 값칸 = {};
+const 슬라이더칸 = {};
+const 행칸 = {};
+const 처음열기 = ['배치', '무엇을'];        // 이 둘만 펼친 채 시작한다
+for (const g in 묶음) {
+  const h = document.createElement('h3'); h.className = 'fold'; 컨트롤.appendChild(h);
+  const 몸 = document.createElement('div'); 몸.className = 'body'; 컨트롤.appendChild(몸);
+  const 열림 = 처음열기.some(p => g.startsWith(p));
+  const 표시 = () => { h.textContent = (몸.hidden ? '▸ ' : '▾ ') + g; };
+  몸.hidden = !열림; 표시();
+  h.onclick = () => { 몸.hidden = !몸.hidden; 표시(); };
+  if (g === '무엇을 몇 개') {
+    const e = document.createElement('div'); e.id = 'extent'; e.className = 'extent';
+    몸.appendChild(e);
+  }
+  for (const k of 묶음[g]) {
+    const d = P[k], row = document.createElement('div'); row.className = 'row'; 행칸[k] = row;
+    const lab = document.createElement('label'); lab.textContent = k; row.appendChild(lab);
+    if (d.목록) {
+      const sel = document.createElement('select'); sel.className = 'pick';
+      for (const o of d.목록) { const op = document.createElement('option'); op.value = op.textContent = o; sel.appendChild(op); }
+      sel.value = d.v;
+      sel.oninput = () => { 조절[k] = sel.value; 조절보임(); if (k === '배치 모양') 다시배치(); };
+      row.appendChild(sel);
+    } else if (typeof d.v === 'boolean') {
+      const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = d.v;
+      cb.oninput = () => { 조절[k] = cb.checked; 조절보임(); };
+      row.appendChild(cb);
+    } else {
+      const r = document.createElement('input'); r.type = 'range';
+      r.min = d.min; r.max = d.max; r.step = d.step; r.value = d.v;
+      const v = document.createElement('span'); v.className = 'val'; v.textContent = d.v;
+      값칸[k] = v; 슬라이더칸[k] = { range: r, val: v };
+      r.oninput = () => {
+        조절[k] = parseFloat(r.value); v.textContent = r.value;
+        if (k === '유닛 크기') camera.position.z = 기준거리();
+        if (k === '카메라 높이 m') camera.position.y = 조절['카메라 높이 m'];
+        // '색 띠 개수'는 순수한 색 조절값이다. 여기 넣으면 색만 바꿔도 배열이 새로 깔린다
+        if (['배치 씨앗','배치 모양','고리 안쪽','감김 수','선 두께 m','위 폭 배','아래 폭 배','유닛 크기',
+             '가로 퍼짐 m','높이 퍼짐 m','깊이 퍼짐 m','천장 여유 m','크기 편차',
+             '공 개수','나비 개수','잠자리 개수','LED 개수'].includes(k))
+          다시배치(총개수());
+        if (k === '노출') renderer.toneMappingExposure = 조절.노출;
+        if (k === 'LED밝기' || k === 'LED바탕') LED밝기적용();
+      };
+      row.appendChild(r); row.appendChild(v);
+    }
+    몸.appendChild(row);
+  }
+}
+
+// 지금 고른 모양·방식과 관계없는 조절값은 숨긴다. 늘 보이면 무슨 소린지 알 수 없다
+const 보임규칙 = {
+  '고리 안쪽':   () => 조절['배치 모양'] === '고리',
+  '감김 수':     () => 조절['배치 모양'] === '나선' || 조절['배치 모양'] === '꽈배기',
+  '선 두께 m':   () => 조절['배치 모양'] === '나선' || 조절['배치 모양'] === '꽈배기',
+  '위 폭 배':    () => 조절['배치 모양'] === '꽈배기',
+  '아래 폭 배':  () => 조절['배치 모양'] === '꽈배기',
+  '색 띠 개수':  () => 조절.스텐색칠 === '층',
+  '스텐팔레트':  () => 조절.스텐색칠 !== '없음',
+  '스텐진하기':  () => 조절.스텐색칠 !== '없음',
+  '흐림시작':    () => 조절.아웃포커싱,
+  '흐림세기':    () => 조절.아웃포커싱,
+  '블룸세기':    () => 조절.블룸,
+  '블룸문턱':    () => 조절.블룸,
+  '블룸번짐':    () => 조절.블룸,
+  '손겨냥반경':  () => 조절.손깊이자동,
+  '위뷰 크기':   () => 조절['위에서 보기'],
+};
+function 조절보임() {
+  for (const k in 보임규칙) if (행칸[k]) 행칸[k].hidden = !보임규칙[k]();
+}
+조절보임();
+배치표시();
+
+document.getElementById('btnSeed').onclick = () => {
+  const 새씨 = 1 + Math.floor(Math.random() * 9999);
+  조절['배치 씨앗'] = 새씨;
+  const 칸 = 슬라이더칸['배치 씨앗'];
+  if (칸) { 칸.range.value = 새씨; 칸.val.textContent = 새씨; }
+  다시배치();
+};
+
+document.getElementById('btnShake').onclick = () => {
+  소리켜기();
+  const end = 마디*3;
+  for (let i = 0; i < N; i++) {
+    const o = i*(마디+1)*3 + end;
+    옛점[o]   -= (Math.random()-.5)*.09;
+    옛점[o+1] -= (Math.random()-.5)*.05;
+    옛점[o+2] -= (Math.random()-.5)*.09;
+    비틀림속[i] += (Math.random()-.5)*3;
+  }
+};
+
+const panel = document.getElementById('panel'), hint = document.getElementById('hint'), stat = document.getElementById('stat');
+addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if (k === 'h') [panel,hint,stat,video].forEach(el => el.classList.toggle('hidden'));
+  if (k === 'f') document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+  if (k === 'c') 웹캠켜기();
+  if (k === 'm') 조절.소리 = !조절.소리;
+  if (e.code === 'Space') { e.preventDefault(); document.getElementById('btnShake').click(); }
+  if (k === 'r') { for (let i=0;i<N;i++){ const o=i*(마디+1)*3;
+      for(let q=0;q<=마디;q++){ 옛점[o+q*3]=점[o+q*3]; 옛점[o+q*3+1]=점[o+q*3+1]; 옛점[o+q*3+2]=점[o+q*3+2]; }
+      비틀림속[i]=0; } }
+});
+
+// 화면 좌표(정규화 −1..1)와 깊이로 유닛을 겨냥한다.
+// 카메라가 (0,0,camZ)에서 −Z를 보므로 투영이 식 하나로 나온다 — 유닛 3000개도 가볍다.
+// 반환: {z, i, 거리} 또는 null
+function 겨냥(ndcX, ndcY, 여유) {
+  const tanH = Math.tan(camera.fov * Math.PI / 360), camZ = camera.position.z;
+  const asp = camera.aspect, end = 마디 * 3;
+  let bi = -1, bz = 0, bd = Infinity;
+  for (let i = 0; i < N; i++) {
+    const o = i * (마디 + 1) * 3 + end;
+    const d = camZ - 점[o+2];
+    if (d < .12 || d >= bd) continue;                 // 이미 더 가까운 걸 찾았으면 건너뛴다
+    const inv = 1 / (tanH * d);
+    const ux = (점[o] * inv / asp - ndcX) * asp;      // 세로 기준으로 맞춰 원형 판정
+    const uy = (점[o+1] - camera.position.y) * inv - ndcY;
+    const r = 충돌반지름[i] * inv + 여유;
+    if (ux*ux + uy*uy > r*r) continue;
+    bd = d; bz = 점[o+2]; bi = i;
+  }
+  return bi < 0 ? null : { z: bz, i: bi, 거리: bd };
+}
+
+// 위에서 내려다보는 평면도. 앞뒤로 어떻게 깔렸는지는 정면에서 안 보인다.
+// 블렌더 넘패드 7 처럼 **완전히 고정된** 정사영 탑뷰다.
+// lookAt 은 카메라가 대상 바로 위에 있을 때 위 방향과 시선이 나란해져 회전이 튈 수 있다.
+// 회전값을 직접 박아 넣으면 그럴 여지가 없다 — X축 −90도면 아래를 보고 화면 위가 −Z(먼 쪽)다.
+const 윗카메라 = new THREE.OrthographicCamera(-1, 1, 1, -1, .1, 400);
+윗카메라.position.set(0, 120, 0);
+윗카메라.rotation.set(-Math.PI / 2, 0, 0);
+윗카메라.updateMatrixWorld(true);
+
+// 카메라가 어디서 무엇을 보고 있는지 평면도에 같이 그린다 — 그래야 지도로 읽힌다
+const 시야선 = new THREE.LineSegments(
+  new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array(6 * 3), 3)),
+  new THREE.LineBasicMaterial({ color: 0x6f7b8c, transparent: true, opacity: .8 }));
+시야선.frustumCulled = false;
+const 시야씬 = new THREE.Scene();
+시야씬.add(시야선);
+function 시야선갱신() {
+  const a = 시야선.geometry.attributes.position.array;
+  const cz = camera.position.z, tan = Math.tan(camera.fov * Math.PI / 360) * camera.aspect;
+  const 깊 = cz + 깊이범위() + 1;
+  let n = 0;
+  const 넣 = (x, z) => { a[n++] = x; a[n++] = 0; a[n++] = z; };
+  넣(0, cz); 넣(-tan * 깊, cz - 깊);          // 왼쪽 시야선
+  넣(0, cz); 넣( tan * 깊, cz - 깊);          // 오른쪽 시야선
+  넣(-2.5, 0); 넣(2.5, 0);                    // 원점 가로선
+  시야선.geometry.attributes.position.needsUpdate = true;
+}
+
+const _화면 = new THREE.Vector2(), _옛클리어 = new THREE.Color();
+function 위에서그리기() {
+  if (!조절['위에서 보기']) return;
+  // setViewport 는 **CSS 픽셀**을 받는다. domElement.width(장치 픽셀)를 넘기면
+  // 픽셀비만큼 이중으로 커져 화면 전체 매핑이 틀어진다
+  renderer.getSize(_화면);
+  const 폭 = _화면.x, 높 = _화면.y;
+  const 칸 = Math.round(Math.min(폭, 높) * 조절['위뷰 크기']);
+  const 여백 = Math.round(칸 * .07);
+  // 유닛과 카메라가 **함께** 들어오게 틀을 잡는다 (가로는 X, 세로는 Z)
+  const z먼쪽 = -깊이범위() - 1, z가까운쪽 = camera.position.z + .5;
+  const z중심 = (z먼쪽 + z가까운쪽) * .5;
+  const 반 = Math.max(배치범위.x * 1.1, (z가까운쪽 - z먼쪽) * .5) * 1.05;
+  윗카메라.left = -반; 윗카메라.right = 반;
+  윗카메라.top = 반; 윗카메라.bottom = -반;
+  윗카메라.position.set(0, 120, z중심);
+  윗카메라.updateProjectionMatrix(); 윗카메라.updateMatrixWorld(true);
+  시야선갱신();
+
+  const 옛자동 = renderer.autoClear;
+  renderer.getClearColor(_옛클리어);
+  const 옛알파 = renderer.getClearAlpha();
+  renderer.autoClear = false;
+  renderer.setScissorTest(true);
+  renderer.setViewport(여백, 여백, 칸, 칸);
+  renderer.setScissor(여백, 여백, 칸, 칸);
+  renderer.setClearColor(0x05060a, 1);
+  renderer.clear(true, true, false);
+  renderer.render(scene, 윗카메라);
+  renderer.clearDepth();
+  renderer.render(시야씬, 윗카메라);
+  // 테두리 — 얇은 띠를 네 변에 그려 창처럼 보이게 한다
+  renderer.setClearColor(0x39404d, 1);
+  const 선 = Math.max(1, Math.round(칸 * .006));
+  for (const [x, y, w, h] of [[여백, 여백, 칸, 선], [여백, 여백 + 칸 - 선, 칸, 선],
+                              [여백, 여백, 선, 칸], [여백 + 칸 - 선, 여백, 선, 칸]]) {
+    renderer.setScissor(x, y, w, h); renderer.clear(true, false, false);
+  }
+  renderer.setScissorTest(false);
+  renderer.setViewport(0, 0, 폭, 높);
+  renderer.setClearColor(_옛클리어, 옛알파);   // 되돌리지 않으면 본 화면 배경이 바뀐다
+  renderer.autoClear = 옛자동;
+}
+
+// 아웃포커싱 — **가장 가까운 유닛에 초점**을 맞춘다. 그래야 가까운 것이 또렷하고
+// 뒤가 녹는다. z=0 평면에 초점을 두면 다가갈수록 앞뒤가 같이 흐려진다.
+// 흐림이 없을 때는 통째로 꺼서 장면을 두 번 그리는 비용을 안 낸다
+let 초점 = 9.5;
+function 자동초점() {
+  const tanH = Math.tan(camera.fov * Math.PI / 360), camZ = camera.position.z;
+  const asp = camera.aspect, end = 마디 * 3;
+  let 가장가까움 = Infinity;
+  for (let i = 0; i < N; i++) {
+    const o = i * (마디 + 1) * 3 + end;
+    const d = camZ - 점[o+2];
+    if (d < .12 || d >= 가장가까움) continue;
+    const inv = 1 / (tanH * d);
+    const nx = 점[o] * inv / asp, ny = (점[o+1] - camera.position.y) * inv;
+    if (nx*nx*asp*asp + ny*ny > .36) continue;        // 화면 가운데쯤만 본다
+    가장가까움 = d;
+  }
+  return isFinite(가장가까움) ? 가장가까움 : camera.position.z;
+}
+function 심도갱신(dt) {
+  블룸합성.uniforms['amount'].value = 조절.블룸 ? 조절.블룸세기 : 0;
+  bloom.radius = 조절.블룸번짐;
+  bloom.threshold = 조절.블룸문턱;
+  if (!조절.아웃포커싱) { bokeh.enabled = false; return; }
+  const 목표 = 자동초점();
+  초점 += (목표 - 초점) * Math.min(1, dt * 5);         // 초점이 갑자기 튀지 않게
+  const 시작 = 조절.흐림시작;
+  const t = THREE.MathUtils.clamp((시작 - 초점) / Math.max(시작 - .35, .1), 0, 1);
+  bokeh.enabled = t > .02;
+  if (!bokeh.enabled) return;
+  bokeh.uniforms['focus'].value    = Math.max(초점, .2);
+  bokeh.uniforms['aperture'].value = t * t * .0105 * 조절.흐림세기;
+  bokeh.uniforms['maxblur'].value  = .004 + t * .018;
+}
+
+// ────────────────────────────────────────────────────────────────
+// 루프
+// ────────────────────────────────────────────────────────────────
+setBoot('첫 프레임…', 92);
+let 마지막 = performance.now(), fps = 60, 통계다음 = 0;
+const 걸음 = 1 / 60;              // 물리는 언제나 이 간격으로만 돈다
+let 누적 = 0, 걸음수 = 0;
+
+function 프레임(now) {
+  requestAnimationFrame(프레임);
+  try {
+    const 실제dt = Math.min((now - 마지막) / 1000, 0.25);
+    마지막 = now;
+    fps += ((1000 / Math.max(now - (프레임.t || now - 16), 1)) - fps) * .06;
+    프레임.t = now;
+
+    손읽기(now);
+    손속도재우기(now);
+
+    // 고정 시간간격. 프레임률이 흔들려도 물리는 똑같이 돈다.
+    // 밀린 시간이 너무 많으면 버린다 (안 그러면 따라잡느라 더 느려지는 악순환)
+    누적 += 실제dt;
+    if (누적 > 걸음 * 5) 누적 = 걸음 * 5;
+    걸음수 = 0;
+    while (누적 >= 걸음) {
+      물리(걸음); 손적용(걸음); 충돌(걸음); 실헤치기(걸음); 속도제한(걸음);
+      누적 -= 걸음; 걸음수++;
+    }
+
+    그리기();
+    손뼈그리기();
+    심도갱신(실제dt);
+    블룸그리기();
+    composer.render();
+    위에서그리기();
+    if (뼈메시.visible || 관절.visible || 겨냥고리.visible) {
+      renderer.autoClear = false;            // 손 UI 는 흐려지지 않게 맨 위에 따로 그린다
+      renderer.render(겹침씬, camera);
+      renderer.autoClear = true;
+    }
+
+    if (now > 통계다음) {
+      통계다음 = now + 400;
+      // 폭주하는지 눈이 아니라 숫자로 본다
+      let sum = 0, 최대 = 0, 회전합 = 0; const end = 마디*3;
+      for (let i = 0; i < N; i++) {
+        const o = i*(마디+1)*3 + end;
+        const s = Math.hypot(점[o]-옛점[o], 점[o+1]-옛점[o+1], 점[o+2]-옛점[o+2]) / 걸음;
+        sum += s; if (s > 최대) 최대 = s;
+        회전합 += Math.abs(비틀림속[i]);
+      }
+      const 평균속 = N ? sum / N : 0, 평균회전 = N ? 회전합 / N : 0;
+      현갱신(평균속);
+      stat.textContent = `유닛 ${N} · ${fps.toFixed(0)} fps · 걸음 ${걸음수}`
+        + ` · 가까이 ${통계.lod[0]} 중간 ${통계.lod[1]} 멀리 ${통계.lod[2]}`
+        + ` · 속도 평균 ${평균속.toFixed(2)} 최대 ${최대.toFixed(2)} m/s · 회전 ${평균회전.toFixed(2)} rad/s`
+        + (손켬 ? ` · 손 ${손[1].live?1:0}${손[2].live?'+1':''}` : '');
+    }
+  } catch (err) {                                    // 31번 교훈 8: 예외로 루프를 빠져나가면 화면이 검게 남는다
+    console.error(err);
+  }
+}
+requestAnimationFrame(프레임);
+
+setTimeout(() => { boot.classList.add('gone'); setTimeout(()=>boot.remove(), 600); }, 350);
+
+// 진단용 창구 — 무엇이 폭주하는지 눈이 아니라 숫자로 보려면 필요하다
+window.모빌 = { get N(){return N}, 점, 옛점, 앵커, 마디, 마디길이, 비틀림각, 비틀림속,
+                크기, 잡힘, 충돌반지름, 번쩍, 기준각, 종류색인, 종류, 조절, 걸음: () => 걸음, camera,
+                손, bokeh, bloom, 겨냥, 자동초점, get 초점(){return 초점},
+                scene, 인스턴스, 공메시, 발광재질, 팔레트표, LED색, 캔디색,
+                소리상태: () => ({ 켜짐: !!ac, 상태: ac && ac.state, 울림수,
+                                  현: !!현게인 && +현게인.gain.value.toFixed(4),
+                                  근음: ac ? 지금근음() : null }) };
+</script>
