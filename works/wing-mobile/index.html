@@ -73,6 +73,9 @@
   button.act { width:100%; margin-top:9px; padding:7px; border-radius:7px; cursor:pointer;
         background:#232830; color:#cfd3da; border:1px solid rgba(255,255,255,.1); font-size:11.5px; }
   button.act:hover { background:#2b313a; }
+  /* 허브가 오른쪽 아래에 붙이는 저장·불러오기 바. 설정을 접으면 같이 사라져야 한다 —
+     전시에서는 작품만 남아야 하므로 우리 설정 상태에 묶는다 */
+  html:not(.wm-open) .hub-art-bar { display:none !important; }
   #tools { position:fixed; left:12px; top:12px; z-index:12; display:flex; gap:7px; transition:opacity .2s; }
   #tools.hidden { opacity:0; pointer-events:none; }
   #tools button { width:32px; height:32px; display:flex; align-items:center; justify-content:center;
@@ -1809,6 +1812,8 @@ function 화면갱신() {
   video .classList.toggle('hidden', !(보임 && 손켬 && 설정열림));   // 프리뷰는 설정을 폈을 때만
   톱니.classList.toggle('on', 설정열림);
   전체버튼.classList.toggle('on', !!document.fullscreenElement);
+  // 허브 바도 같이 여닫는다 (위 CSS 가 이 클래스를 본다)
+  document.documentElement.classList.toggle('wm-open', 보임 && 설정열림);
 }
 톱니.onclick = () => { 설정열림 = !설정열림; 화면갱신(); };
 전체버튼.onclick = () =>
