@@ -1310,6 +1310,9 @@ for (let i = 0; i < 3; i++) 손.push({
   vel: new THREE.Vector3(),               // 이번 걸음의 변위
   live: false, pinch: false, grabbed: -1,
   뼈: new Float32Array(21 * 3), 뼈있음: false,
+  // 인식은 초당 몇 번뿐이라 잰 값을 그대로 쓰면 뚝뚝 끊긴다.
+  // 잰 것은 **목표**로 두고 실제 위치는 매 프레임 그리로 다가간다
+  잰pos: new THREE.Vector3(), 잰집점: new THREE.Vector3(), 잰뼈: new Float32Array(21 * 3), 잰있음: false,
   깊이: 0, 겨냥: -1,                       // 깊이는 겨냥한 유닛에서 빌려온다
   집점: new THREE.Vector3(),              // 엄지끝과 검지끝의 한가운데 — 여기로만 잡는다
   이전ndc: new THREE.Vector2(), 갱신시각: 0,
@@ -1332,16 +1335,38 @@ function 손위치갱신(H, 손바닥X, 손바닥Y, 집X, 집Y, 기본z, 즉시,
   const 높 = camera.position.y;
   if (!H.live) { H.이전ndc.set(손바닥X, 손바닥Y); H.갱신시각 = now - 16; }
   H.prev.set(H.이전ndc.x * 반너비, H.이전ndc.y * 반높이 + 높, z);
-  H.pos.set(손바닥X * 반너비, 손바닥Y * 반높이 + 높, z);   // 후려치는 자리
-  H.집점.set(집X * 반너비, 집Y * 반높이 + 높, z);          // 잡는 자리
+  H.잰pos.set(손바닥X * 반너비, 손바닥Y * 반높이 + 높, z);   // 후려치는 자리
+  H.잰집점.set(집X * 반너비, 집Y * 반높이 + 높, z);          // 잡는 자리
+  if (!H.잰있음) { H.pos.copy(H.잰pos); H.집점.copy(H.잰집점); H.잰있음 = true; }
+  // 속도는 **잰 값끼리** 재야 한다. 이어 그린 위치로 재면 부드럽게 만든 만큼 힘이 죽는다
   const dt = Math.max((now - H.갱신시각) / 1000, 1e-3);
-  H.초속.subVectors(H.pos, H.prev).divideScalar(dt);
+  H.초속.subVectors(H.잰pos, H.prev).divideScalar(dt);
   if (H.초속.length() > 12) H.초속.setLength(12);      // 순간이동 방지
   H.이전ndc.set(손바닥X, 손바닥Y);
   H.갱신시각 = now;
   H.live = true;
   return z;
 }
+// 인식 사이를 이어 그린다. 초당 예닐곱 번뿐인 인식 결과를 그대로 쓰면 손이 뚝뚝 끊긴다.
+// 잰 값으로 다가가되 잰 속도로 조금 앞질러 둬야, 부드러운 대신 뒤늦게 따라오는 일이 없다.
+const _앞질러 = new THREE.Vector3(), _목표 = new THREE.Vector3();
+function 손이어가기(dt, now) {
+  const k = 1 - Math.exp(-dt / .05);
+  for (let h = 1; h <= 2; h++) {                     // 웹캠 손만. 마우스는 매 프레임 들어온다
+    const H = 손[h];
+    if (!H.live || !H.잰있음) continue;
+    const 지난 = Math.min((now - H.갱신시각) / 1000, .25);
+    _앞질러.copy(H.초속).multiplyScalar(지난 * .55);   // 과하면 떨린다
+    H.pos  .lerp(_목표.copy(H.잰pos ).add(_앞질러), k);
+    H.집점.lerp(_목표.copy(H.잰집점).add(_앞질러), k);
+    if (H.뼈있음) for (let n = 0; n < 63; n += 3) {
+      H.뼈[n]   += (H.잰뼈[n]   + _앞질러.x - H.뼈[n])   * k;
+      H.뼈[n+1] += (H.잰뼈[n+1] + _앞질러.y - H.뼈[n+1]) * k;
+      H.뼈[n+2] += (H.잰뼈[n+2] + _앞질러.z - H.뼈[n+2]) * k;
+    }
+  }
+}
+
 // 소식이 끊기면 속도를 빠르게 재운다. 안 그러면 마지막 속도가 계속 힘을 준다
 function 손속도재우기(now) {
   for (const H of 손) {
@@ -1724,7 +1749,8 @@ function 손읽기(now) {
     const z = 손위치갱신(H, 손바닥X, 손바닥Y, 집X, 집Y, 어림z, 처음, now);
     for (let n = 0; n < 21; n++) {
       정규화된손을월드로(lm[n].x, lm[n].y, z, _hv);
-      H.뼈[n*3] = _hv.x; H.뼈[n*3+1] = _hv.y; H.뼈[n*3+2] = _hv.z;
+      H.잰뼈[n*3] = _hv.x; H.잰뼈[n*3+1] = _hv.y; H.잰뼈[n*3+2] = _hv.z;
+      if (!H.뼈있음) { H.뼈[n*3] = _hv.x; H.뼈[n*3+1] = _hv.y; H.뼈[n*3+2] = _hv.z; }
     }
     H.뼈있음 = true;
     // 집기 — 엄지끝(4)과 검지끝(8)의 거리를 손 크기로 나눈다
@@ -2150,6 +2176,7 @@ function 프레임(now) {
     프레임.t = now;
 
     손읽기(now);
+    손이어가기(실제dt, now);
     손속도재우기(now);
 
     // 고정 시간간격. 프레임률이 흔들려도 물리는 똑같이 돈다.
