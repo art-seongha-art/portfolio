@@ -36,6 +36,16 @@
   .row[hidden] { display:none; }
   .row select.pick { flex:0 0 104px; background:#22262e; color:#cfd3da; font-size:11px;
         border:1px solid rgba(255,255,255,.1); border-radius:5px; padding:2px 4px; }
+  #presets { margin:0 0 10px; }
+  #presets .p { display:flex; align-items:center; gap:5px; margin:3px 0; }
+  #presets .p .nm { flex:1; font-size:11.5px; color:#5f6672; }
+  #presets .p.has .nm { color:#cfd3da; }
+  #presets .p button { padding:3px 7px; border-radius:6px; font-size:10.5px; cursor:pointer;
+        background:#232830; color:#aeb6c2; border:1px solid rgba(255,255,255,.1); }
+  #presets .p button:hover:not(:disabled) { background:#2b313a; color:#fff; }
+  #presets .p button:disabled { opacity:.32; cursor:default; }
+  #presets .p .sv { color:#8fd0a0; }
+  #presets .st { font-size:10.5px; color:#6b7381; margin:5px 0 0; min-height:14px; }
   .extent { margin:2px 0 7px; font-size:10.5px; line-height:1.5; color:#6b7381;
             padding:5px 7px; border-radius:6px; background:rgba(255,255,255,.035); }
   #cammsg { position:fixed; left:12px; right:12px; bottom:56px; z-index:11; font-size:11.5px;
@@ -90,6 +100,7 @@
 
 <div id="panel" class="hidden">
   <h2>날개 모빌</h2>
+  <div id="presets"></div>
   <div id="controls"></div>
   <button class="act" id="btnSeed">배치 다시 뽑기</button>
   <button class="act" id="btnCam">웹캠 켜기</button>
@@ -1680,6 +1691,7 @@ const 묶음 = {
   '그 밖':['장신구','노출','잠자리원본','소리','음량'],
 };
 const 값칸 = {};
+const 입력칸 = {};        // 조절키 → 실제 input/select. 프리셋을 되돌릴 때 쓴다
 const 슬라이더칸 = {};
 const 행칸 = {};
 const 처음열기 = ['배치', '무엇을'];        // 이 둘만 펼친 채 시작한다
@@ -1700,11 +1712,11 @@ for (const g in 묶음) {
     if (d.목록) {
       const sel = document.createElement('select'); sel.className = 'pick';
       for (const o of d.목록) { const op = document.createElement('option'); op.value = op.textContent = o; sel.appendChild(op); }
-      sel.value = d.v;
+      sel.value = d.v; 입력칸[k] = sel;
       sel.oninput = () => { 조절[k] = sel.value; 조절보임(); if (k === '배치 모양') 다시배치(); };
       row.appendChild(sel);
     } else if (typeof d.v === 'boolean') {
-      const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = d.v;
+      const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = d.v; 입력칸[k] = cb;
       cb.oninput = () => { 조절[k] = cb.checked; 조절보임();
         if (k === '손인식CPU' && 손인식) 델리게이트바꾸기(cb.checked ? 'CPU' : 'GPU', '설정에서 바꿈'); };
       row.appendChild(cb);
@@ -1712,7 +1724,7 @@ for (const g in 묶음) {
       const r = document.createElement('input'); r.type = 'range';
       r.min = d.min; r.max = d.max; r.step = d.step; r.value = d.v;
       const v = document.createElement('span'); v.className = 'val'; v.textContent = d.v;
-      값칸[k] = v; 슬라이더칸[k] = { range: r, val: v };
+      값칸[k] = v; 슬라이더칸[k] = { range: r, val: v }; 입력칸[k] = r;
       r.oninput = () => {
         조절[k] = parseFloat(r.value); v.textContent = r.value;
         if (k === '보는 거리 m') camera.position.z = 기준거리();
@@ -1789,7 +1801,7 @@ let 설정열림 = false, 화면정리 = false;
 function 화면갱신() {
   const 보임 = !화면정리;
   도구모음.classList.toggle('hidden', !보임);
-  hint  .classList.toggle('hidden', !보임);
+  hint  .classList.toggle('hidden', !(보임 && 설정열림));   // 단축키 안내도 설정과 함께 접힌다
   panel .classList.toggle('hidden', !(보임 && 설정열림));
   stat  .classList.toggle('hidden', !(보임 && 설정열림));
   video .classList.toggle('hidden', !(보임 && 손켬 && 설정열림));   // 프리뷰는 설정을 폈을 때만
@@ -1813,6 +1825,94 @@ addEventListener('keydown', e => {
       for(let q=0;q<=마디;q++){ 옛점[o+q*3]=점[o+q*3]; 옛점[o+q*3+1]=점[o+q*3+1]; 옛점[o+q*3+2]=점[o+q*3+2]; }
       비틀림속[i]=0; } }
 });
+
+// ────────────────────────────────────────────────────────────────
+// 프리셋 — 허브에 올라가면 서버에 저장되고, 그렇지 않으면 이 기기에만 남는다
+// ────────────────────────────────────────────────────────────────
+// 허브(4090)는 <script src="/works/_shared/art-settings-sync.js"> 를 끼워 넣어
+// window.ArtSettingsSync 를 심는다. 그것이 이 키를 서버와 양방향으로 맞춰 준다.
+// 없으면 같은 모양의 localStorage 대체품을 쓴다 — 이 기기에만 남는다.
+const 프리셋키 = 'wingMobile32.presets.v1';
+const 프리셋칸 = ['휴대폰', '전시 1', '전시 2', '전시 3', '전시 4', '전시 5'];
+// 기기 사정이지 작품의 모습이 아니다. 폰에서 저장한 것을 전시 기계에 불러왔을 때
+// 손인식이 CPU 로 강제되면 안 된다
+const 프리셋제외 = new Set(['손인식CPU']);
+
+function 저장소() {
+  const S = window.ArtSettingsSync;
+  if (S && S.__installed) return S;
+  return {
+    서버아님: true,
+    get: k => { try { return localStorage.getItem(k); } catch { return null; } },
+    set: (k, v) => { try { localStorage.setItem(k, v); } catch {} },
+    flush: () => Promise.resolve(false),
+  };
+}
+function 프리셋읽기() {
+  try { const o = JSON.parse(저장소().get(프리셋키) || '{}'); return (o && typeof o === 'object') ? o : {}; }
+  catch { return {}; }
+}
+function 프리셋쓰기(모두) { 저장소().set(프리셋키, JSON.stringify(모두)); return 저장소().flush(); }
+
+function 지금값() {
+  const v = {};
+  for (const k in P) if (!프리셋제외.has(k)) v[k] = 조절[k];
+  return v;
+}
+// 불러오면 조절값뿐 아니라 화면(슬라이더·카메라·배치)도 같이 되돌려야 한다
+function 프리셋적용(값) {
+  for (const k in 값) {
+    if (!(k in P) || 프리셋제외.has(k)) continue;      // 모르는 키는 조용히 버린다
+    조절[k] = 값[k];
+    const el = 입력칸[k];
+    if (!el) continue;
+    if (el.type === 'checkbox') el.checked = !!값[k];
+    else { el.value = 값[k]; if (값칸[k]) 값칸[k].textContent = 값[k]; }
+  }
+  camera.position.set(0, 조절['카메라 높이 m'], 기준거리());
+  조절보임();
+  다시배치();
+}
+
+const 프리셋판 = document.getElementById('presets');
+const 프리셋말 = document.createElement('div'); 프리셋말.className = 'st';
+function 프리셋그리기() {
+  const 모두 = 프리셋읽기();
+  프리셋판.textContent = '';
+  for (const 이름 of 프리셋칸) {
+    const 있음 = !!모두[이름];
+    const row = document.createElement('div'); row.className = 'p' + (있음 ? ' has' : '');
+    const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = 이름;
+    const 불러 = document.createElement('button'); 불러.textContent = '불러오기'; 불러.disabled = !있음;
+    const 저장 = document.createElement('button'); 저장.textContent = '저장'; 저장.className = 'sv';
+    불러.onclick = () => { const m = 프리셋읽기(); if (m[이름]) { 프리셋적용(m[이름]); 알림(이름 + ' 불러옴'); } };
+    저장.onclick = () => {
+      const m = 프리셋읽기(); m[이름] = 지금값();
+      // set 은 그 자리에서 끝나고 flush 만 서버를 다녀온다. 다시 그리기를 기다리게 하면
+      // 서버가 느릴 때 버튼이 뒤늦게 열린다
+      const 보냄 = 프리셋쓰기(m);
+      프리셋그리기();
+      알림(이름 + ' 저장' + (저장소().서버아님 ? ' (이 기기에만)' : '…'));
+      보냄?.then?.(ok => { if (!저장소().서버아님) 알림(이름 + (ok === false ? ' 저장 (서버 실패 — 이 기기에만)' : ' 저장 (서버)')); })
+           ?.catch?.(() => 알림(이름 + ' 저장 (서버 실패 — 이 기기에만)'));
+    };
+    row.append(nm, 불러, 저장);
+    프리셋판.appendChild(row);
+  }
+  프리셋판.appendChild(프리셋말);
+}
+let 알림타이머 = 0;
+function 알림(글) {
+  프리셋말.textContent = 글;
+  clearTimeout(알림타이머); 알림타이머 = setTimeout(() => { 프리셋말.textContent = 어디에저장되나(); }, 2600);
+}
+function 어디에저장되나() {
+  return 저장소().서버아님 ? '이 기기에만 저장됩니다 (서버 없음)' : '서버에 저장됩니다 — 어디서 열어도 같습니다';
+}
+프리셋그리기();
+프리셋말.textContent = 어디에저장되나();
+// 서버 쪽이 바뀌면 목록도 따라 바뀐다
+window.ArtSettingsSync?.subscribe?.(() => 프리셋그리기());
 
 // 화면 좌표(정규화 −1..1)와 깊이로 유닛을 겨냥한다.
 // 카메라가 (0,0,camZ)에서 −Z를 보므로 투영이 식 하나로 나온다 — 유닛 3000개도 가볍다.
