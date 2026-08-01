@@ -1579,7 +1579,7 @@ const 캠말 = document.getElementById('cammsg');
 let 손인식 = null, 손켬 = false, 손다음 = 0;
 
 // 폰에는 개발자 콘솔이 없다. 무엇이 잘못됐는지 **화면에** 남겨야 작가가 읽을 수 있다.
-const 진단 = { 델리게이트: '', 시도: 0, 잡힘: 0, 오류: '', 켠시각: 0, 갈아타는중: false, 연속실패: 0, 인식ms: 0 };
+const 진단 = { 델리게이트: '', 시도: 0, 잡힘: 0, 오류: '', 켠시각: 0, 갈아타는중: false, 연속실패: 0, 인식ms: 0, 놓침: 0 };
 
 // ── 손 인식을 별도 스레드로 ──────────────────────────────────────
 // 화면 스레드에서 detectForVideo 를 부르면 그 수십 밀리초 동안 화면이 통째로 멈춘다.
@@ -1679,7 +1679,10 @@ async function 웹캠켜기() {
     document.getElementById('btnCam').textContent = '웹캠 준비 중…';
     캠말보이기('카메라 여는 중…');
     const stream = await navigator.mediaDevices.getUserMedia({
-      video: { width: 640, height: 480, facingMode: 'user' }, audio: false });
+      // 프레임률을 높게 청하면 브라우저가 노출을 짧게 잡아 **번짐이 줄어든다**.
+      // 빠른 손이 안 잡히던 원인의 절반은 인식이 아니라 번진 영상이다
+      video: { width: 640, height: 480, facingMode: 'user', frameRate: { ideal: 60, min: 24 } },
+      audio: false });
     video.srcObject = stream; await video.play();
     // 폰은 화면이 꺼지거나 다른 앱으로 갔다 오면 트랙이 조용히 죽는다.
     // 죽은 줄 모르면 "카메라는 켜져 있는데 손만 안 잡힘"으로 보인다
@@ -1695,7 +1698,7 @@ async function 웹캠켜기() {
     for (let i = 0; i < 60 && 일꾼상태 === '준비중'; i++) await new Promise(r => setTimeout(r, 100));
     if (일꾼상태 !== '됨' && !손인식) 손인식 = await 손인식만들기(어느것);
     손켬 = true;
-    진단.켠시각 = performance.now(); 진단.시도 = 0; 진단.잡힘 = 0; 진단.오류 = ''; 진단.연속실패 = 0;
+    진단.켠시각 = performance.now(); 진단.시도 = 0; 진단.잡힘 = 0; 진단.놓침 = 0; 진단.오류 = ''; 진단.연속실패 = 0;
     document.getElementById('btnCam').textContent = '웹캠 끄기';
     화면갱신();
   } catch (err) {
@@ -1770,7 +1773,13 @@ function 손얹기(손들, now) {
   if (손들.length) 진단.잡힘++;
   for (let k = 0; k < 2; k++) {
     const H = 손[1 + k], lm = 손들[k];
-    if (!lm) { H.live = false; H.뼈있음 = false; continue; }
+    if (!lm) {
+      // 빠르게 휘두르면 영상이 번져 인식이 걸러 실패한다. 한 번 놓쳤다고 바로 지우면
+      // 손이 없어졌다 나타났다 한다. 잠깐 붙잡아 뒀다가 계속 못 찾을 때만 놓는다
+      if (H.live && now - H.갱신시각 < 300) { 진단.놓침++; continue; }
+      H.live = false; H.뼈있음 = false;
+      continue;
+    }
     const X = n => lm[n*2], Y = n => lm[n*2+1];
     // 손 크기로 깊이를 어림한다 — 미디어파이프의 z는 손목 기준 상대값이라 절대 깊이가 아니다
     let minx=1,maxx=0,miny=1,maxy=0;
@@ -2295,7 +2304,7 @@ function 프레임(now) {
       현갱신(평균속);
       fps칸.innerHTML = `${fps.toFixed(0)} fps`
         + `<small>최저 ${최저fps.toFixed(0)} · 유닛 ${N} · 소리 ${소리셈.운유닛.size}`
-        + (손켬 ? ` · ${진단.델리게이트} ${진단.인식ms.toFixed(0)}ms` : '') + `</small>`;
+        + (손켬 ? ` · ${진단.델리게이트} ${진단.인식ms.toFixed(0)}ms · 놓침 ${진단.놓침}` : '') + `</small>`;
       stat.textContent = `걸음 ${걸음수}`
         + ` · 가까이 ${통계.lod[0]} 중간 ${통계.lod[1]} 멀리 ${통계.lod[2]}`
         + ` · 속도 평균 ${평균속.toFixed(2)} 최대 ${최대.toFixed(2)} m/s · 회전 ${평균회전.toFixed(2)} rad/s`
