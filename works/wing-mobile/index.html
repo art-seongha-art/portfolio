@@ -2133,19 +2133,34 @@ window.ArtSettingsSync?.subscribe?.(() => { 프리셋그리기(); 자동입기()
 function 겨냥(ndcX, ndcY, 여유) {
   const tanH = Math.tan(camera.fov * Math.PI / 360), camZ = camera.position.z;
   const asp = camera.aspect, end = 마디 * 3;
-  let bi = -1, bz = 0, bd = Infinity;
+  // 두 갈래로 나눠 고른다.
+  //  ① **정말로 그 위를 눌렀나** — 유닛의 원 안에 들면 그중 가장 앞엣것. 가림이 맞다
+  //  ② 아무것도 못 눌렀을 때만 여유 안에서 **화면상 가장 가까운 것**
+  // 예전에는 여유까지 한 덩어리로 보고 무조건 가장 앞엣것을 골랐다. 그래서 커서에서
+  // 한참 떨어진 앞쪽 유닛이 잡혔다 — "클릭하면 다른 데가 클릭된다"가 이것이다
+  let 안i = -1, 안z = 0, 안깊이 = Infinity;
+  let 밖i = -1, 밖z = 0, 밖틈 = Infinity, 밖깊이 = 0;
   for (let i = 0; i < N; i++) {
     const o = i * (마디 + 1) * 3 + end;
     const d = camZ - 점[o+2];
-    if (d < .12 || d >= bd) continue;                 // 이미 더 가까운 걸 찾았으면 건너뛴다
+    if (d < .12) continue;
     const inv = 1 / (tanH * d);
     const ux = (점[o] * inv / asp - ndcX) * asp;      // 세로 기준으로 맞춰 원형 판정
     const uy = (점[o+1] - camera.position.y) * inv - ndcY;
-    const r = 충돌반지름[i] * inv + 여유;
-    if (ux*ux + uy*uy > r*r) continue;
-    bd = d; bz = 점[o+2]; bi = i;
+    const rr = 충돌반지름[i] * inv;
+    const 거리2 = ux*ux + uy*uy;
+    if (거리2 <= rr*rr) {
+      if (d < 안깊이) { 안깊이 = d; 안z = 점[o+2]; 안i = i; }
+    } else if (여유 > 0 && 안i < 0) {
+      const 바깥 = rr + 여유;
+      if (거리2 <= 바깥*바깥) {
+        const 틈 = Math.sqrt(거리2) - rr;             // 원 밖으로 얼마나 벗어났나
+        if (틈 < 밖틈) { 밖틈 = 틈; 밖z = 점[o+2]; 밖i = i; 밖깊이 = d; }
+      }
+    }
   }
-  return bi < 0 ? null : { z: bz, i: bi, 거리: bd };
+  if (안i >= 0) return { z: 안z, i: 안i, 거리: 안깊이 };
+  return 밖i < 0 ? null : { z: 밖z, i: 밖i, 거리: 밖깊이 };
 }
 
 // 위에서 내려다보는 평면도. 앞뒤로 어떻게 깔렸는지는 정면에서 안 보인다.
