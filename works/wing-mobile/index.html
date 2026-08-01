@@ -1581,6 +1581,60 @@ let 손인식 = null, 손켬 = false, 손다음 = 0;
 // 폰에는 개발자 콘솔이 없다. 무엇이 잘못됐는지 **화면에** 남겨야 작가가 읽을 수 있다.
 const 진단 = { 델리게이트: '', 시도: 0, 잡힘: 0, 오류: '', 켠시각: 0, 갈아타는중: false, 연속실패: 0, 인식ms: 0 };
 
+// ── 손 인식을 별도 스레드로 ──────────────────────────────────────
+// 화면 스레드에서 detectForVideo 를 부르면 그 수십 밀리초 동안 화면이 통째로 멈춘다.
+// 막히지 않게 간격을 띄우면 이번엔 초당 예닐곱 번만 재게 되어 **빠른 손짓의 속도를 못 잡는다**.
+// 일꾼에서 돌리면 둘 다 풀린다 — 화면은 안 멈추고, 잴 수 있는 만큼 촘촘히 잰다.
+let 일꾼 = null;
+let 일꾼상태 = '안함';        // 안함 · 준비중 · 됨 · 못함
+let 일꾼바쁨 = false, 일꾼보낸시각 = 0;
+const _빈손 = [];
+
+function 일꾼세우기(델리게이트) {
+  if (일꾼상태 === '준비중' || 일꾼상태 === '됨') return;
+  if (typeof Worker === 'undefined' || typeof createImageBitmap !== 'function') { 일꾼상태 = '못함'; return; }
+  일꾼상태 = '준비중';
+  try {
+    일꾼 = new Worker('./libs/hand-worker.js');
+  } catch { 일꾼상태 = '못함'; return; }
+  일꾼.onerror = () => { 일꾼상태 = '못함'; 일꾼?.terminate(); 일꾼 = null; };
+  일꾼.onmessage = e => {
+    const m = e.data;
+    if (m.종류 === '준비됨') { 일꾼상태 = '됨'; 진단.델리게이트 = m.델리게이트 + '·일꾼'; return; }
+    if (m.종류 === '실패')  { 일꾼상태 = '못함'; 진단.오류 = '일꾼 실패 — ' + m.왜; 일꾼?.terminate(); 일꾼 = null; return; }
+    if (m.종류 === '결과') {
+      일꾼바쁨 = false;
+      진단.인식ms = 진단.인식ms ? 진단.인식ms * .8 + m.걸림 * .2 : m.걸림;
+      if (m.오류) {
+        진단.오류 = m.오류;
+        손[1].live = 손[2].live = false; 손[1].뼈있음 = 손[2].뼈있음 = false;
+        if (++진단.연속실패 === 3 && 진단.델리게이트.startsWith('GPU')) 델리게이트바꾸기('CPU', 'GPU 오류');
+        return;
+      }
+      진단.연속실패 = 0;
+      if (진단.오류 && !진단.오류.startsWith('카메라')) 진단.오류 = '';
+      손얹기(m.손들, performance.now());
+    }
+  };
+  const 뿌리 = new URL('.', location.href).href;
+  일꾼.postMessage({ 종류: '준비', wasm: 뿌리 + 'libs/mediapipe/wasm',
+    모델: 뿌리 + 'libs/mediapipe/models/hand_landmarker.task',
+    델리게이트, 손수: 손닿는기기 ? 1 : 2 });
+}
+
+// 프레임을 넘긴다. 일꾼이 아직 앞 프레임을 붙들고 있으면 건너뛴다 — 밀리면 지연만 쌓인다
+function 일꾼에보내기(now) {
+  if (일꾼바쁨) {
+    if (now - 일꾼보낸시각 > 4000) { 일꾼바쁨 = false; }   // 굳었으면 풀어준다
+    return;
+  }
+  일꾼바쁨 = true; 일꾼보낸시각 = now; 진단.시도++;
+  createImageBitmap(video).then(그림 => {
+    if (!일꾼) { 그림.close(); 일꾼바쁨 = false; return; }
+    일꾼.postMessage({ 종류: '프레임', 그림, 시각: now }, [그림]);
+  }).catch(() => { 일꾼바쁨 = false; });
+}
+
 async function 손인식만들기(델리게이트) {
   const { HandLandmarker, FilesetResolver } = await import('./libs/mediapipe/vision_bundle.mjs');
   const fs = await FilesetResolver.forVisionTasks('./libs/mediapipe/wasm');
@@ -1602,9 +1656,14 @@ async function 델리게이트바꾸기(어느것, 까닭) {
   진단.갈아타는중 = true;
   캠말보이기('손인식을 ' + 어느것 + ' 로 바꾸는 중… (' + 까닭 + ')');
   try {
-    const 옛 = 손인식;
-    손인식 = await 손인식만들기(어느것);
-    옛?.close?.();
+    if (일꾼) { 일꾼.terminate(); 일꾼 = null; 일꾼상태 = '안함'; 일꾼바쁨 = false; }
+    일꾼세우기(어느것);
+    for (let i = 0; i < 60 && 일꾼상태 === '준비중'; i++) await new Promise(r => setTimeout(r, 100));
+    if (일꾼상태 !== '됨') {
+      const 옛 = 손인식;
+      손인식 = await 손인식만들기(어느것);
+      옛?.close?.();
+    }
     진단.오류 = ''; 진단.연속실패 = 0; 진단.시도 = 0; 진단.잡힘 = 0;
     진단.켠시각 = performance.now();
   } catch (err) {
@@ -1630,7 +1689,11 @@ async function 웹캠켜기() {
       t.onunmute = () => { if (진단.오류.startsWith('카메라가 잠시')) 진단.오류 = ''; };
     }
     캠말보이기('손인식 준비 중… (17 MB)');
-    if (!손인식) 손인식 = await 손인식만들기(조절.손인식CPU ? 'CPU' : 'GPU');
+    const 어느것 = 조절.손인식CPU ? 'CPU' : 'GPU';
+    일꾼세우기(어느것);
+    // 일꾼이 서는 데 시간이 걸린다. 최대 6초만 기다리고 안 되면 화면 스레드 길로 간다
+    for (let i = 0; i < 60 && 일꾼상태 === '준비중'; i++) await new Promise(r => setTimeout(r, 100));
+    if (일꾼상태 !== '됨' && !손인식) 손인식 = await 손인식만들기(어느것);
     손켬 = true;
     진단.켠시각 = performance.now(); 진단.시도 = 0; 진단.잡힘 = 0; 진단.오류 = ''; 진단.연속실패 = 0;
     document.getElementById('btnCam').textContent = '웹캠 끄기';
@@ -1651,6 +1714,7 @@ async function 웹캠켜기() {
 }
 function 웹캠끄기() {
   손켬 = false;
+  일꾼바쁨 = false;
   화면갱신();
   if (video.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); video.srcObject = null; }
   손[1].live = 손[2].live = false;
@@ -1699,16 +1763,45 @@ function 정규화된손을월드로(nx, ny, z, out) {
 }
 
 const _hv = new THREE.Vector3();
-function 손읽기(now) {
-  if (!손켬 || !손인식 || 진단.갈아타는중) return;
-  // readyState 만 보면 부족하다 — 폰에서는 크기가 0×0 인 채로 2 까지 올라오는 일이 있고,
-  // 그 프레임을 밀어 넣으면 미디어파이프가 조용히 빈 결과를 준다
-  if (video.readyState < 2 || !video.videoWidth || !video.videoHeight || video.paused) return;
+
+// 인식 결과(정규화 x,y 짝) 를 손에 얹는다. 화면 스레드에서 재든 일꾼이 재든 여기로 들어온다.
+// 좌표는 Float32Array 로 [x0,y0, x1,y1, …] 21쌍이다
+function 손얹기(손들, now) {
+  if (손들.length) 진단.잡힘++;
+  for (let k = 0; k < 2; k++) {
+    const H = 손[1 + k], lm = 손들[k];
+    if (!lm) { H.live = false; H.뼈있음 = false; continue; }
+    const X = n => lm[n*2], Y = n => lm[n*2+1];
+    // 손 크기로 깊이를 어림한다 — 미디어파이프의 z는 손목 기준 상대값이라 절대 깊이가 아니다
+    let minx=1,maxx=0,miny=1,maxy=0;
+    for (let n = 0; n < 21; n++) {
+      const x = X(n), y = Y(n);
+      if (x<minx) minx=x; if (x>maxx) maxx=x; if (y<miny) miny=y; if (y>maxy) maxy=y;
+    }
+    const span = Math.max(maxx-minx, maxy-miny);
+    const 어림z = THREE.MathUtils.clamp((span - .12) / .30, 0, 1) * 2.6 - .8;  // 크면 앞으로
+    // 거울상이라 x를 뒤집는다. 손바닥(9)은 후려치는 자리, 엄지끝(4)·검지끝(8) 사이는 잡는 자리
+    const 손바닥X = 1 - X(9) * 2, 손바닥Y = 1 - Y(9) * 2;
+    const 집X = 1 - (X(4) + X(8)) * .5 * 2, 집Y = 1 - (Y(4) + Y(8)) * .5 * 2;
+    const 처음 = !H.live;
+    if (처음) H.깊이 = 어림z;
+    const z = 손위치갱신(H, 손바닥X, 손바닥Y, 집X, 집Y, 어림z, 처음, now);
+    for (let n = 0; n < 21; n++) {
+      정규화된손을월드로(X(n), Y(n), z, _hv);
+      H.잰뼈[n*3] = _hv.x; H.잰뼈[n*3+1] = _hv.y; H.잰뼈[n*3+2] = _hv.z;
+      if (!H.뼈있음) { H.뼈[n*3] = _hv.x; H.뼈[n*3+1] = _hv.y; H.뼈[n*3+2] = _hv.z; }
+    }
+    H.뼈있음 = true;
+    // 집기 — 엄지끝(4)과 검지끝(8)의 거리를 손 크기로 나눈다
+    const dx = X(4) - X(8), dy = Y(4) - Y(8);
+    H.pinch = Math.hypot(dx, dy) / Math.max(span, 1e-3) < .32;
+  }
+}
+
+// 화면 스레드에서 직접 재는 길 — 일꾼이 안 될 때만 쓴다
+const _평면손 = [];
+function 손읽기바로(now) {
   if (now < 손다음) return;
-  // detectForVideo 는 **화면 스레드를 그대로 막는다.** 폰에서 CPU 로 돌면 한 번에
-  // 수십 밀리초가 걸려서, 손이 화면에 들어온 순간 프레임이 60에서 10대로 떨어진다.
-  // 고정 간격으로는 못 막는다 — 인식이 66 ms 걸리면 66 ms 간격은 사실상 매 프레임이다.
-  // 그래서 **실제 걸린 시간을 재서 그 몇 배로 띄운다.** 기기가 빠르면 저절로 촘촘해진다.
   const 최소간격 = 손닿는기기 ? 66 : 33;
   손다음 = now + 최소간격;                 // 던져도 폭주하지 않게 먼저 잡아둔다
   let res;
@@ -1718,45 +1811,32 @@ function 손읽기(now) {
     res = 손인식.detectForVideo(video, now);
     const 걸림 = performance.now() - 잰시작;
     진단.인식ms = 진단.인식ms ? 진단.인식ms * .8 + 걸림 * .2 : 걸림;
-    // 인식이 한 프레임의 3분의 1을 넘게 먹지 않도록 — 걸린 시간의 세 배 간격
+    // 화면 스레드를 막으므로 걸린 시간의 세 배로 띄운다. 여기서는 어쩔 수 없는 타협이다
     손다음 = now + Math.min(220, Math.max(최소간격, 진단.인식ms * 3));
     진단.연속실패 = 0;
     if (진단.오류 && !진단.오류.startsWith('카메라')) 진단.오류 = '';
   } catch (err) {
-    // 오류를 통째로 삼키면 폰에서는 "카메라는 켜졌는데 손만 안 잡힘"으로만 보인다.
-    // 반드시 남겨서 화면에 띄운다
     진단.오류 = (err?.message || err?.name || String(err)).slice(0, 90);
-    // 인식이 죽었는데 live 를 두면 마지막 뼈대가 화면에 얼어붙은 채 계속 힘을 준다
     손[1].live = 손[2].live = false; 손[1].뼈있음 = 손[2].뼈있음 = false;
     if (++진단.연속실패 === 3 && 진단.델리게이트 === 'GPU') 델리게이트바꾸기('CPU', 'GPU 오류');
     return;
   }
-  const lms = res?.landmarks || [];
-  if (lms.length) 진단.잡힘++;
-  for (let k = 0; k < 2; k++) {
-    const H = 손[1 + k], lm = lms[k];
-    if (!lm) { H.live = false; H.뼈있음 = false; continue; }
-    // 손 크기로 깊이를 어림한다 — 미디어파이프의 z는 손목 기준 상대값이라 절대 깊이가 아니다
-    let minx=1,maxx=0,miny=1,maxy=0;
-    for (const p of lm) { minx=Math.min(minx,p.x); maxx=Math.max(maxx,p.x); miny=Math.min(miny,p.y); maxy=Math.max(maxy,p.y); }
-    const span = Math.max(maxx-minx, maxy-miny);
-    const 어림z = THREE.MathUtils.clamp((span - .12) / .30, 0, 1) * 2.6 - .8;  // 크면 앞으로
-    // 거울상이라 x를 뒤집는다. 손바닥(9)은 후려치는 자리, 엄지끝(4)·검지끝(8) 사이는 잡는 자리
-    const 손바닥X = 1 - lm[9].x * 2, 손바닥Y = 1 - lm[9].y * 2;
-    const 집X = 1 - (lm[4].x + lm[8].x) * .5 * 2, 집Y = 1 - (lm[4].y + lm[8].y) * .5 * 2;
-    const 처음 = !H.live;
-    if (처음) H.깊이 = 어림z;
-    const z = 손위치갱신(H, 손바닥X, 손바닥Y, 집X, 집Y, 어림z, 처음, now);
-    for (let n = 0; n < 21; n++) {
-      정규화된손을월드로(lm[n].x, lm[n].y, z, _hv);
-      H.잰뼈[n*3] = _hv.x; H.잰뼈[n*3+1] = _hv.y; H.잰뼈[n*3+2] = _hv.z;
-      if (!H.뼈있음) { H.뼈[n*3] = _hv.x; H.뼈[n*3+1] = _hv.y; H.뼈[n*3+2] = _hv.z; }
-    }
-    H.뼈있음 = true;
-    // 집기 — 엄지끝(4)과 검지끝(8)의 거리를 손 크기로 나눈다
-    const dx = lm[4].x - lm[8].x, dy = lm[4].y - lm[8].y;
-    H.pinch = Math.hypot(dx, dy) / Math.max(span, 1e-3) < .32;
+  _평면손.length = 0;
+  for (const lm of (res?.landmarks || [])) {
+    const a = new Float32Array(lm.length * 2);
+    for (let i = 0; i < lm.length; i++) { a[i*2] = lm[i].x; a[i*2+1] = lm[i].y; }
+    _평면손.push(a);
   }
+  손얹기(_평면손, now);
+}
+
+function 손읽기(now) {
+  if (!손켬 || 진단.갈아타는중) return;
+  // readyState 만 보면 부족하다 — 폰에서는 크기가 0×0 인 채로 2 까지 올라오는 일이 있고,
+  // 그 프레임을 밀어 넣으면 미디어파이프가 조용히 빈 결과를 준다
+  if (video.readyState < 2 || !video.videoWidth || !video.videoHeight || video.paused) return;
+  if (일꾼상태 === '됨') { 일꾼에보내기(now); return; }
+  if (손인식) 손읽기바로(now);
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -2215,7 +2295,7 @@ function 프레임(now) {
       현갱신(평균속);
       fps칸.innerHTML = `${fps.toFixed(0)} fps`
         + `<small>최저 ${최저fps.toFixed(0)} · 유닛 ${N} · 소리 ${소리셈.운유닛.size}`
-        + (손켬 ? ` · 손인식 ${진단.인식ms.toFixed(0)}ms` : '') + `</small>`;
+        + (손켬 ? ` · ${진단.델리게이트} ${진단.인식ms.toFixed(0)}ms` : '') + `</small>`;
       stat.textContent = `걸음 ${걸음수}`
         + ` · 가까이 ${통계.lod[0]} 중간 ${통계.lod[1]} 멀리 ${통계.lod[2]}`
         + ` · 속도 평균 ${평균속.toFixed(2)} 최대 ${최대.toFixed(2)} m/s · 회전 ${평균회전.toFixed(2)} rad/s`
