@@ -240,7 +240,9 @@ const renderer = new THREE.WebGLRenderer({
   powerPreference: 'high-performance',
   preserveDrawingBuffer: true,          // 31번 교훈 8: 프레임 하나 걸러도 검정이 안 낀다
 });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+// 폰은 기기 밀도가 3 인 것이 흔하다. 2 로 묶어도 화소가 너무 많아 화면이 무거워진다.
+// 1.5 로 내리면 그리는 화소가 44% 줄어드는데 눈에는 거의 티가 안 난다
+renderer.setPixelRatio(Math.min(devicePixelRatio, 손닿는기기 ? 1.5 : 2));
 // 이 페이지에는 WebGL2 컨텍스트가 둘이다 — 여기와, 미디어파이프가 자기 캔버스에 따로 여는 것
 // (델리게이트와 무관하다. 영상 프레임을 GL 텍스처로 올리기 때문이다).
 // 폰 메모리 천장에서 어느 쪽이 먼저 죽는지 이름을 달아 둔다. 고치는 코드가 아니라 보는 코드다
@@ -1508,7 +1510,9 @@ async function 손인식만들기(델리게이트) {
   const fs = await FilesetResolver.forVisionTasks('./libs/mediapipe/wasm');
   const 것 = await HandLandmarker.createFromOptions(fs, {
     baseOptions: { modelAssetPath: './libs/mediapipe/models/hand_landmarker.task', delegate: 델리게이트 },
-    numHands: 2, runningMode: 'VIDEO',
+    // 폰은 한 손만 본다. 두 손이면 인식 비용이 두 배인데 CPU 로 도느라 이미 벅차다.
+    // 대가: 폰에서는 양손으로 동시에 만질 수 없다
+    numHands: 손닿는기기 ? 1 : 2, runningMode: 'VIDEO',
   });
   진단.델리게이트 = 델리게이트;
   return 것;
