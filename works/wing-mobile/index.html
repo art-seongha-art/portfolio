@@ -1,3 +1,4 @@
+<head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>날개 모빌 — 웹캠으로 만지는 모빌</title>
@@ -81,6 +82,7 @@
   #tools button:hover { color:#fff; background:rgba(30,34,42,.85); border-color:rgba(255,255,255,.2); }
   #tools button.on { color:#fff; background:rgba(52,60,74,.9); border-color:rgba(255,255,255,.28); }
 </style>
+</head>
 
 <canvas id="c"></canvas>
 <video id="cam" class="hidden" playsinline muted></video>
@@ -1833,7 +1835,7 @@ addEventListener('keydown', e => {
 // window.ArtSettingsSync 를 심는다. 그것이 이 키를 서버와 양방향으로 맞춰 준다.
 // 없으면 같은 모양의 localStorage 대체품을 쓴다 — 이 기기에만 남는다.
 const 프리셋키 = 'wingMobile32.presets.v1';
-const 프리셋칸 = ['휴대폰', '전시 1', '전시 2', '전시 3', '전시 4', '전시 5'];
+const 프리셋칸 = ['휴대폰 (폴드7 내부)', '전시 1', '전시 2', '전시 3', '전시 4', '전시 5'];
 // 기기 사정이지 작품의 모습이 아니다. 폰에서 저장한 것을 전시 기계에 불러왔을 때
 // 손인식이 CPU 로 강제되면 안 된다
 const 프리셋제외 = new Set(['손인식CPU']);
@@ -1907,10 +1909,16 @@ function 알림(글) {
   clearTimeout(알림타이머); 알림타이머 = setTimeout(() => { 프리셋말.textContent = 어디에저장되나(); }, 2600);
 }
 function 어디에저장되나() {
-  return 저장소().서버아님 ? '이 기기에만 저장됩니다 (서버 없음)' : '서버에 저장됩니다 — 어디서 열어도 같습니다';
+  // 프리셋은 화면에 맞춰 고르는 값이라, 지금 어느 화면에서 맞추는 중인지 보여야 한다.
+  // 폴드7 내부 화면은 실제 2184×1968 이지만 브라우저가 쓰는 자는 CSS 픽셀이다
+  const 화면 = `${innerWidth}×${innerHeight} · 밀도 ${(+devicePixelRatio.toFixed(2))}`;
+  return 화면 + ' — ' + (저장소().서버아님 ? '이 기기에만 저장됩니다 (서버 없음)'
+                                         : '서버에 저장됩니다. 어디서 열어도 같습니다');
 }
 프리셋그리기();
 프리셋말.textContent = 어디에저장되나();
+// 안내에 화면 크기가 들어가므로 창이 바뀌면 같이 고쳐 쓴다
+addEventListener('resize', () => { if (!알림타이머) 프리셋말.textContent = 어디에저장되나(); });
 // 서버 쪽이 바뀌면 목록도 따라 바뀐다
 window.ArtSettingsSync?.subscribe?.(() => 프리셋그리기());
 
