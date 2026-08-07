@@ -1693,6 +1693,15 @@ function 손뼈그리기() {
   뼈메시.material.color.setHex(손[1].pinch || 손[2].pinch ? 0xffc477 : 0x8fd8ff);
 }
 
+// 잡는 것도 **만지는 것**이다. 그런데 잡힌 유닛은 아래 접촉 순회에서 통째로 건너뛰므로
+// (잡힘[i] >= 0 이면 continue) 거기서는 영영 소리가 안 난다 —
+// 마우스는 누르는 순간 곧바로 잡기라, 클릭하면 소리가 안 나던 원인이 이것이다
+function 잡는소리(i, 속 = 1.1) {
+  if (!ac || i < 0 || i >= N) return;
+  만진때[i] = ac.currentTime;
+  소리부딪힘(i, Math.max(.35, 속 * .5), 점[i * (마디 + 1) * 3 + 마디 * 3 + 1]);
+}
+
 function 손적용(dt) {
   const end = 마디 * 3;
   for (let h = 0; h < 손.length; h++) {
@@ -1705,7 +1714,7 @@ function 손적용(dt) {
       if (H.grabbed < 0) {
         // 고리가 걸린 것을 먼저 집는다 — 보이는 것과 잡히는 것이 달라서는 안 된다
         if (H.겨냥 >= 0 && H.겨냥 < N && 잡힘[H.겨냥] < 0) {
-          H.grabbed = H.겨냥; 잡힘[H.겨냥] = h;
+          H.grabbed = H.겨냥; 잡힘[H.겨냥] = h; 잡는소리(H.grabbed);
         }
       }
       if (H.grabbed < 0) {                       // 그래도 없으면 집는 지점에서 가장 가까운 것
@@ -1717,13 +1726,15 @@ function 손적용(dt) {
           const d2 = dx*dx+dy*dy+dz*dz;
           if (d2 < bd) { bd = d2; best = i; }
         }
-        if (best >= 0) { H.grabbed = best; 잡힘[best] = h; }
+        if (best >= 0) { H.grabbed = best; 잡힘[best] = h; 잡는소리(best); }
       }
       if (H.grabbed >= 0) {                      // 잡은 동안은 손가락이 위치를 정한다
         const i = H.grabbed, o = i*(마디+1)*3 + end;
         // 먼저 자리를 옮기고 **그 다음** 옛점을 잡아야 한다. 순서를 바꾸면
         // 저장된 변위가 (새자리 − 옛자리) + 손속도 가 되어 놓을 때 두 배로 날아간다
         번쩍[i] = Math.max(번쩍[i], 1.6);        // 쥐고 있는 동안은 계속 밝다
+        // 쥔 채 흔들면 계속 운다. 텅쿨이 빈도를 잡아 준다
+        if (H.초속.lengthSq() > .36) 잡는소리(i, H.초속.length());
         점[o] = 집.x; 점[o+1] = 집.y; 점[o+2] = 집.z;
         옛점[o]   = 점[o]   - H.vel.x;           // 놓는 순간 손 속도가 그대로 전달되도록
         옛점[o+1] = 점[o+1] - H.vel.y;
