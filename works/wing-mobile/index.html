@@ -230,6 +230,8 @@ const P = {
   LED바탕:      { v: 0.10, min: 0,   max: .6,   step: .01 },   // 안 켜졌을 때의 몸빛 — 살짝 미색    // 너무 높이면 톤매핑에서 파랑이 넘쳐 보라가 된다
   잠자리원본:   { v: false },
   소리:        { v: true },
+  소리팔레트:   { v: '종소리', 목록: ['종소리','밤 풀숲','여름 낮','시냇가','새벽 숲'] },
+  바탕음량:     { v: 0.22, min: 0,   max: 1,    step: .01 },   // 계속 낮게 깔리는 소리
   소리빈도:     { v: 1.0,  min: .1,  max: 3,    step: .05 },   // 크면 자주 운다
   음량:        { v: 1.0,  min: 0,   max: 2,    step: .05 },
 };
@@ -1200,7 +1202,106 @@ function 소리켜기() {
   마스터.connect(리미터);
   마스터.connect(보냄); 보냄.connect(잔향); 잔향.connect(리미터);
   리미터.connect(ac.destination);
-  현시작();
+  바탕세우기();
+}
+
+// ── 음원 팔레트 ──────────────────────────────────────────────────
+// 하나의 팔레트 = 바탕(계속 낮게 깔리는 소리) + 부딪힘 + 짤랑.
+// 전부 오실레이터와 필터로 그 자리에서 만든다 — 음원 파일이 하나도 없어야
+// 어디서 열든 바로 소리가 난다
+const 음원정의 = {
+  '종소리': { 바탕: '현',     타격: '종',       짤랑: '유리종' },
+  '밤 풀숲': { 바탕: '풀벌레', 타격: '귀뚜라미', 짤랑: '방울벌레' },
+  '여름 낮': { 바탕: '매미',   타격: '여치',     짤랑: '여치' },
+  '시냇가': { 바탕: '시냇물', 타격: '물방울',   짤랑: '물방울' },
+  '새벽 숲': { 바탕: '바람',   타격: '새',       짤랑: '새' },
+};
+const 지금음원 = () => 음원정의[조절.소리팔레트] || 음원정의['종소리'];
+
+// 잡음은 한 번만 만들어 돌려 쓴다. 매번 만들면 부딪힐 때마다 버퍼를 새로 깎게 된다
+let _잡음버퍼 = null;
+function 잡음원() {
+  if (!_잡음버퍼) {
+    const len = ac.sampleRate * 2;
+    _잡음버퍼 = ac.createBuffer(1, len, ac.sampleRate);
+    const d = _잡음버퍼.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random()*2 - 1;
+  }
+  const s = ac.createBufferSource(); s.buffer = _잡음버퍼; s.loop = true; return s;
+}
+
+// ── 바탕 — 계속 낮게 깔린다 ──────────────────────────────────────
+let 바탕게인 = null, 바탕들 = [];
+function 바탕치우기() {
+  for (const n of 바탕들) { try { n.stop?.(); } catch {} try { n.disconnect?.(); } catch {} }
+  바탕들 = [];
+  if (바탕게인) { try { 바탕게인.disconnect(); } catch {} 바탕게인 = null; }
+  현게인 = null; 현오실 = [];
+}
+function 바탕세우기() {
+  if (!ac || !마스터) return;
+  바탕치우기();
+  const 종류 = 지금음원().바탕;
+  if (종류 === '현') { 현시작(); return; }      // 현은 예전 그대로 — 흔들릴수록 부푼다
+
+  바탕게인 = ac.createGain(); 바탕게인.gain.value = 0; 바탕게인.connect(마스터);
+
+  if (종류 === '풀벌레') {
+    // 멀리서 우는 무리 — 높은 대역 잡음을 느리게 흔든다. 하나가 아니라 '무리'로 들려야 한다
+    for (const [f, q, 세기, 흔들] of [[4200, 12, .5, .27], [5600, 16, .32, .19], [3100, 9, .28, .11]]) {
+      const n = 잡음원(), bp = ac.createBiquadFilter(); bp.type = 'bandpass';
+      bp.frequency.value = f; bp.Q.value = q;
+      const g = ac.createGain(); g.gain.value = 세기 * .5;
+      const lfo = ac.createOscillator(); lfo.frequency.value = 흔들;
+      const la = ac.createGain(); la.gain.value = 세기 * .45;
+      lfo.connect(la); la.connect(g.gain);
+      n.connect(bp); bp.connect(g); g.connect(바탕게인);
+      n.start(); lfo.start(); 바탕들.push(n, lfo);
+    }
+  } else if (종류 === '매미') {
+    // 촘촘한 떨림이 매미다 — 대역잡음을 60Hz 안팎으로 빠르게 흔들고 아주 느린 숨을 얹는다
+    for (const [f, q, 떨림] of [[3400, 7, 58], [4700, 9, 71]]) {
+      const n = 잡음원(), bp = ac.createBiquadFilter(); bp.type = 'bandpass';
+      bp.frequency.value = f; bp.Q.value = q;
+      const g = ac.createGain(); g.gain.value = .30;
+      const lfo = ac.createOscillator(); lfo.type = 'sawtooth'; lfo.frequency.value = 떨림;
+      const la = ac.createGain(); la.gain.value = .26;
+      const 숨 = ac.createOscillator(); 숨.frequency.value = .07;
+      const 숨g = ac.createGain(); 숨g.gain.value = .12;
+      lfo.connect(la); la.connect(g.gain);
+      숨.connect(숨g); 숨g.connect(g.gain);
+      n.connect(bp); bp.connect(g); g.connect(바탕게인);
+      n.start(); lfo.start(); 숨.start(); 바탕들.push(n, lfo, 숨);
+    }
+  } else if (종류 === '시냇물') {
+    // 넓은 잡음 위에 공진 몇 개를 얹고 그 중심을 천천히 흘린다 — 여울을 지나는 물
+    const n = 잡음원(), hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 500;
+    const g0 = ac.createGain(); g0.gain.value = .22;
+    n.connect(hp); hp.connect(g0); g0.connect(바탕게인);
+    n.start(); 바탕들.push(n);
+    for (const [f, q, 속] of [[1300, 5, .09], [2400, 7, .13], [3800, 6, .06]]) {
+      const m = 잡음원(), bp = ac.createBiquadFilter(); bp.type = 'bandpass';
+      bp.frequency.value = f; bp.Q.value = q;
+      const g = ac.createGain(); g.gain.value = .30;
+      const 흐름 = ac.createOscillator(); 흐름.frequency.value = 속;
+      const 폭 = ac.createGain(); 폭.gain.value = f * .18;
+      흐름.connect(폭); 폭.connect(bp.frequency);
+      m.connect(bp); bp.connect(g); g.connect(바탕게인);
+      m.start(); 흐름.start(); 바탕들.push(m, 흐름);
+    }
+  } else if (종류 === '바람') {
+    // 낮은 잡음의 통과 대역을 아주 느리게 여닫는다
+    const n = 잡음원(), lp = ac.createBiquadFilter(); lp.type = 'lowpass';
+    lp.frequency.value = 520; lp.Q.value = 1.2;
+    const g = ac.createGain(); g.gain.value = .55;
+    for (const [속, 폭크기] of [[.035, 300], [.011, 160]]) {
+      const o = ac.createOscillator(); o.frequency.value = 속;
+      const w = ac.createGain(); w.gain.value = 폭크기;
+      o.connect(w); w.connect(lp.frequency); o.start(); 바탕들.push(o);
+    }
+    n.connect(lp); lp.connect(g); g.connect(바탕게인);
+    n.start(); 바탕들.push(n);
+  }
 }
 
 // 지속되는 현 — 전체가 흔들릴수록 살며시 부풀어 바탕 화음을 깔아준다
@@ -1220,6 +1321,9 @@ function 현시작() {
 }
 let 현목표 = 0, 옛근음 = 999;
 function 현갱신(평균속) {
+  // 자연 바탕은 흔들림과 무관하게 늘 같은 크기로 낮게 깔린다
+  if (바탕게인) 바탕게인.gain.setTargetAtTime(
+    조절.소리 ? 조절.바탕음량 * 조절.음량 * .5 : 0, ac.currentTime, .8);
   if (!ac || !현게인) return;
   현목표 = 조절.소리 ? Math.min(.09, 평균속 * .10) * 조절.음량 : 0;
   현게인.gain.setTargetAtTime(현목표, ac.currentTime, 1.2);
@@ -1251,6 +1355,71 @@ function 울림(f, 세기, 길이, 부분음, 밝기) {
   }
   lp.connect(g); g.connect(마스터);
   setTimeout(() => { 울림수--; try { g.disconnect(); lp.disconnect(); } catch {} }, 길이 * 1000 + 60);
+}
+
+// 귀뚜라미·방울벌레 — 높은 순음을 빠르게 토막 내어 몇 번 운다.
+// 토막 내는 빠르기가 벌레 종류를 가른다 (귀뚜라미는 성글고 여치는 촘촘하다)
+function 벌레울림(f, 세기, 울림수만큼, 토막Hz, 길이, 순음) {
+  if (!ac || !조절.소리 || 조절.음량 <= 0 || 울림수 >= 12) return;
+  const t = ac.currentTime, 한번 = 1 / 토막Hz;
+  const out = ac.createGain(); out.gain.value = 세기 * 조절.음량;
+  out.connect(마스터);
+  const bp = ac.createBiquadFilter(); bp.type = 'bandpass';
+  bp.frequency.value = f; bp.Q.value = 순음 ? 22 : 5;
+  bp.connect(out);
+  const g = ac.createGain(); g.gain.setValueAtTime(0, t); g.connect(bp);
+  const src = 순음 ? ac.createOscillator() : 잡음원();
+  if (순음) { src.type = 'sine'; src.frequency.value = f; }
+  src.connect(g);
+  // 토막을 하나씩 세워 준다 — 이 들쭉날쭉함이 '벌레'로 들리게 하는 핵심이다
+  for (let k = 0; k < 울림수만큼; k++) {
+    const t0 = t + k * 한번;
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(1, t0 + 한번 * .18);
+    g.gain.linearRampToValueAtTime(0, t0 + 한번 * .62);
+  }
+  const 끝 = t + 울림수만큼 * 한번 + .05;
+  울림수++;
+  src.start(t); src.stop(끝);
+  setTimeout(() => { 울림수--; try { out.disconnect(); bp.disconnect(); g.disconnect(); } catch {} }, (끝-t)*1000 + 60);
+}
+
+// 물방울 — 짧은 사인이 **위로** 굽는다. 아래로 굽히면 물이 아니라 뿅 소리가 된다
+function 물방울(f, 세기) {
+  if (!ac || !조절.소리 || 조절.음량 <= 0 || 울림수 >= 12) return;
+  const t = ac.currentTime, 길이 = .16;
+  const o = ac.createOscillator(); o.type = 'sine';
+  o.frequency.setValueAtTime(f * .55, t);
+  o.frequency.exponentialRampToValueAtTime(f * 1.9, t + 길이 * .8);
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(세기 * 조절.음량, t + .006);
+  g.gain.exponentialRampToValueAtTime(1e-4, t + 길이);
+  o.connect(g); g.connect(마스터);
+  울림수++; o.start(t); o.stop(t + 길이);
+  setTimeout(() => { 울림수--; try { g.disconnect(); } catch {} }, 길이*1000 + 60);
+}
+
+// 새 지저귐 — 주파수를 위아래로 훑는 짧은 곡선 두세 번
+function 새울림(f, 세기) {
+  if (!ac || !조절.소리 || 조절.음량 <= 0 || 울림수 >= 12) return;
+  const t = ac.currentTime, 마디수 = 2 + (Math.random()*2|0), 한마디 = .075;
+  const o = ac.createOscillator(); o.type = 'sine';
+  const g = ac.createGain(); g.gain.setValueAtTime(0, t);
+  o.connect(g); g.connect(마스터);
+  let tt = t;
+  for (let k = 0; k < 마디수; k++) {
+    const 위 = f * (1.25 + Math.random()*.5);
+    o.frequency.setValueAtTime(f, tt);
+    o.frequency.exponentialRampToValueAtTime(위, tt + 한마디 * .55);
+    o.frequency.exponentialRampToValueAtTime(f * .92, tt + 한마디 * .95);
+    g.gain.setValueAtTime(0, tt);
+    g.gain.linearRampToValueAtTime(세기 * 조절.음량, tt + .008);
+    g.gain.linearRampToValueAtTime(0, tt + 한마디 * .9);
+    tt += 한마디;
+  }
+  울림수++; o.start(t); o.stop(tt + .02);
+  setTimeout(() => { 울림수--; try { g.disconnect(); } catch {} }, (tt-t)*1000 + 80);
 }
 
 // 음높이는 **월드 좌표가 아니라 배열 안에서의 비율**로 정한다.
@@ -1295,7 +1464,16 @@ function 소리짤랑(i, y) {                           // 장신구 — 유리�
   if (t < 짤랑쿨[i] || !목소리있나(t)) return;
   짤랑쿨[i] = t + (.38 + Math.random() * .34) / 조절.소리빈도;
   소리셈.짤랑++; 소리셈.운유닛.add(i);
-  울림(음높이(높이를단계로(y) + 5, 2), .022, .9 + Math.random()*.5, 종부분음, 7000);
+  const 단 = 높이를단계로(y), 비 = 단 / 14;      // 배열 안에서의 비율 0~1
+  switch (지금음원().짤랑) {
+    // 벌레·새·물은 저마다 타고난 음역이 있다. 음계로 옮기면 귀뚜라미가 700Hz에서 우는
+    // 엉뚱한 소리가 된다 — **자연 음역 안에서** 배열 비율만큼만 오르내리게 한다
+    case '방울벌레': 벌레울림(4000 + 비*1600, .05, 2, 44, 0, true); break;
+    case '여치':     벌레울림(3000 + 비*2200, .05, 5, 105, 0, false); break;
+    case '물방울':   물방울(700 + 비*1500, .05); break;
+    case '새':       새울림(1800 + 비*2200, .035); break;
+    default:         울림(음높이(단 + 5, 2), .022, .9 + Math.random()*.5, 종부분음, 7000);
+  }
 }
 function 소리부딪힘(i, v, y) {                       // 유닛끼리 — 피아노
   // 문턱이 0.5 m/s 여서 살살 닿는 것은 아예 소리가 없었다.
@@ -1306,7 +1484,16 @@ function 소리부딪힘(i, v, y) {                       // 유닛끼리 — �
   텅쿨[i] = t + (.35 + Math.random() * .35) / 조절.소리빈도;
   소리셈.부딪힘++; 소리셈.운유닛.add(i);
   const 세기 = Math.min(.11, .012 + v * .045);
-  울림(음높이(높이를단계로(y), 0), 세기, 1.3 + Math.random()*.7, 피아노부분음, 2600);
+  const 단 = 높이를단계로(y), 비 = 단 / 14;      // 배열 안에서의 비율 0~1
+  switch (지금음원().타격) {
+    // 귀뚜라미는 성글게 3~5번, 여치는 촘촘하게 오래 — 같은 합성기의 토막 빠르기만 다르다.
+    // 주파수는 음계가 아니라 **그 벌레의 음역** 안에서 비율만큼 오르내린다
+    case '귀뚜라미': 벌레울림(3300 + 비*1800, 세기 * 2.6, 3 + (Math.random()*3|0), 36, 0, true); break;
+    case '여치':     벌레울림(2600 + 비*2000, 세기 * 2.4, 7 + (Math.random()*5|0), 115, 0, false); break;
+    case '물방울':   물방울(520 + 비*1400, 세기 * 2.2); break;
+    case '새':       새울림(1500 + 비*2100, 세기 * 1.8); break;
+    default:         울림(음높이(단, 0), 세기, 1.3 + Math.random()*.7, 피아노부분음, 2600);
+  }
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -1877,7 +2064,7 @@ const 묶음 = {
   '손':   ['손세기','치기문턱','잡기범위'],
   '보기':  ['아웃포커싱','흐림시작','흐림세기','위에서 보기','위뷰 크기'],
   '손보기':['손뼈보이기','손깊이자동','손겨냥반경','손인식CPU'],
-  '그 밖':['장신구','노출','잠자리원본','소리','소리빈도','음량'],
+  '그 밖':['장신구','노출','잠자리원본','소리','소리팔레트','바탕음량','소리빈도','음량'],
 };
 const 값칸 = {};
 const 입력칸 = {};        // 조절키 → 실제 input/select. 프리셋을 되돌릴 때 쓴다
@@ -1902,7 +2089,9 @@ for (const g in 묶음) {
       const sel = document.createElement('select'); sel.className = 'pick';
       for (const o of d.목록) { const op = document.createElement('option'); op.value = op.textContent = o; sel.appendChild(op); }
       sel.value = d.v; 입력칸[k] = sel;
-      sel.oninput = () => { 조절[k] = sel.value; 조절보임(); if (k === '배치 모양') 다시배치(); };
+      sel.oninput = () => { 조절[k] = sel.value; 조절보임();
+        if (k === '배치 모양') 다시배치();
+        if (k === '소리팔레트') 바탕세우기(); };
       row.appendChild(sel);
     } else if (typeof d.v === 'boolean') {
       const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = d.v; 입력칸[k] = cb;
@@ -2361,6 +2550,9 @@ setTimeout(() => 웹캠켜기(), 500);
 // 진단용 창구 — 무엇이 폭주하는지 눈이 아니라 숫자로 보려면 필요하다
 window.모빌 = { get N(){return N}, 점, 옛점, 앵커, 마디, 마디길이, 비틀림각, 비틀림속,
                 소리셈, 높이를단계로, 배치범위,
+                // 소리 시험용 창구 — 팔레트가 실제로 다른 소리를 내는지 재려면 필요하다
+                소리켜기, 바탕세우기, 지금음원, 소리부딪힘, 소리짤랑,
+                get ac(){return ac}, get 마스터(){return 마스터},
                 크기, 잡힘, 충돌반지름, 번쩍, 기준각, 종류색인, 종류, 조절, 걸음: () => 걸음, camera,
                 손, bokeh, bloom, 겨냥, 자동초점, get 초점(){return 초점},
                 scene, 인스턴스, 공메시, 발광재질, 팔레트표, LED색, 캔디색,
