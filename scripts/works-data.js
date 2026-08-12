@@ -1,7 +1,7 @@
 /**
  * 박성하 작품 데이터베이스
  * Generated from _catalog.json — 2026-03-29
- * Categories: sculpture (1~4회), digital-art (5회), public-art
+ * Categories: sculpture (1~4회), digital-art (5~6회), public-art
  */
 const WORKS_DATA = {
   exhibitions: [
@@ -451,6 +451,88 @@ const WORKS_DATA = {
           year: "2018",
           images: ["works/healing_starry_night_2018_v2.webp"],
           category: "sculpture"
+        }
+      ]
+    },
+    {
+      id: "solo-6",
+      title: "6th 개인전 'Healing feat. AI'",
+      titleEn: "Healing feat. AI",
+      year: "2026",
+      venue: "하북미술대학 미술관, 중국",
+      period: "2026.06.24 ~ 2026.07.10",
+      category: "digital-art",
+      artistNote: "100여 점의 석조작업을 기록한 약 150장의 이미지로 LoRA를 파인튜닝해, 돌과 봉합의 조형 언어를 열 점의 생성 이미지로 확장한 연작이다.",
+      works: [
+        {
+          id: "solo6-self-portrait", title: "치유하다_자화상", titleEn: "Healing — Self-Portrait",
+          material: "AI 생성 이미지 · LoRA 파인튜닝", size: "A0", year: "2026",
+          images: ["works/solo6_01.webp"],
+          description: "작가 자신을 투사한 곰 자화상이다. 눈 없는 얼굴과 긴 봉합선은 스스로를 마주하기를 미루는 시선을 드러낸다.",
+          category: "digital-art"
+        },
+        {
+          id: "solo6-lover", title: "치유하다_연인", titleEn: "Healing — Lover",
+          material: "AI 생성 이미지 · LoRA 파인튜닝", size: "A0", year: "2026",
+          images: ["works/solo6_02.webp"],
+          description: "서로 다른 빛깔의 돌을 기워 세운 토끼다. 비워 둔 눈과 덧댄 자국이 관계의 시간을 보여준다.",
+          category: "digital-art"
+        },
+        {
+          id: "solo6-sleep", title: "치유하다_잠", titleEn: "Healing — Sleep",
+          material: "AI 생성 이미지 · LoRA 파인튜닝", size: "A0", year: "2026",
+          images: ["works/solo6_03.webp"],
+          description: "모로 누운 곰의 가슴에 하트 모양의 덧댐과 붉은 봉합선이 남아 있다. 잠은 회복의 시간이자 세상으로부터 잠시 시선을 거두는 일이다.",
+          category: "digital-art"
+        },
+        {
+          id: "solo6-greeting", title: "치유하다_인사", titleEn: "Healing — Greeting",
+          material: "AI 생성 이미지 · LoRA 파인튜닝", size: "A0", year: "2026",
+          images: ["works/solo6_04.webp"],
+          description: "몸을 기울인 염소의 자세는 무게에 눌린 모습이자 고개 숙인 인사처럼 읽힌다.",
+          category: "digital-art"
+        },
+        {
+          id: "solo6-long-road", title: "치유하다_머나먼 길", titleEn: "Healing — The Long Road",
+          material: "AI 생성 이미지 · LoRA 파인튜닝", size: "A0", year: "2026",
+          images: ["works/solo6_05.webp"],
+          description: "서로 다른 빛깔의 돌을 이어 세운 말이다. 붉게 기운 다리로 하중을 견디는 모습이 긴 여정을 떠올리게 한다.",
+          category: "digital-art"
+        },
+        {
+          id: "solo6-brooding", title: "치유하다_고민", titleEn: "Healing — Brooding",
+          material: "AI 생성 이미지 · LoRA 파인튜닝", size: "A0", year: "2026",
+          images: ["works/solo6_06.webp"],
+          description: "앞발에 얼굴을 괴고 웅크린 개구리의 자세가 풀리지 않는 고민의 시간을 형상화한다.",
+          category: "digital-art"
+        },
+        {
+          id: "solo6-childhood", title: "치유하다_유년기", titleEn: "Healing — Childhood",
+          material: "AI 생성 이미지 · LoRA 파인튜닝", size: "A0", year: "2026",
+          images: ["works/solo6_07.webp"],
+          description: "검은 눈과 초록 리본을 단 어린 곰은 세상을 정면으로 바라본다. 푸른 봉합선은 유년기에 이미 새겨진 상처를 드러낸다.",
+          category: "digital-art"
+        },
+        {
+          id: "solo6-reverie", title: "치유하다_상념", titleEn: "Healing — Reverie",
+          material: "AI 생성 이미지 · LoRA 파인튜닝", size: "A0", year: "2026",
+          images: ["works/solo6_08.webp"],
+          description: "털의 결을 새긴 원숭이가 금빛 띠를 두르고 옆으로 앉아 있다. 정면을 비껴간 자세는 깊은 상념의 시간을 떠올리게 한다.",
+          category: "digital-art"
+        },
+        {
+          id: "solo6-unsent-letter", title: "치유하다_전하지 못한 편지", titleEn: "Healing — The Unsent Letter",
+          material: "AI 생성 이미지 · LoRA 파인튜닝", size: "A0", year: "2026",
+          images: ["works/solo6_09.webp"],
+          description: "소식을 나르는 새의 갈라진 가슴을 빨강과 파랑의 실로 봉합했다. 이어 붙인 가슴은 끝내 전하지 못한 말을 품은 듯하다.",
+          category: "digital-art"
+        },
+        {
+          id: "solo6-future", title: "치유하다_미래", titleEn: "Healing — Future",
+          material: "AI 생성 이미지 · LoRA 파인튜닝", size: "A0", year: "2026",
+          images: ["works/solo6_10.webp"],
+          description: "머리부터 몸까지 이어진 무지개빛 봉합선이 분리와 회복을 한 몸에 둔다. 여러 빛깔의 실은 아직 오지 않은 열린 미래를 가리킨다.",
+          category: "digital-art"
         }
       ]
     },

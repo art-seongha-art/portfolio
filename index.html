@@ -3,7 +3,7 @@
 <html class="light" lang="ko"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<meta name="description" content="박성하 조각가 — 석조각, 돌조각, 석재 봉합 조각, 곰인형 테디베어 조각, 공공미술, 건축물 미술작품, 건축물 미술장식품, 미술장식품, 조형물 전문. 치유를 주제로 한 현대 조각과 인공지능 생성형 AI 실감미디어 아트. 개인전 5회, 공공미술 프로젝트 18건."/>
+<meta name="description" content="박성하 조각가 — 석조각, 돌조각, 석재 봉합 조각, 곰인형 테디베어 조각, 공공미술, 건축물 미술작품, 건축물 미술장식품, 미술장식품, 조형물 전문. 치유를 주제로 한 현대 조각과 인공지능 생성형 AI 실감미디어 아트. 개인전 6회, 공공미술 프로젝트 18건."/>
 <meta name="keywords" content="박성하, 박성하 조각가, 조각가, 조각 작품, 현대 조각, 한국 조각가, 석조각, 돌조각, 돌 조각, 석재 봉합 조각, 봉합 조각, 사암 조각, 화강석 조각, 오석 조각, 곰인형 조각, 테디베어 조각, 곰 조각, 인형 조각, 공공미술, 건축물 미술작품, 건축물 미술장식품, 미술장식품, 미술작품, 조형물, 조형예술, 야외 조각, 환경 조각, 설치 미술, 치유 미술, 힐링 아트, 인공지능, 생성형 인공지능, AI 아트, AI 미술, 디지털 아트, 미디어아트, 실감미디어, 실감 콘텐츠, 인터랙티브 아트, VR 아트, 메타버스, 3D 모델링, 개인전, 조각전, Park Seong-Ha, sculptor, Korean sculptor, stone sculpture, public art, teddy bear sculpture, healing art, immersive media art"/>
 <meta name="author" content="Park Seong-Ha"/>
 <link rel="canonical" href="https://art-psh.com/"/>
@@ -278,7 +278,7 @@
             color: #fff;
         }
         html { scroll-behavior: smooth; scroll-snap-type: y mandatory; overflow-y: scroll; }
-        .snap-section { scroll-snap-align: start; }
+        .snap-section { scroll-snap-align: start; scroll-snap-stop: always; }
         .snap-section-proximity { scroll-snap-align: start; scroll-snap-stop: normal; }
         .hero-text { text-shadow: 0 2px 20px rgba(255,255,255,0.8), 0 0 40px rgba(255,255,255,0.5); }
         .hero-sub { text-shadow: 0 1px 10px rgba(255,255,255,0.9), 0 0 20px rgba(255,255,255,0.6); }
@@ -291,6 +291,58 @@
         .gallery-item { overflow:hidden; position:relative; width:100%; height:100%; }
         .gallery-item img { display:block; width:100% !important; height:100% !important; object-fit:cover !important; }
         .gallery-grid { display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr); gap:4px; flex:1; overflow:hidden; }
+
+        /* Sixth solo exhibition */
+        .solo6-section { background:#eeede8; }
+        .solo6-shell {
+            width:100%; height:100%; max-width:1600px; margin:0 auto;
+            padding:4.8rem 7vw 2rem;
+            display:grid; grid-template-columns:minmax(310px,.78fr) minmax(0,1.22fr);
+            grid-template-rows:minmax(0,1fr); gap:clamp(3rem,6.5vw,8rem); align-items:stretch;
+        }
+        .solo6-copy { min-width:0; min-height:0; display:flex; flex-direction:column; padding-top:clamp(.35rem,1vh,.75rem); }
+        .solo6-kicker { font-size:10px; letter-spacing:.34em; font-weight:600; text-transform:uppercase; color:#5b554d; }
+        .solo6-title { margin-top:1rem; font-family:"Newsreader",serif; font-size:clamp(3rem,4.2vw,5rem); font-weight:250; line-height:.88; letter-spacing:-.035em; }
+        .solo6-lead { margin-top:1.2rem; max-width:34rem; font-size:12px; line-height:1.75; letter-spacing:.03em; color:rgba(26,28,28,.68); }
+        .solo6-process { margin-top:1.1rem; padding-top:.8rem; border-top:1px solid rgba(0,0,0,.12); max-width:34rem; }
+        .solo6-process span { display:block; margin-bottom:.45rem; font-size:9px; letter-spacing:.24em; font-weight:700; text-transform:uppercase; color:#5b554d; }
+        .solo6-process p { font-size:11px; line-height:1.75; color:rgba(26,28,28,.64); }
+        .solo6-facts { margin-top:1.05rem; max-width:34rem; border-top:1px solid rgba(0,0,0,.12); }
+        .solo6-facts > div { display:grid; grid-template-columns:4.5rem 1fr; gap:1rem; padding:.5rem 0; border-bottom:1px solid rgba(0,0,0,.08); }
+        .solo6-facts dt { font-size:9px; letter-spacing:.18em; color:rgba(26,28,28,.48); }
+        .solo6-facts dd { font-size:10px; letter-spacing:.06em; color:#1a1c1c; }
+        .solo6-record { display:inline-flex; align-items:center; gap:.5rem; margin-top:.8rem; width:max-content; font-size:9px; letter-spacing:.22em; font-weight:700; text-transform:uppercase; color:#1a1c1c; border-bottom:1px solid rgba(0,0,0,.35); padding-bottom:.3rem; }
+        .solo6-thumbs { margin-top:auto; padding-top:.8rem; }
+        .solo6-thumbs-label { display:flex; justify-content:space-between; align-items:center; margin-bottom:.6rem; font-size:8px; letter-spacing:.22em; text-transform:uppercase; color:rgba(26,28,28,.48); }
+        .solo6-tabs { display:grid; grid-template-columns:repeat(10,minmax(0,1fr)); gap:3px; }
+        .solo6-tab { position:relative; aspect-ratio:1/1; overflow:hidden; border:0; background:#ddd; cursor:pointer; padding:0; opacity:.42; transition:opacity .25s ease, transform .25s ease; }
+        .solo6-tab:hover, .solo6-tab[aria-selected="true"] { opacity:1; }
+        .solo6-tab[aria-selected="true"] { transform:translateY(-2px); }
+        .solo6-tab img { width:100%; height:100%; object-fit:cover; display:block; }
+        .solo6-tab span { position:absolute; left:.35rem; bottom:.25rem; font-size:7px; letter-spacing:.12em; color:#fff; text-shadow:0 1px 5px rgba(0,0,0,.65); }
+        .solo6-viewer { min-width:0; min-height:0; display:flex; flex-direction:column; }
+        .solo6-viewer-image { min-height:0; flex:1; display:flex; align-items:center; justify-content:center; overflow:hidden; background:#f7f6f2; }
+        .solo6-viewer-image img { width:100%; height:100%; object-fit:contain; display:block; transition:opacity .2s ease; }
+        .solo6-caption { display:grid; grid-template-columns:minmax(12rem,.72fr) minmax(0,1.28fr); gap:2rem; padding-top:.9rem; min-height:4.2rem; }
+        .solo6-caption span { display:block; font-size:8px; letter-spacing:.18em; text-transform:uppercase; color:rgba(26,28,28,.42); margin-bottom:.25rem; }
+        .solo6-caption strong { font-family:"Newsreader",serif; font-size:1.25rem; font-weight:400; }
+        .solo6-caption p { font-size:10px; line-height:1.65; color:rgba(26,28,28,.58); }
+
+        /* Research archive */
+        .research-section { background:#111210; color:#f4f2ed; }
+        .research-inner { width:100%; max-width:1500px; margin:0 auto; padding:7rem 10vw 4rem; }
+        .research-heading { display:grid; grid-template-columns:minmax(12rem,.7fr) minmax(0,1.3fr); gap:4rem; align-items:end; margin-bottom:3rem; }
+        .research-heading h2 { font-family:"Newsreader",serif; font-size:clamp(3.25rem,5.2vw,6rem); font-weight:250; letter-spacing:-.035em; line-height:.92; }
+        .research-heading p { max-width:38rem; font-size:12px; line-height:1.8; letter-spacing:.04em; color:rgba(255,255,255,.55); }
+        .research-label { display:block; margin-bottom:1.2rem; font-size:9px; letter-spacing:.34em; font-weight:700; text-transform:uppercase; color:rgba(255,255,255,.48); }
+        .research-list { border-top:1px solid rgba(255,255,255,.2); }
+        .research-item { display:grid; grid-template-columns:7rem minmax(0,1fr) auto; gap:2rem; align-items:center; padding:1.35rem 0; border-bottom:1px solid rgba(255,255,255,.14); }
+        .research-meta { font-size:9px; line-height:1.7; letter-spacing:.17em; text-transform:uppercase; color:rgba(255,255,255,.45); }
+        .research-item h3 { font-family:"Newsreader",serif; font-size:clamp(1.25rem,1.8vw,1.85rem); font-weight:300; line-height:1.12; }
+        .research-item p { margin-top:.35rem; font-size:9px; letter-spacing:.09em; color:rgba(255,255,255,.45); }
+        .research-link { font-size:8px; letter-spacing:.22em; font-weight:700; text-transform:uppercase; color:#fff; border-bottom:1px solid rgba(255,255,255,.45); padding-bottom:.3rem; white-space:nowrap; }
+        .research-footer { display:flex; justify-content:flex-end; margin-top:1.5rem; }
+        .research-footer a { font-size:9px; letter-spacing:.22em; text-transform:uppercase; color:rgba(255,255,255,.65); }
         /* Lightbox */
         .lightbox-overlay { position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.92); display:none; flex-direction:column; align-items:center; justify-content:center; }
         .lightbox-overlay.active { display:flex; }
@@ -335,6 +387,23 @@
             .about-text h2 { font-size: 1.8rem !important; margin-bottom: 1rem !important; }
             .about-text { padding-bottom: 2rem !important; }
             .about-text .max-w-md { max-width: 100% !important; }
+            /* Sixth solo exhibition */
+            .solo6-section { height:auto !important; }
+            .solo6-shell {
+                height:auto !important; display:block !important;
+                padding:5.5rem 5% 3rem !important;
+            }
+            .solo6-copy { padding-top:0 !important; }
+            .solo6-title { font-size:3.25rem !important; margin-top:1rem !important; }
+            .solo6-lead { margin-top:1.1rem !important; line-height:1.75 !important; }
+            .solo6-process { margin-top:1.15rem !important; }
+            .solo6-facts { margin-top:1.1rem !important; }
+            .solo6-thumbs { margin-top:1.5rem !important; }
+            .solo6-tabs { grid-template-columns:repeat(5,minmax(0,1fr)) !important; gap:3px !important; }
+            .solo6-viewer { margin-top:2rem !important; }
+            .solo6-viewer-image { height:min(72vh,43rem) !important; min-height:28rem !important; }
+            .solo6-caption { grid-template-columns:1fr !important; gap:.55rem !important; min-height:0 !important; }
+            .solo6-caption p { max-width:32rem !important; }
             /* Sculpture Gallery — 3x3 유지 */
             .sculpture-section {
                 padding: 5rem 3% 2rem !important;
@@ -400,6 +469,15 @@
             }
             .exhibitions-section .flex.gap-12 { gap: 1.5rem !important; }
             .exhibitions-section h4 { font-size: 1.2rem !important; }
+            /* Research */
+            .research-section { min-height:auto !important; height:auto !important; }
+            .research-inner { padding:5.5rem 6% 4rem !important; }
+            .research-heading { grid-template-columns:1fr !important; gap:1.25rem !important; margin-bottom:2rem !important; }
+            .research-heading h2 { font-size:3.25rem !important; }
+            .research-item { grid-template-columns:1fr !important; gap:.65rem !important; padding:1.5rem 0 !important; }
+            .research-item h3 { font-size:1.35rem !important; }
+            .research-link { width:max-content !important; margin-top:.25rem !important; }
+            .research-footer { justify-content:flex-start !important; }
             /* Contact */
             .contact-section {
                 padding: 4rem 8% 3rem !important;
@@ -488,6 +566,48 @@
 <a href="cv.html" class="text-[10px] tracking-[0.25em] font-semibold uppercase text-primary no-underline hover:opacity-70 transition-opacity">전체 이력 보기</a>
 </div>
 </div>
+</div>
+</section>
+<!-- Sixth Solo Exhibition -->
+<section id="solo-6" class="solo6-section snap-section h-screen">
+<div class="solo6-shell">
+<div class="solo6-copy">
+<p class="solo6-kicker">06TH SOLO EXHIBITION · 2026</p>
+<h2 class="solo6-title">Healing feat. AI</h2>
+<p class="solo6-lead">인공지능을 새로운 협업자로 초대한 여섯 번째 〈치유하다〉 연작입니다. 눈을 비운 동물 형상은 외면해 온 현대인의 상처와 시선을 드러냅니다.</p>
+<div class="solo6-process">
+<span>Process · LoRA Fine-Tuning</span>
+<p>100여 점의 석조작업을 기록한 약 150장의 이미지로 LoRA를 파인튜닝해, 돌과 봉합의 조형 언어를 10점의 생성 이미지로 확장했습니다.</p>
+</div>
+<dl class="solo6-facts">
+<div><dt>기간</dt><dd>2026.06.24—07.10</dd></div>
+<div><dt>장소</dt><dd>하북미술대학 미술관, 중국</dd></div>
+<div><dt>구성</dt><dd>A0 이미지 10점</dd></div>
+</dl>
+<a class="solo6-record" href="https://blog.naver.com/mr_media_lab/224340562944" target="_blank" rel="noopener noreferrer">전시 기록 <span aria-hidden="true">↗</span></a>
+<div class="solo6-thumbs">
+<div class="solo6-thumbs-label"><span>작품 선택</span><span>01—10</span></div>
+<div class="solo6-tabs" role="tablist" aria-label="Healing feat. AI 작품 선택">
+<button class="solo6-tab" type="button" role="tab" aria-selected="true" aria-label="01 치유하다 자화상" data-src="images/works/solo6_01.webp" data-title="치유하다_자화상" data-meta="Healing feat. AI · 01" data-alt="여러 색의 봉합선이 얼굴을 가로지르는 곰 형상의 작품" data-description="작가 자신을 투사한 곰 자화상입니다. 눈 없는 얼굴과 긴 봉합선은 스스로를 마주하기를 미루는 시선을 드러냅니다."><img loading="lazy" src="images/works/solo6_01.webp" alt=""/><span>01</span></button>
+<button class="solo6-tab" type="button" role="tab" aria-selected="false" aria-label="02 치유하다 연인" data-src="images/works/solo6_02.webp" data-title="치유하다_연인" data-meta="Healing feat. AI · 02" data-alt="서로 다른 빛깔의 돌을 기워 세운 눈 없는 토끼 형상의 작품" data-description="서로 다른 빛깔의 돌을 기워 세운 토끼입니다. 비워 둔 눈과 덧댄 자국이 관계의 시간을 보여줍니다."><img loading="lazy" src="images/works/solo6_02.webp" alt=""/><span>02</span></button>
+<button class="solo6-tab" type="button" role="tab" aria-selected="false" aria-label="03 치유하다 잠" data-src="images/works/solo6_03.webp" data-title="치유하다_잠" data-meta="Healing feat. AI · 03" data-alt="바닥에 몸을 기대고 잠든 곰 형상의 작품" data-description="모로 누운 곰의 가슴에 하트 모양의 덧댐과 붉은 봉합선이 남아 있습니다. 잠은 회복의 시간이자 세상으로부터 잠시 시선을 거두는 일입니다."><img loading="lazy" src="images/works/solo6_03.webp" alt=""/><span>03</span></button>
+<button class="solo6-tab" type="button" role="tab" aria-selected="false" aria-label="04 치유하다 인사" data-src="images/works/solo6_04.webp" data-title="치유하다_인사" data-meta="Healing feat. AI · 04" data-alt="몸을 한쪽으로 기울여 인사하는 눈 없는 염소 형상의 작품" data-description="몸을 기울인 염소의 자세는 무게에 눌린 모습이자 고개 숙인 인사처럼 읽힙니다."><img loading="lazy" src="images/works/solo6_04.webp" alt=""/><span>04</span></button>
+<button class="solo6-tab" type="button" role="tab" aria-selected="false" aria-label="05 치유하다 머나먼 길" data-src="images/works/solo6_05.webp" data-title="치유하다_머나먼 길" data-meta="Healing feat. AI · 05" data-alt="서로 다른 색의 돌로 이어진 말 형상의 작품" data-description="회색·베이지·붉은 빛의 돌을 이어 세운 말입니다. 붉게 기운 다리로 하중을 견디는 모습이 긴 여정을 떠올리게 합니다."><img loading="lazy" src="images/works/solo6_05.webp" alt=""/><span>05</span></button>
+<button class="solo6-tab" type="button" role="tab" aria-selected="false" aria-label="06 치유하다 고민" data-src="images/works/solo6_06.webp" data-title="치유하다_고민" data-meta="Healing feat. AI · 06" data-alt="앞발에 얼굴을 괴고 웅크린 개구리 형상의 작품" data-description="앞발에 얼굴을 괴고 웅크린 개구리의 자세가 풀리지 않는 고민의 시간을 형상화합니다."><img loading="lazy" src="images/works/solo6_06.webp" alt=""/><span>06</span></button>
+<button class="solo6-tab" type="button" role="tab" aria-selected="false" aria-label="07 치유하다 유년기" data-src="images/works/solo6_07.webp" data-title="치유하다_유년기" data-meta="Healing feat. AI · 07" data-alt="초록 리본을 맨 어린 곰 형상의 작품" data-description="검은 눈과 초록 리본을 단 어린 곰은 세상을 정면으로 바라봅니다. 푸른 봉합선은 유년기에 이미 새겨진 상처를 드러냅니다."><img loading="lazy" src="images/works/solo6_07.webp" alt=""/><span>07</span></button>
+<button class="solo6-tab" type="button" role="tab" aria-selected="false" aria-label="08 치유하다 상념" data-src="images/works/solo6_08.webp" data-title="치유하다_상념" data-meta="Healing feat. AI · 08" data-alt="금빛 띠를 두르고 옆을 바라보는 원숭이 형상의 작품" data-description="털의 결을 새긴 원숭이가 금빛 띠를 두르고 옆으로 앉아 있습니다. 정면을 비껴간 자세는 깊은 상념의 시간을 떠올리게 합니다."><img loading="lazy" src="images/works/solo6_08.webp" alt=""/><span>08</span></button>
+<button class="solo6-tab" type="button" role="tab" aria-selected="false" aria-label="09 치유하다 전하지 못한 편지" data-src="images/works/solo6_09.webp" data-title="치유하다_전하지 못한 편지" data-meta="Healing feat. AI · 09" data-alt="가슴의 갈라진 부분을 색실로 봉합한 새 형상의 작품" data-description="소식을 나르는 새의 갈라진 가슴을 빨강·파랑 실로 봉합했습니다. 이어 붙인 가슴은 끝내 전하지 못한 말을 품은 듯합니다."><img loading="lazy" src="images/works/solo6_09.webp" alt=""/><span>09</span></button>
+<button class="solo6-tab" type="button" role="tab" aria-selected="false" aria-label="10 치유하다 미래" data-src="images/works/solo6_10.webp" data-title="치유하다_미래" data-meta="Healing feat. AI · 10" data-alt="머리부터 몸까지 무지개빛 실로 봉합한 눈 없는 곰 형상의 작품" data-description="머리부터 몸까지 이어진 무지개빛 봉합선이 분리와 회복을 한 몸에 둡니다. 여러 빛깔의 실은 아직 오지 않은 열린 미래를 가리킵니다."><img loading="lazy" src="images/works/solo6_10.webp" alt=""/><span>10</span></button>
+</div>
+</div>
+</div>
+<figure class="solo6-viewer">
+<div class="solo6-viewer-image"><img id="solo6-main-image" loading="lazy" src="images/works/solo6_01.webp" alt="여러 색의 봉합선이 얼굴을 가로지르는 곰 형상의 작품"/></div>
+<figcaption class="solo6-caption">
+<div><span id="solo6-main-meta">Healing feat. AI · 01</span><strong id="solo6-main-title">치유하다_자화상</strong></div>
+<p id="solo6-main-description">작가 자신을 투사한 곰 자화상입니다. 눈 없는 얼굴과 긴 봉합선은 스스로를 마주하기를 미루는 시선을 드러냅니다.</p>
+</figcaption>
+</figure>
 </div>
 </section>
 <!-- Selected Works (Gallery) -->
@@ -700,7 +820,14 @@
 <!-- Exhibition History -->
 <section id="exhibitions" class="exhibitions-section snap-section min-h-screen bg-surface-container-low px-[5%] py-24 flex flex-col justify-center">
 <h2 class="block w-full max-w-6xl text-[10px] tracking-[0.4em] font-semibold text-primary mb-10 uppercase border-b border-black/5 pb-4">SELECTED EXHIBITIONS</h2>
-<div class="space-y-6 max-w-6xl">
+<div class="space-y-5 max-w-6xl">
+<div class="flex gap-12 md:gap-24 items-baseline group">
+<span class="text-[11px] font-medium tracking-widest text-on-surface-variant w-16">2026</span>
+<div>
+<h4 class="font-headline text-2xl italic font-light group-hover:translate-x-4 transition-transform duration-500"><a href="#solo-6">Healing feat. AI — 제6회 개인전</a></h4>
+<p class="text-[10px] tracking-widest text-on-surface-variant uppercase mt-1">하북미술대학 미술관, 중국</p>
+</div>
+</div>
 <div class="flex gap-12 md:gap-24 items-baseline group">
 <span class="text-[11px] font-medium tracking-widest text-on-surface-variant w-16">2026</span>
 <div>
@@ -712,7 +839,7 @@
 <span class="text-[11px] font-medium tracking-widest text-on-surface-variant w-16">2025</span>
 <div>
 <h4 class="font-headline text-2xl italic font-light group-hover:translate-x-4 transition-transform duration-500">치유하다: 공존 — 제5회 개인전</h4>
-<p class="text-[10px] tracking-widest text-on-surface-variant uppercase mt-1">닝보대학교 갤러리, 중국</p>
+<p class="text-[10px] tracking-widest text-on-surface-variant uppercase mt-1">닝보대학교 칭이탕 전시관, 중국</p>
 </div>
 </div>
 <div class="flex gap-12 md:gap-24 items-baseline group">
@@ -737,13 +864,33 @@
 </div>
 </div>
 </div>
-<div id="research-ai-sculpture" class="w-full max-w-6xl mt-12">
-  <p class="block w-full text-[10px] tracking-[0.4em] font-semibold text-primary mb-7 uppercase border-b border-black/5 pb-4">RESEARCH ARCHIVE · KCI PAPER</p>
-  <div class="grid grid-cols-1 md:grid-cols-[4rem_minmax(0,1fr)_auto] md:items-center gap-4 md:gap-10 group">
-    <span class="text-[11px] font-medium tracking-widest text-on-surface-variant w-16 shrink-0">2026</span>
-    <h3 class="font-headline text-2xl md:text-[28px] lg:text-3xl font-light leading-tight tracking-[-0.03em] text-primary md:whitespace-nowrap min-w-0">인공지능 활용 입체조형작품의 유형 및 표현 특성 연구</h3>
-    <a href="research/ai-sculpture/index.html" class="inline-flex shrink-0 md:justify-self-end items-center justify-center border border-black/20 px-5 py-3 text-[10px] tracking-[0.22em] uppercase text-primary hover:bg-primary hover:text-white transition-colors">논문 보기</a>
-  </div>
+</section>
+<!-- Research Archive -->
+<section id="research-ai-sculpture" class="research-section snap-section h-screen bg-black">
+<div class="research-inner">
+<span class="research-label">RESEARCH ARCHIVE · 2025—2026</span>
+<div class="research-heading">
+<h2>Research</h2>
+<p>입체조형과 실감미디어 전시에서 시작한 연구를 인공지능 기반 조형 표현의 유형과 특성으로 확장하고 있습니다.</p>
+</div>
+<div class="research-list">
+<article class="research-item">
+<div class="research-meta">2026<br/>KCI Journal</div>
+<div><h3>인공지능 활용 입체조형작품의 유형 및 표현 특성 연구</h3><p>한국공간디자인학회 논문집 21(4), 485–492 · 박성하·한정엽</p></div>
+<a class="research-link" href="research/ai-sculpture/index.html">논문 아카이브</a>
+</article>
+<article class="research-item">
+<div class="research-meta">2025.11<br/>Conference</div>
+<div><h3>A Case Study on Visual Art Exhibitions Utilizing Artificial Intelligence Technology</h3><p>KISD Fall International Conference · DDP · Park SeongHa, Han JungYeob</p></div>
+<a class="research-link" href="https://www.kisd.or.kr/sub/sub0304_next_view.php?cate_idx=21&amp;idx=944" target="_blank" rel="noopener noreferrer">학회 기록 ↗</a>
+</article>
+<article class="research-item">
+<div class="research-meta">2025.02<br/>Conference</div>
+<div><h3>A Case Study on 3D Art Exhibition Using Immersive Media</h3><p>KISD Ningbo International Conference · Excellent Paper Award · Park SeongHa, Jungyeob Han</p></div>
+<a class="research-link" href="https://www.kisd.or.kr/sub/sub0304_next_view.php?cate_idx=19&amp;idx=847" target="_blank" rel="noopener noreferrer">학회 기록 ↗</a>
+</article>
+</div>
+<div class="research-footer"><a href="cv.html#research">전체 연구·수상 이력 보기 <span aria-hidden="true">↗</span></a></div>
 </div>
 </section>
 <!-- Contact / Footer Section -->
@@ -828,6 +975,26 @@ menuClose.addEventListener('click', closeMenu);
 mobileMenu.querySelectorAll('a').forEach(link => {
   link.addEventListener('click', closeMenu);
 });
+
+// ── Sixth solo exhibition viewer ─────────────────────────
+const solo6Tabs = Array.from(document.querySelectorAll('.solo6-tab'));
+const solo6Image = document.getElementById('solo6-main-image');
+const solo6Meta = document.getElementById('solo6-main-meta');
+const solo6Title = document.getElementById('solo6-main-title');
+const solo6Description = document.getElementById('solo6-main-description');
+
+function selectSolo6Work(tab) {
+  solo6Tabs.forEach(item => item.setAttribute('aria-selected', item === tab ? 'true' : 'false'));
+  solo6Image.style.opacity = '0';
+  solo6Image.src = tab.dataset.src;
+  solo6Image.alt = tab.dataset.alt;
+  solo6Meta.textContent = tab.dataset.meta;
+  solo6Title.textContent = tab.dataset.title;
+  solo6Description.textContent = tab.dataset.description;
+  requestAnimationFrame(() => { solo6Image.style.opacity = '1'; });
+}
+
+solo6Tabs.forEach(tab => tab.addEventListener('click', () => selectSolo6Work(tab)));
 </script>
 <!-- Lightbox -->
 <div class="lightbox-overlay" id="lightbox">

@@ -162,6 +162,7 @@ body { background-color: #f9f9f9; }
     <a class="text-black border-b border-black/10 pb-1 text-[10px] tracking-[0.2em] font-medium font-body uppercase transition-colors duration-500 no-underline" href="works.html">Works</a>
     <a class="text-gray-400 hover:text-black text-[10px] tracking-[0.2em] font-medium font-body uppercase transition-colors duration-500 no-underline" href="index.html#exhibitions">Exhibitions</a>
     <a class="text-gray-400 hover:text-black text-[10px] tracking-[0.2em] font-medium font-body uppercase transition-colors duration-500 no-underline" href="index.html#ai-immersive">AI Immersive</a>
+    <a class="text-gray-400 hover:text-black text-[10px] tracking-[0.2em] font-medium font-body uppercase transition-colors duration-500 no-underline" href="index.html#research-ai-sculpture">Research</a>
     <a class="text-gray-400 hover:text-black text-[10px] tracking-[0.2em] font-medium font-body uppercase transition-colors duration-500 no-underline" href="cv.html">CV</a>
   </div>
   <button id="menu-toggle" class="md:hidden flex items-center opacity-80 hover:opacity-100 transition-all">
@@ -178,6 +179,7 @@ body { background-color: #f9f9f9; }
   <a class="text-black text-[11px] tracking-[0.3em] font-medium font-body uppercase no-underline" href="works.html">WORKS</a>
   <a class="text-black text-[11px] tracking-[0.3em] font-medium font-body uppercase no-underline" href="index.html#exhibitions">EXHIBITIONS</a>
   <a class="text-black text-[11px] tracking-[0.3em] font-medium font-body uppercase no-underline" href="index.html#ai-immersive">AI IMMERSIVE</a>
+  <a class="text-black text-[11px] tracking-[0.3em] font-medium font-body uppercase no-underline" href="index.html#research-ai-sculpture">RESEARCH</a>
   <a class="text-black text-[11px] tracking-[0.3em] font-medium font-body uppercase no-underline" href="cv.html">CV</a>
 </div>
 
@@ -234,7 +236,7 @@ body { background-color: #f9f9f9; }
 </footer>
 
 <!-- Scripts -->
-<script src="scripts/works-data.js?v=17"></script>
+<script src="scripts/works-data.js?v=18"></script>
 <script>
 // ── Mobile Menu ──────────────────────────────────────────
 const menuToggle = document.getElementById('menu-toggle');
@@ -367,7 +369,7 @@ function renderMasonry(filter) {
 
   // ── 2. Digital Art ──
   if (isAll || filter === 'digital-art') {
-    if (isAll && digitalArtWorks.length > 0) html += sectionHeader('Digital Art', `AI Generated · 2025`);
+    if (isAll && digitalArtWorks.length > 0) html += sectionHeader('Digital Art', `AI Generated · 2025–2026`);
     digitalArtWorks.forEach(w => { html += renderCard(w, 'digital-art'); });
   }
 
