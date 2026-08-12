@@ -328,6 +328,52 @@
         .solo6-caption strong { font-family:"Newsreader",serif; font-size:1.25rem; font-weight:400; }
         .solo6-caption p { font-size:10px; line-height:1.65; color:rgba(26,28,28,.58); }
 
+        /* Recent exhibitions */
+        .exhibitions-section { background:#e8e5de; }
+        .exhibitions-shell {
+            width:100%; height:100%; max-width:1600px; margin:0 auto;
+            padding:4.75rem 5vw 1.65rem;
+            display:grid; grid-template-rows:auto minmax(0,1fr) auto;
+            gap:clamp(1rem,2vh,1.25rem);
+        }
+        .exhibitions-head { display:flex; align-items:flex-end; justify-content:space-between; gap:3rem; }
+        .exhibitions-kicker { display:block; margin-bottom:.45rem; font-size:8px; letter-spacing:.34em; font-weight:700; text-transform:uppercase; color:rgba(26,28,28,.48); }
+        .exhibitions-head h2 { font-family:"Newsreader",serif; font-size:clamp(2.5rem,3.8vw,4.25rem); font-weight:250; letter-spacing:-.035em; line-height:.88; }
+        .exhibitions-head h2 em { font-weight:250; }
+        .exhibitions-intro { max-width:30rem; padding-bottom:.15rem; font-size:10px; line-height:1.7; letter-spacing:.05em; color:rgba(26,28,28,.58); }
+        .exhibitions-stage { display:grid; grid-template-columns:minmax(0,1.28fr) minmax(430px,.72fr); gap:clamp(1rem,1.6vw,1.5rem); min-height:0; }
+        .exhibition-feature, .exhibition-feature-link, .exhibition-pair { min-height:0; }
+        .exhibition-feature-link { color:inherit; text-decoration:none; }
+        .exhibition-feature--lead .exhibition-feature-link { height:100%; display:grid; grid-template-rows:minmax(0,1fr) auto; gap:.65rem; }
+        .exhibition-media { position:relative; min-width:0; min-height:0; overflow:hidden; background:#d9d7d2; }
+        .exhibition-media::after { content:""; position:absolute; inset:0; box-shadow:inset 0 0 0 1px rgba(0,0,0,.035); pointer-events:none; }
+        .exhibition-media img { width:100%; height:100%; display:block; object-fit:cover; transition:transform .8s cubic-bezier(.2,.7,.2,1); }
+        .exhibition-media-tag { position:absolute; right:.7rem; bottom:.7rem; z-index:2; padding:.35rem .5rem; background:rgba(10,12,12,.72); color:#fff; font-size:7px; font-weight:700; letter-spacing:.2em; text-transform:uppercase; }
+        .exhibition-feature--lead .exhibition-media img { object-position:center 24%; }
+        .exhibition-feature-link:hover .exhibition-media img { transform:scale(1.025); }
+        .exhibition-caption { min-width:0; }
+        .exhibition-feature--lead .exhibition-caption { display:grid; grid-template-columns:8rem minmax(0,1fr) auto; gap:1.25rem; align-items:end; }
+        .exhibition-meta { font-size:8px; line-height:1.55; letter-spacing:.2em; font-weight:700; text-transform:uppercase; color:rgba(26,28,28,.45); }
+        .exhibition-caption h3 { font-family:"Newsreader",serif; font-size:clamp(1.35rem,1.8vw,2rem); font-weight:350; line-height:1; letter-spacing:-.015em; }
+        .exhibition-caption p { margin-top:.3rem; font-size:8px; line-height:1.55; letter-spacing:.09em; color:rgba(26,28,28,.5); }
+        .exhibition-open { align-self:center; font-size:8px; letter-spacing:.2em; font-weight:700; text-transform:uppercase; color:rgba(26,28,28,.58); white-space:nowrap; border-bottom:1px solid rgba(26,28,28,.3); padding-bottom:.25rem; }
+        .exhibition-pair { display:grid; grid-template-rows:repeat(2,minmax(0,1fr)); gap:clamp(.85rem,1.45vw,1.2rem); }
+        .exhibition-pair .exhibition-feature-link { height:100%; display:grid; grid-template-columns:minmax(0,1.2fr) minmax(150px,.8fr); gap:clamp(.8rem,1.2vw,1.1rem); }
+        .exhibition-pair .exhibition-caption { align-self:stretch; padding:.55rem 0 .15rem; display:flex; flex-direction:column; justify-content:flex-end; border-top:1px solid rgba(26,28,28,.15); }
+        .exhibition-pair .exhibition-caption h3 { margin-top:auto; font-size:clamp(1.2rem,1.55vw,1.65rem); line-height:1.02; }
+        .exhibition-pair .exhibition-caption p { max-width:14rem; }
+        .exhibition-pair .exhibition-media img { object-position:center; }
+        .exhibitions-archive { display:grid; grid-template-columns:8rem repeat(2,minmax(0,1fr)) auto; align-items:start; border-top:1px solid rgba(26,28,28,.2); }
+        .exhibitions-archive-label { padding-top:.8rem; font-size:8px; letter-spacing:.24em; font-weight:700; text-transform:uppercase; color:rgba(26,28,28,.42); }
+        .exhibitions-record { min-width:0; padding:.75rem 1rem 0; border-left:1px solid rgba(26,28,28,.12); }
+        .exhibitions-record time { display:block; margin-bottom:.25rem; font-size:8px; letter-spacing:.18em; color:rgba(26,28,28,.42); }
+        .exhibitions-record strong { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:"Newsreader",serif; font-size:1.05rem; font-weight:400; }
+        .exhibitions-record span { display:block; margin-top:.2rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:7px; letter-spacing:.07em; color:rgba(26,28,28,.48); }
+        .exhibitions-record a { color:inherit; text-decoration:none; }
+        .exhibitions-record a:hover strong { text-decoration:underline; text-decoration-thickness:1px; text-underline-offset:.2rem; }
+        .exhibitions-cv { align-self:start; margin-top:.8rem; margin-left:1.25rem; font-size:8px; letter-spacing:.2em; font-weight:700; text-transform:uppercase; white-space:nowrap; border-bottom:1px solid rgba(26,28,28,.3); padding-bottom:.25rem; }
+        .exhibition-feature-link:focus-visible, .exhibitions-record a:focus-visible, .exhibitions-cv:focus-visible { outline:1px solid #1a1c1c; outline-offset:4px; }
+
         /* Research archive */
         .research-section { background:#111210; color:#f4f2ed; }
         .research-inner { width:100%; max-width:1500px; margin:0 auto; padding:7rem 10vw 4rem; }
@@ -463,12 +509,28 @@
                 height: 100% !important;
             }
             /* Exhibitions */
-            .exhibitions-section {
-                padding: 5rem 6% 3rem !important;
-                height: auto !important;
-            }
-            .exhibitions-section .flex.gap-12 { gap: 1.5rem !important; }
-            .exhibitions-section h4 { font-size: 1.2rem !important; }
+            .exhibitions-section { height:auto !important; min-height:0 !important; }
+            .exhibitions-shell { height:auto !important; display:block !important; padding:5.5rem 5% 3.5rem !important; }
+            .exhibitions-head { display:block !important; }
+            .exhibitions-head h2 { font-size:3.25rem !important; }
+            .exhibitions-intro { margin-top:1rem !important; max-width:27rem !important; }
+            .exhibitions-stage { display:block !important; margin-top:2rem !important; }
+            .exhibition-feature--lead .exhibition-feature-link,
+            .exhibition-pair .exhibition-feature-link { display:block !important; height:auto !important; }
+            .exhibition-media { aspect-ratio:4/3 !important; }
+            .exhibition-feature--lead .exhibition-media img { object-position:center 28% !important; }
+            .exhibition-feature--lead .exhibition-caption { display:grid !important; grid-template-columns:5.5rem minmax(0,1fr) !important; gap:.8rem !important; margin-top:.75rem !important; }
+            .exhibition-feature--lead .exhibition-open { display:none !important; }
+            .exhibition-caption h3 { font-size:1.55rem !important; }
+            .exhibition-pair { display:block !important; }
+            .exhibition-pair .exhibition-feature { margin-top:2.5rem !important; }
+            .exhibition-pair .exhibition-caption { margin-top:.7rem !important; padding:.6rem 0 0 !important; min-height:0 !important; }
+            .exhibition-pair .exhibition-caption h3 { margin-top:.5rem !important; }
+            .exhibitions-archive { display:block !important; margin-top:2.75rem !important; }
+            .exhibitions-archive-label { padding:.9rem 0 .55rem !important; }
+            .exhibitions-record { padding:.85rem 0 !important; border-left:0 !important; border-top:1px solid rgba(26,28,28,.1) !important; }
+            .exhibitions-record strong, .exhibitions-record span { white-space:normal !important; }
+            .exhibitions-cv { display:inline-block !important; margin:1.25rem 0 0 !important; }
             /* Research */
             .research-section { min-height:auto !important; height:auto !important; }
             .research-inner { padding:5.5rem 6% 4rem !important; }
@@ -499,6 +561,21 @@
             .hero-section h1 { font-size: 1.8rem !important; }
             .sculpture-section { padding: 5rem 3% 2rem !important; }
             .contact-section h2 { font-size: 1.5rem !important; }
+        }
+
+        @media (min-width: 768px) and (max-width: 1100px) {
+            .exhibitions-shell { padding-left:4vw; padding-right:4vw; }
+            .exhibitions-stage { grid-template-columns:minmax(0,1.08fr) minmax(340px,.92fr); }
+            .exhibition-pair .exhibition-feature-link { grid-template-columns:minmax(0,1fr) minmax(125px,.72fr); gap:.7rem; }
+            .exhibition-feature--lead .exhibition-caption { grid-template-columns:6rem minmax(0,1fr); }
+            .exhibition-feature--lead .exhibition-open { display:none; }
+            .exhibitions-archive { grid-template-columns:5.5rem repeat(2,minmax(0,1fr)); }
+            .exhibitions-cv { display:none; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .exhibition-media img { transition:none !important; }
+            .exhibition-feature-link:hover .exhibition-media img { transform:none !important; }
         }
     </style>
     <meta name="naver-site-verification" content="ae47f426a2792fd3b4715baa9fb5a97086351522" />
@@ -817,51 +894,68 @@
 </div>
 </div>
 </section>
-<!-- Exhibition History -->
-<section id="exhibitions" class="exhibitions-section snap-section min-h-screen bg-surface-container-low px-[5%] py-24 flex flex-col justify-center">
-<h2 class="block w-full max-w-6xl text-[10px] tracking-[0.4em] font-semibold text-primary mb-10 uppercase border-b border-black/5 pb-4">SELECTED EXHIBITIONS</h2>
-<div class="space-y-5 max-w-6xl">
-<div class="flex gap-12 md:gap-24 items-baseline group">
-<span class="text-[11px] font-medium tracking-widest text-on-surface-variant w-16">2026</span>
+<!-- Recent Exhibitions -->
+<section id="exhibitions" class="exhibitions-section snap-section h-screen">
+<div class="exhibitions-shell">
+<header class="exhibitions-head">
 <div>
-<h4 class="font-headline text-2xl italic font-light group-hover:translate-x-4 transition-transform duration-500"><a href="#solo-6">Healing feat. AI — 제6회 개인전</a></h4>
-<p class="text-[10px] tracking-widest text-on-surface-variant uppercase mt-1">하북미술대학 미술관, 중국</p>
+<span class="exhibitions-kicker">RECENT EXHIBITIONS · 2024—2026</span>
+<h2>Recent <em>Exhibitions</em></h2>
+</div>
+<p class="exhibitions-intro">돌과 공존의 서사가 AI 영상, 실시간 생성, 인터랙티브 미디어로 확장된 최근 장면들입니다.</p>
+</header>
+<div class="exhibitions-stage">
+<article class="exhibition-feature exhibition-feature--lead">
+<a class="exhibition-feature-link" href="https://blog.naver.com/mr_media_lab/224191962769" target="_blank" rel="noopener noreferrer" aria-label="Hyper X Flow 전시 기록 보기">
+<div class="exhibition-media">
+<img loading="lazy" decoding="async" width="1920" height="1080" src="images/exhibitions/impermanence.webp" alt="DeepSDF와 파티클로 생성된 박성하의 인터랙티브 미디어 작품 Impermanence"/>
+</div>
+<div class="exhibition-caption">
+<span class="exhibition-meta">2026 · GROUP SHOW<br/>02.23—03.31</span>
+<div><h3>Hyper X Flow</h3><p>〈Impermanence〉 · 홍익대학교 AI 뮤지엄</p></div>
+<span class="exhibition-open">기록 보기 ↗</span>
+</div>
+</a>
+</article>
+<div class="exhibition-pair">
+<article class="exhibition-feature">
+<a class="exhibition-feature-link" href="https://www.hongik.ac.kr/kr/newscenter/news.do?articleNo=133294&amp;mode=view" target="_blank" rel="noopener noreferrer" aria-label="HYPER MORPH 전시 안내 보기">
+<div class="exhibition-media">
+<img loading="lazy" decoding="async" width="1920" height="1080" src="images/exhibitions/hyper-morph.webp" alt="박성하의 AI 영상 치유하다 공존에서 지의류가 덮인 돌이 변화하는 장면"/>
+<span class="exhibition-media-tag">VIDEO · 02:00</span>
+</div>
+<div class="exhibition-caption">
+<span class="exhibition-meta">2025 · GROUP SHOW<br/>02.24—03.31</span>
+<h3>Hyper Morph</h3>
+<p>〈치유하다_공존〉 · AI 영상, 2분 · 홍익대학교 AI 뮤지엄</p>
+</div>
+</a>
+</article>
+<article class="exhibition-feature">
+<div class="exhibition-feature-link">
+<div class="exhibition-media">
+<img loading="lazy" decoding="async" width="966" height="543" src="images/exhibitions/blue-moon-exhibition.webp" alt="캐나다 OCAD University Blue Moon 전시장에서 박성하의 Floating Heritage 배너가 설치된 장면"/>
+</div>
+<div class="exhibition-caption">
+<span class="exhibition-meta">2025 · GROUP SHOW</span>
+<h3>Blue Moon</h3>
+<p>Interactive VR · OCAD University, Toronto</p>
 </div>
 </div>
-<div class="flex gap-12 md:gap-24 items-baseline group">
-<span class="text-[11px] font-medium tracking-widest text-on-surface-variant w-16">2026</span>
-<div>
-<h4 class="font-headline text-2xl italic font-light group-hover:translate-x-4 transition-transform duration-500">제3회 행간애 — Hyper X Flow</h4>
-<p class="text-[10px] tracking-widest text-on-surface-variant uppercase mt-1">홍익대학교 AI 뮤지엄, 서울</p>
+</article>
 </div>
 </div>
-<div class="flex gap-12 md:gap-24 items-baseline group">
-<span class="text-[11px] font-medium tracking-widest text-on-surface-variant w-16">2025</span>
-<div>
-<h4 class="font-headline text-2xl italic font-light group-hover:translate-x-4 transition-transform duration-500">치유하다: 공존 — 제5회 개인전</h4>
-<p class="text-[10px] tracking-widest text-on-surface-variant uppercase mt-1">닝보대학교 칭이탕 전시관, 중국</p>
+<div class="exhibitions-archive" aria-label="그 밖의 최근 전시">
+<span class="exhibitions-archive-label">Recent record</span>
+<div class="exhibitions-record">
+<time datetime="2025-02-21">2025.02</time>
+<a href="work-detail.html?id=symbiosis-01"><strong>치유하다: 공존 ↗</strong><span>제5회 개인전 · 닝보대학교 칭이탕 전시관</span></a>
 </div>
+<div class="exhibitions-record">
+<time datetime="2024">2024</time>
+<a href="https://www.youtube.com/watch?v=rVaKPiJnExc" target="_blank" rel="noopener noreferrer"><strong>초월의 연결 ↗</strong><span>백남준아트센터 · 경기</span></a>
 </div>
-<div class="flex gap-12 md:gap-24 items-baseline group">
-<span class="text-[11px] font-medium tracking-widest text-on-surface-variant w-16">2025</span>
-<div>
-<h4 class="font-headline text-2xl italic font-light group-hover:translate-x-4 transition-transform duration-500">Blue Moon — Interactive VR</h4>
-<p class="text-[10px] tracking-widest text-on-surface-variant uppercase mt-1">OCAD University, 토론토, 캐나다</p>
-</div>
-</div>
-<div class="flex gap-12 md:gap-24 items-baseline group">
-<span class="text-[11px] font-medium tracking-widest text-on-surface-variant w-16">2025</span>
-<div>
-<h4 class="font-headline text-2xl italic font-light group-hover:translate-x-4 transition-transform duration-500">Hyper Morph</h4>
-<p class="text-[10px] tracking-widest text-on-surface-variant uppercase mt-1">홍익대학교 AI 뮤지엄, 서울</p>
-</div>
-</div>
-<div class="flex gap-12 md:gap-24 items-baseline group">
-<span class="text-[11px] font-medium tracking-widest text-on-surface-variant w-16">2024</span>
-<div>
-<h4 class="font-headline text-2xl italic font-light group-hover:translate-x-4 transition-transform duration-500">초월의 연결</h4>
-<p class="text-[10px] tracking-widest text-on-surface-variant uppercase mt-1">백남준아트센터, 경기</p>
-</div>
+<a class="exhibitions-cv" href="cv.html#exhibitions">전체 이력 ↗</a>
 </div>
 </div>
 </section>
