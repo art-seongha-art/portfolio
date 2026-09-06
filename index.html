@@ -278,7 +278,7 @@
             color: #fff;
         }
         html { scroll-behavior: smooth; scroll-snap-type: y mandatory; overflow-y: scroll; }
-        .snap-section { scroll-snap-align: start; }
+        .snap-section { scroll-snap-align: start; scroll-snap-stop: always; }
         .snap-section-proximity { scroll-snap-align: start; scroll-snap-stop: normal; }
         .hero-text { text-shadow: 0 2px 20px rgba(255,255,255,0.8), 0 0 40px rgba(255,255,255,0.5); }
         .hero-sub { text-shadow: 0 1px 10px rgba(255,255,255,0.9), 0 0 20px rgba(255,255,255,0.6); }
@@ -291,6 +291,104 @@
         .gallery-item { overflow:hidden; position:relative; width:100%; height:100%; }
         .gallery-item img { display:block; width:100% !important; height:100% !important; object-fit:cover !important; }
         .gallery-grid { display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr); gap:4px; flex:1; overflow:hidden; }
+
+        /* Sixth solo exhibition */
+        .solo6-section { background:#eeede8; }
+        .solo6-shell {
+            width:100%; height:100%; max-width:1600px; margin:0 auto;
+            padding:4.8rem 7vw 2rem;
+            display:grid; grid-template-columns:minmax(310px,.78fr) minmax(0,1.22fr);
+            grid-template-rows:minmax(0,1fr); gap:clamp(3rem,6.5vw,8rem); align-items:stretch;
+        }
+        .solo6-copy { min-width:0; min-height:0; display:flex; flex-direction:column; padding-top:clamp(.35rem,1vh,.75rem); }
+        .solo6-kicker { font-size:10px; letter-spacing:.34em; font-weight:600; text-transform:uppercase; color:#5b554d; }
+        .solo6-title { margin-top:1rem; font-family:"Newsreader",serif; font-size:clamp(3rem,4.2vw,5rem); font-weight:250; line-height:.88; letter-spacing:-.035em; }
+        .solo6-lead { margin-top:1.2rem; max-width:34rem; font-size:12px; line-height:1.75; letter-spacing:.03em; color:rgba(26,28,28,.68); }
+        .solo6-process { margin-top:1.1rem; padding-top:.8rem; border-top:1px solid rgba(0,0,0,.12); max-width:34rem; }
+        .solo6-process span { display:block; margin-bottom:.45rem; font-size:9px; letter-spacing:.24em; font-weight:700; text-transform:uppercase; color:#5b554d; }
+        .solo6-process p { font-size:11px; line-height:1.75; color:rgba(26,28,28,.64); }
+        .solo6-facts { margin-top:1.05rem; max-width:34rem; border-top:1px solid rgba(0,0,0,.12); }
+        .solo6-facts > div { display:grid; grid-template-columns:4.5rem 1fr; gap:1rem; padding:.5rem 0; border-bottom:1px solid rgba(0,0,0,.08); }
+        .solo6-facts dt { font-size:9px; letter-spacing:.18em; color:rgba(26,28,28,.48); }
+        .solo6-facts dd { font-size:10px; letter-spacing:.06em; color:#1a1c1c; }
+        .solo6-record { display:inline-flex; align-items:center; gap:.5rem; margin-top:.8rem; width:max-content; font-size:9px; letter-spacing:.22em; font-weight:700; text-transform:uppercase; color:#1a1c1c; border-bottom:1px solid rgba(0,0,0,.35); padding-bottom:.3rem; }
+        .solo6-thumbs { margin-top:auto; padding-top:.8rem; }
+        .solo6-thumbs-label { display:flex; justify-content:space-between; align-items:center; margin-bottom:.6rem; font-size:8px; letter-spacing:.22em; text-transform:uppercase; color:rgba(26,28,28,.48); }
+        .solo6-tabs { display:grid; grid-template-columns:repeat(10,minmax(0,1fr)); gap:3px; }
+        .solo6-tab { position:relative; aspect-ratio:1/1; overflow:hidden; border:0; background:#ddd; cursor:pointer; padding:0; opacity:.42; transition:opacity .25s ease, transform .25s ease; }
+        .solo6-tab:hover, .solo6-tab[aria-selected="true"] { opacity:1; }
+        .solo6-tab[aria-selected="true"] { transform:translateY(-2px); }
+        .solo6-tab img { width:100%; height:100%; object-fit:cover; display:block; }
+        .solo6-tab span { position:absolute; left:.35rem; bottom:.25rem; font-size:7px; letter-spacing:.12em; color:#fff; text-shadow:0 1px 5px rgba(0,0,0,.65); }
+        .solo6-viewer { min-width:0; min-height:0; display:flex; flex-direction:column; }
+        .solo6-viewer-image { min-height:0; flex:1; display:flex; align-items:center; justify-content:center; overflow:hidden; background:#f7f6f2; }
+        .solo6-viewer-image img { width:100%; height:100%; object-fit:contain; display:block; transition:opacity .2s ease; }
+        .solo6-caption { display:grid; grid-template-columns:minmax(12rem,.72fr) minmax(0,1.28fr); gap:2rem; padding-top:.9rem; min-height:4.2rem; }
+        .solo6-caption span { display:block; font-size:8px; letter-spacing:.18em; text-transform:uppercase; color:rgba(26,28,28,.42); margin-bottom:.25rem; }
+        .solo6-caption strong { font-family:"Newsreader",serif; font-size:1.25rem; font-weight:400; }
+        .solo6-caption p { font-size:10px; line-height:1.65; color:rgba(26,28,28,.58); }
+
+        /* Recent exhibitions */
+        .exhibitions-section { background:#e8e5de; }
+        .exhibitions-shell {
+            width:100%; height:100%; max-width:1600px; margin:0 auto;
+            padding:4.75rem 5vw 1.65rem;
+            display:grid; grid-template-rows:auto minmax(0,1fr) auto;
+            gap:clamp(1rem,2vh,1.25rem);
+        }
+        .exhibitions-head { display:flex; align-items:flex-end; justify-content:space-between; gap:3rem; }
+        .exhibitions-kicker { display:block; margin-bottom:.45rem; font-size:8px; letter-spacing:.34em; font-weight:700; text-transform:uppercase; color:rgba(26,28,28,.48); }
+        .exhibitions-head h2 { font-family:"Newsreader",serif; font-size:clamp(2.5rem,3.8vw,4.25rem); font-weight:250; letter-spacing:-.035em; line-height:.88; }
+        .exhibitions-head h2 em { font-weight:250; }
+        .exhibitions-intro { max-width:30rem; padding-bottom:.15rem; font-size:10px; line-height:1.7; letter-spacing:.05em; color:rgba(26,28,28,.58); }
+        .exhibitions-stage { display:grid; grid-template-columns:minmax(0,1.28fr) minmax(430px,.72fr); gap:clamp(1rem,1.6vw,1.5rem); min-height:0; }
+        .exhibition-feature, .exhibition-feature-link, .exhibition-pair { min-height:0; }
+        .exhibition-feature-link { color:inherit; text-decoration:none; }
+        .exhibition-feature--lead .exhibition-feature-link { height:100%; display:grid; grid-template-rows:minmax(0,1fr) auto; gap:.65rem; }
+        .exhibition-media { position:relative; min-width:0; min-height:0; overflow:hidden; background:#d9d7d2; }
+        .exhibition-media::after { content:""; position:absolute; inset:0; box-shadow:inset 0 0 0 1px rgba(0,0,0,.035); pointer-events:none; }
+        .exhibition-media img { width:100%; height:100%; display:block; object-fit:cover; transition:transform .8s cubic-bezier(.2,.7,.2,1); }
+        .exhibition-media-tag { position:absolute; right:.7rem; bottom:.7rem; z-index:2; padding:.35rem .5rem; background:rgba(10,12,12,.72); color:#fff; font-size:7px; font-weight:700; letter-spacing:.2em; text-transform:uppercase; }
+        .exhibition-feature--lead .exhibition-media img { object-position:center 24%; }
+        .exhibition-feature-link:hover .exhibition-media img { transform:scale(1.025); }
+        .exhibition-caption { min-width:0; }
+        .exhibition-feature--lead .exhibition-caption { display:grid; grid-template-columns:8rem minmax(0,1fr) auto; gap:1.25rem; align-items:end; }
+        .exhibition-meta { font-size:8px; line-height:1.55; letter-spacing:.2em; font-weight:700; text-transform:uppercase; color:rgba(26,28,28,.45); }
+        .exhibition-caption h3 { font-family:"Newsreader",serif; font-size:clamp(1.35rem,1.8vw,2rem); font-weight:350; line-height:1; letter-spacing:-.015em; }
+        .exhibition-caption p { margin-top:.3rem; font-size:8px; line-height:1.55; letter-spacing:.09em; color:rgba(26,28,28,.5); }
+        .exhibition-open { align-self:center; font-size:8px; letter-spacing:.2em; font-weight:700; text-transform:uppercase; color:rgba(26,28,28,.58); white-space:nowrap; border-bottom:1px solid rgba(26,28,28,.3); padding-bottom:.25rem; }
+        .exhibition-pair { display:grid; grid-template-rows:repeat(2,minmax(0,1fr)); gap:clamp(.85rem,1.45vw,1.2rem); }
+        .exhibition-pair .exhibition-feature-link { height:100%; display:grid; grid-template-columns:minmax(0,1.2fr) minmax(150px,.8fr); gap:clamp(.8rem,1.2vw,1.1rem); }
+        .exhibition-pair .exhibition-caption { align-self:stretch; padding:.55rem 0 .15rem; display:flex; flex-direction:column; justify-content:flex-end; border-top:1px solid rgba(26,28,28,.15); }
+        .exhibition-pair .exhibition-caption h3 { margin-top:auto; font-size:clamp(1.2rem,1.55vw,1.65rem); line-height:1.02; }
+        .exhibition-pair .exhibition-caption p { max-width:14rem; }
+        .exhibition-pair .exhibition-media img { object-position:center; }
+        .exhibitions-archive { display:grid; grid-template-columns:8rem repeat(2,minmax(0,1fr)) auto; align-items:start; border-top:1px solid rgba(26,28,28,.2); }
+        .exhibitions-archive-label { padding-top:.8rem; font-size:8px; letter-spacing:.24em; font-weight:700; text-transform:uppercase; color:rgba(26,28,28,.42); }
+        .exhibitions-record { min-width:0; padding:.75rem 1rem 0; border-left:1px solid rgba(26,28,28,.12); }
+        .exhibitions-record time { display:block; margin-bottom:.25rem; font-size:8px; letter-spacing:.18em; color:rgba(26,28,28,.42); }
+        .exhibitions-record strong { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:"Newsreader",serif; font-size:1.05rem; font-weight:400; }
+        .exhibitions-record span { display:block; margin-top:.2rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:7px; letter-spacing:.07em; color:rgba(26,28,28,.48); }
+        .exhibitions-record a { color:inherit; text-decoration:none; }
+        .exhibitions-record a:hover strong { text-decoration:underline; text-decoration-thickness:1px; text-underline-offset:.2rem; }
+        .exhibitions-cv { align-self:start; margin-top:.8rem; margin-left:1.25rem; font-size:8px; letter-spacing:.2em; font-weight:700; text-transform:uppercase; white-space:nowrap; border-bottom:1px solid rgba(26,28,28,.3); padding-bottom:.25rem; }
+        .exhibition-feature-link:focus-visible, .exhibitions-record a:focus-visible, .exhibitions-cv:focus-visible { outline:1px solid #1a1c1c; outline-offset:4px; }
+
+        /* Research archive */
+        .research-section { background:#111210; color:#f4f2ed; }
+        .research-inner { width:100%; max-width:1500px; margin:0 auto; padding:7rem 10vw 4rem; }
+        .research-heading { display:grid; grid-template-columns:minmax(12rem,.7fr) minmax(0,1.3fr); gap:4rem; align-items:end; margin-bottom:3rem; }
+        .research-heading h2 { font-family:"Newsreader",serif; font-size:clamp(3.25rem,5.2vw,6rem); font-weight:250; letter-spacing:-.035em; line-height:.92; }
+        .research-heading p { max-width:38rem; font-size:12px; line-height:1.8; letter-spacing:.04em; color:rgba(255,255,255,.55); }
+        .research-label { display:block; margin-bottom:1.2rem; font-size:9px; letter-spacing:.34em; font-weight:700; text-transform:uppercase; color:rgba(255,255,255,.48); }
+        .research-list { border-top:1px solid rgba(255,255,255,.2); }
+        .research-item { display:grid; grid-template-columns:7rem minmax(0,1fr) auto; gap:2rem; align-items:center; padding:1.35rem 0; border-bottom:1px solid rgba(255,255,255,.14); }
+        .research-meta { font-size:9px; line-height:1.7; letter-spacing:.17em; text-transform:uppercase; color:rgba(255,255,255,.45); }
+        .research-item h3 { font-family:"Newsreader",serif; font-size:clamp(1.25rem,1.8vw,1.85rem); font-weight:300; line-height:1.12; }
+        .research-item p { margin-top:.35rem; font-size:9px; letter-spacing:.09em; color:rgba(255,255,255,.45); }
+        .research-link { font-size:8px; letter-spacing:.22em; font-weight:700; text-transform:uppercase; color:#fff; border-bottom:1px solid rgba(255,255,255,.45); padding-bottom:.3rem; white-space:nowrap; }
+        .research-footer { display:flex; justify-content:flex-end; margin-top:1.5rem; }
+        .research-footer a { font-size:9px; letter-spacing:.22em; text-transform:uppercase; color:rgba(255,255,255,.65); }
         /* Lightbox */
         .lightbox-overlay { position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.92); display:none; flex-direction:column; align-items:center; justify-content:center; }
         .lightbox-overlay.active { display:flex; }
@@ -335,6 +433,23 @@
             .about-text h2 { font-size: 1.8rem !important; margin-bottom: 1rem !important; }
             .about-text { padding-bottom: 2rem !important; }
             .about-text .max-w-md { max-width: 100% !important; }
+            /* Sixth solo exhibition */
+            .solo6-section { height:auto !important; }
+            .solo6-shell {
+                height:auto !important; display:block !important;
+                padding:5.5rem 5% 3rem !important;
+            }
+            .solo6-copy { padding-top:0 !important; }
+            .solo6-title { font-size:3.25rem !important; margin-top:1rem !important; }
+            .solo6-lead { margin-top:1.1rem !important; line-height:1.75 !important; }
+            .solo6-process { margin-top:1.15rem !important; }
+            .solo6-facts { margin-top:1.1rem !important; }
+            .solo6-thumbs { margin-top:1.5rem !important; }
+            .solo6-tabs { grid-template-columns:repeat(5,minmax(0,1fr)) !important; gap:3px !important; }
+            .solo6-viewer { margin-top:2rem !important; }
+            .solo6-viewer-image { height:min(72vh,43rem) !important; min-height:28rem !important; }
+            .solo6-caption { grid-template-columns:1fr !important; gap:.55rem !important; min-height:0 !important; }
+            .solo6-caption p { max-width:32rem !important; }
             /* Sculpture Gallery — 3x3 유지 */
             .sculpture-section {
                 padding: 5rem 3% 2rem !important;
@@ -394,12 +509,37 @@
                 height: 100% !important;
             }
             /* Exhibitions */
-            .exhibitions-section {
-                padding: 5rem 6% 3rem !important;
-                height: auto !important;
-            }
-            .exhibitions-section .flex.gap-12 { gap: 1.5rem !important; }
-            .exhibitions-section h4 { font-size: 1.2rem !important; }
+            .exhibitions-section { height:auto !important; min-height:0 !important; }
+            .exhibitions-shell { height:auto !important; display:block !important; padding:5.5rem 5% 3.5rem !important; }
+            .exhibitions-head { display:block !important; }
+            .exhibitions-head h2 { font-size:3.25rem !important; }
+            .exhibitions-intro { margin-top:1rem !important; max-width:27rem !important; }
+            .exhibitions-stage { display:block !important; margin-top:2rem !important; }
+            .exhibition-feature--lead .exhibition-feature-link,
+            .exhibition-pair .exhibition-feature-link { display:block !important; height:auto !important; }
+            .exhibition-media { aspect-ratio:4/3 !important; }
+            .exhibition-feature--lead .exhibition-media img { object-position:center 28% !important; }
+            .exhibition-feature--lead .exhibition-caption { display:grid !important; grid-template-columns:5.5rem minmax(0,1fr) !important; gap:.8rem !important; margin-top:.75rem !important; }
+            .exhibition-feature--lead .exhibition-open { display:none !important; }
+            .exhibition-caption h3 { font-size:1.55rem !important; }
+            .exhibition-pair { display:block !important; }
+            .exhibition-pair .exhibition-feature { margin-top:2.5rem !important; }
+            .exhibition-pair .exhibition-caption { margin-top:.7rem !important; padding:.6rem 0 0 !important; min-height:0 !important; }
+            .exhibition-pair .exhibition-caption h3 { margin-top:.5rem !important; }
+            .exhibitions-archive { display:block !important; margin-top:2.75rem !important; }
+            .exhibitions-archive-label { padding:.9rem 0 .55rem !important; }
+            .exhibitions-record { padding:.85rem 0 !important; border-left:0 !important; border-top:1px solid rgba(26,28,28,.1) !important; }
+            .exhibitions-record strong, .exhibitions-record span { white-space:normal !important; }
+            .exhibitions-cv { display:inline-block !important; margin:1.25rem 0 0 !important; }
+            /* Research */
+            .research-section { min-height:auto !important; height:auto !important; }
+            .research-inner { padding:5.5rem 6% 4rem !important; }
+            .research-heading { grid-template-columns:1fr !important; gap:1.25rem !important; margin-bottom:2rem !important; }
+            .research-heading h2 { font-size:3.25rem !important; }
+            .research-item { grid-template-columns:1fr !important; gap:.65rem !important; padding:1.5rem 0 !important; }
+            .research-item h3 { font-size:1.35rem !important; }
+            .research-link { width:max-content !important; margin-top:.25rem !important; }
+            .research-footer { justify-content:flex-start !important; }
             /* Contact */
             .contact-section {
                 padding: 4rem 8% 3rem !important;
@@ -422,6 +562,21 @@
             .sculpture-section { padding: 5rem 3% 2rem !important; }
             .contact-section h2 { font-size: 1.5rem !important; }
         }
+
+        @media (min-width: 768px) and (max-width: 1100px) {
+            .exhibitions-shell { padding-left:4vw; padding-right:4vw; }
+            .exhibitions-stage { grid-template-columns:minmax(0,1.08fr) minmax(340px,.92fr); }
+            .exhibition-pair .exhibition-feature-link { grid-template-columns:minmax(0,1fr) minmax(125px,.72fr); gap:.7rem; }
+            .exhibition-feature--lead .exhibition-caption { grid-template-columns:6rem minmax(0,1fr); }
+            .exhibition-feature--lead .exhibition-open { display:none; }
+            .exhibitions-archive { grid-template-columns:5.5rem repeat(2,minmax(0,1fr)); }
+            .exhibitions-cv { display:none; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .exhibition-media img { transition:none !important; }
+            .exhibition-feature-link:hover .exhibition-media img { transform:none !important; }
+        }
     </style>
     <meta name="naver-site-verification" content="ae47f426a2792fd3b4715baa9fb5a97086351522" />
 </head>
@@ -435,6 +590,7 @@
 <a class="nav-text border-b border-white/10 pb-1 text-[10px] tracking-[0.2em] font-medium font-body uppercase transition-colors duration-500" href="works.html">WORKS</a>
 <a class="nav-text-dim hover:text-white text-[10px] tracking-[0.2em] font-medium font-body uppercase transition-colors duration-500" href="#exhibitions">EXHIBITIONS</a>
 <a class="nav-text-dim hover:text-white text-[10px] tracking-[0.2em] font-medium font-body uppercase transition-colors duration-500" href="#ai-immersive">AI IMMERSIVE</a>
+<a class="nav-text-dim hover:text-white text-[10px] tracking-[0.2em] font-medium font-body uppercase transition-colors duration-500" href="#research-ai-sculpture">RESEARCH</a>
 <a class="nav-text-dim hover:text-white text-[10px] tracking-[0.2em] font-medium font-body uppercase transition-colors duration-500" href="cv.html">CV</a>
 </nav>
 <button id="menu-toggle" class="md:hidden flex items-center nav-text">
@@ -450,6 +606,7 @@
 <a class="text-black text-[11px] tracking-[0.3em] font-medium font-body uppercase no-underline" href="works.html">WORKS</a>
 <a class="text-black text-[11px] tracking-[0.3em] font-medium font-body uppercase no-underline" href="#exhibitions">EXHIBITIONS</a>
 <a class="text-black text-[11px] tracking-[0.3em] font-medium font-body uppercase no-underline" href="#ai-immersive">AI IMMERSIVE</a>
+<a class="text-black text-[11px] tracking-[0.3em] font-medium font-body uppercase no-underline" href="#research-ai-sculpture">RESEARCH</a>
 <a class="text-black text-[11px] tracking-[0.3em] font-medium font-body uppercase no-underline" href="cv.html">CV</a>
 </div>
 <main>
@@ -486,6 +643,48 @@
 <a href="cv.html" class="text-[10px] tracking-[0.25em] font-semibold uppercase text-primary no-underline hover:opacity-70 transition-opacity">전체 이력 보기</a>
 </div>
 </div>
+</div>
+</section>
+<!-- Sixth Solo Exhibition -->
+<section id="solo-6" class="solo6-section snap-section h-screen">
+<div class="solo6-shell">
+<div class="solo6-copy">
+<p class="solo6-kicker">06TH SOLO EXHIBITION · 2026</p>
+<h2 class="solo6-title">Healing feat. AI</h2>
+<p class="solo6-lead">인공지능을 새로운 협업자로 초대한 여섯 번째 〈치유하다〉 연작입니다. 눈을 비운 동물 형상은 외면해 온 현대인의 상처와 시선을 드러냅니다.</p>
+<div class="solo6-process">
+<span>Process · LoRA Fine-Tuning</span>
+<p>100여 점의 석조작업을 기록한 약 150장의 이미지로 LoRA를 파인튜닝해, 돌과 봉합의 조형 언어를 10점의 생성 이미지로 확장했습니다.</p>
+</div>
+<dl class="solo6-facts">
+<div><dt>기간</dt><dd>2026.06.24—07.10</dd></div>
+<div><dt>장소</dt><dd>하북미술대학 미술관, 중국</dd></div>
+<div><dt>구성</dt><dd>A0 이미지 10점</dd></div>
+</dl>
+<a class="solo6-record" href="https://blog.naver.com/mr_media_lab/224340562944" target="_blank" rel="noopener noreferrer">전시 기록 <span aria-hidden="true">↗</span></a>
+<div class="solo6-thumbs">
+<div class="solo6-thumbs-label"><span>작품 선택</span><span>01—10</span></div>
+<div class="solo6-tabs" role="tablist" aria-label="Healing feat. AI 작품 선택">
+<button class="solo6-tab" type="button" role="tab" aria-selected="true" aria-label="01 치유하다 자화상" data-src="images/works/solo6_01.webp" data-title="치유하다_자화상" data-meta="Healing feat. AI · 01" data-alt="여러 색의 봉합선이 얼굴을 가로지르는 곰 형상의 작품" data-description="작가 자신을 투사한 곰 자화상입니다. 눈 없는 얼굴과 긴 봉합선은 스스로를 마주하기를 미루는 시선을 드러냅니다."><img loading="lazy" src="images/works/solo6_01.webp" alt=""/><span>01</span></button>
+<button class="solo6-tab" type="button" role="tab" aria-selected="false" aria-label="02 치유하다 연인" data-src="images/works/solo6_02.webp" data-title="치유하다_연인" data-meta="Healing feat. AI · 02" data-alt="서로 다른 빛깔의 돌을 기워 세운 눈 없는 토끼 형상의 작품" data-description="서로 다른 빛깔의 돌을 기워 세운 토끼입니다. 비워 둔 눈과 덧댄 자국이 관계의 시간을 보여줍니다."><img loading="lazy" src="images/works/solo6_02.webp" alt=""/><span>02</span></button>
+<button class="solo6-tab" type="button" role="tab" aria-selected="false" aria-label="03 치유하다 잠" data-src="images/works/solo6_03.webp" data-title="치유하다_잠" data-meta="Healing feat. AI · 03" data-alt="바닥에 몸을 기대고 잠든 곰 형상의 작품" data-description="모로 누운 곰의 가슴에 하트 모양의 덧댐과 붉은 봉합선이 남아 있습니다. 잠은 회복의 시간이자 세상으로부터 잠시 시선을 거두는 일입니다."><img loading="lazy" src="images/works/solo6_03.webp" alt=""/><span>03</span></button>
+<button class="solo6-tab" type="button" role="tab" aria-selected="false" aria-label="04 치유하다 인사" data-src="images/works/solo6_04.webp" data-title="치유하다_인사" data-meta="Healing feat. AI · 04" data-alt="몸을 한쪽으로 기울여 인사하는 눈 없는 염소 형상의 작품" data-description="몸을 기울인 염소의 자세는 무게에 눌린 모습이자 고개 숙인 인사처럼 읽힙니다."><img loading="lazy" src="images/works/solo6_04.webp" alt=""/><span>04</span></button>
+<button class="solo6-tab" type="button" role="tab" aria-selected="false" aria-label="05 치유하다 머나먼 길" data-src="images/works/solo6_05.webp" data-title="치유하다_머나먼 길" data-meta="Healing feat. AI · 05" data-alt="서로 다른 색의 돌로 이어진 말 형상의 작품" data-description="회색·베이지·붉은 빛의 돌을 이어 세운 말입니다. 붉게 기운 다리로 하중을 견디는 모습이 긴 여정을 떠올리게 합니다."><img loading="lazy" src="images/works/solo6_05.webp" alt=""/><span>05</span></button>
+<button class="solo6-tab" type="button" role="tab" aria-selected="false" aria-label="06 치유하다 고민" data-src="images/works/solo6_06.webp" data-title="치유하다_고민" data-meta="Healing feat. AI · 06" data-alt="앞발에 얼굴을 괴고 웅크린 개구리 형상의 작품" data-description="앞발에 얼굴을 괴고 웅크린 개구리의 자세가 풀리지 않는 고민의 시간을 형상화합니다."><img loading="lazy" src="images/works/solo6_06.webp" alt=""/><span>06</span></button>
+<button class="solo6-tab" type="button" role="tab" aria-selected="false" aria-label="07 치유하다 유년기" data-src="images/works/solo6_07.webp" data-title="치유하다_유년기" data-meta="Healing feat. AI · 07" data-alt="초록 리본을 맨 어린 곰 형상의 작품" data-description="검은 눈과 초록 리본을 단 어린 곰은 세상을 정면으로 바라봅니다. 푸른 봉합선은 유년기에 이미 새겨진 상처를 드러냅니다."><img loading="lazy" src="images/works/solo6_07.webp" alt=""/><span>07</span></button>
+<button class="solo6-tab" type="button" role="tab" aria-selected="false" aria-label="08 치유하다 상념" data-src="images/works/solo6_08.webp" data-title="치유하다_상념" data-meta="Healing feat. AI · 08" data-alt="금빛 띠를 두르고 옆을 바라보는 원숭이 형상의 작품" data-description="털의 결을 새긴 원숭이가 금빛 띠를 두르고 옆으로 앉아 있습니다. 정면을 비껴간 자세는 깊은 상념의 시간을 떠올리게 합니다."><img loading="lazy" src="images/works/solo6_08.webp" alt=""/><span>08</span></button>
+<button class="solo6-tab" type="button" role="tab" aria-selected="false" aria-label="09 치유하다 전하지 못한 편지" data-src="images/works/solo6_09.webp" data-title="치유하다_전하지 못한 편지" data-meta="Healing feat. AI · 09" data-alt="가슴의 갈라진 부분을 색실로 봉합한 새 형상의 작품" data-description="소식을 나르는 새의 갈라진 가슴을 빨강·파랑 실로 봉합했습니다. 이어 붙인 가슴은 끝내 전하지 못한 말을 품은 듯합니다."><img loading="lazy" src="images/works/solo6_09.webp" alt=""/><span>09</span></button>
+<button class="solo6-tab" type="button" role="tab" aria-selected="false" aria-label="10 치유하다 미래" data-src="images/works/solo6_10.webp" data-title="치유하다_미래" data-meta="Healing feat. AI · 10" data-alt="머리부터 몸까지 무지개빛 실로 봉합한 눈 없는 곰 형상의 작품" data-description="머리부터 몸까지 이어진 무지개빛 봉합선이 분리와 회복을 한 몸에 둡니다. 여러 빛깔의 실은 아직 오지 않은 열린 미래를 가리킵니다."><img loading="lazy" src="images/works/solo6_10.webp" alt=""/><span>10</span></button>
+</div>
+</div>
+</div>
+<figure class="solo6-viewer">
+<div class="solo6-viewer-image"><img id="solo6-main-image" loading="lazy" src="images/works/solo6_01.webp" alt="여러 색의 봉합선이 얼굴을 가로지르는 곰 형상의 작품"/></div>
+<figcaption class="solo6-caption">
+<div><span id="solo6-main-meta">Healing feat. AI · 01</span><strong id="solo6-main-title">치유하다_자화상</strong></div>
+<p id="solo6-main-description">작가 자신을 투사한 곰 자화상입니다. 눈 없는 얼굴과 긴 봉합선은 스스로를 마주하기를 미루는 시선을 드러냅니다.</p>
+</figcaption>
+</figure>
 </div>
 </section>
 <!-- Selected Works (Gallery) -->
@@ -695,83 +894,98 @@
 </div>
 </div>
 </section>
-<!-- Exhibition History -->
-<section id="exhibitions" class="exhibitions-section snap-section h-screen bg-surface-container-low px-[15%] flex flex-col justify-center">
-<h2 class="text-[10px] tracking-[0.4em] font-semibold text-primary mb-10 uppercase border-b border-black/5 pb-4 inline-block">SELECTED EXHIBITIONS</h2>
-<div class="space-y-8 max-w-4xl">
-<div class="flex gap-12 md:gap-24 items-baseline group">
-<span class="text-[11px] font-medium tracking-widest text-on-surface-variant w-16">2026</span>
+<!-- Recent Exhibitions -->
+<section id="exhibitions" class="exhibitions-section snap-section h-screen">
+<div class="exhibitions-shell">
+<header class="exhibitions-head">
 <div>
-<h4 class="font-headline text-2xl italic font-light group-hover:translate-x-4 transition-transform duration-500">치유하다 — 제6회 개인전</h4>
-<p class="text-[10px] tracking-widest text-on-surface-variant uppercase mt-1">하북미술대학교 갤러리, 중국</p>
+<span class="exhibitions-kicker">RECENT EXHIBITIONS · 2024—2026</span>
+<h2>Recent <em>Exhibitions</em></h2>
+</div>
+<p class="exhibitions-intro">돌과 공존의 서사가 AI 영상, 실시간 생성, 인터랙티브 미디어로 확장된 최근 장면들입니다.</p>
+</header>
+<div class="exhibitions-stage">
+<article class="exhibition-feature exhibition-feature--lead">
+<a class="exhibition-feature-link" href="https://blog.naver.com/mr_media_lab/224191962769" target="_blank" rel="noopener noreferrer" aria-label="Hyper X Flow 전시 기록 보기">
+<div class="exhibition-media">
+<img loading="lazy" decoding="async" width="1920" height="1080" src="images/exhibitions/impermanence.webp" alt="DeepSDF와 파티클로 생성된 박성하의 인터랙티브 미디어 작품 Impermanence"/>
+</div>
+<div class="exhibition-caption">
+<span class="exhibition-meta">2026 · GROUP SHOW<br/>02.23—03.31</span>
+<div><h3>Hyper X Flow</h3><p>〈Impermanence〉 · 홍익대학교 AI 뮤지엄</p></div>
+<span class="exhibition-open">기록 보기 ↗</span>
+</div>
+</a>
+</article>
+<div class="exhibition-pair">
+<article class="exhibition-feature">
+<a class="exhibition-feature-link" href="https://www.hongik.ac.kr/kr/newscenter/news.do?articleNo=133294&amp;mode=view" target="_blank" rel="noopener noreferrer" aria-label="HYPER MORPH 전시 안내 보기">
+<div class="exhibition-media">
+<img loading="lazy" decoding="async" width="1920" height="1080" src="images/exhibitions/hyper-morph.webp" alt="박성하의 AI 영상 치유하다 공존에서 지의류가 덮인 돌이 변화하는 장면"/>
+<span class="exhibition-media-tag">VIDEO · 02:00</span>
+</div>
+<div class="exhibition-caption">
+<span class="exhibition-meta">2025 · GROUP SHOW<br/>02.24—03.31</span>
+<h3>Hyper Morph</h3>
+<p>〈치유하다_공존〉 · AI 영상, 2분 · 홍익대학교 AI 뮤지엄</p>
+</div>
+</a>
+</article>
+<article class="exhibition-feature">
+<div class="exhibition-feature-link">
+<div class="exhibition-media">
+<img loading="lazy" decoding="async" width="966" height="543" src="images/exhibitions/blue-moon-exhibition.webp" alt="캐나다 OCAD University Blue Moon 전시장에서 박성하의 Floating Heritage 배너가 설치된 장면"/>
+</div>
+<div class="exhibition-caption">
+<span class="exhibition-meta">2025 · GROUP SHOW</span>
+<h3>Blue Moon</h3>
+<p>Interactive VR · OCAD University, Toronto</p>
 </div>
 </div>
-<div class="flex gap-12 md:gap-24 items-baseline group">
-<span class="text-[11px] font-medium tracking-widest text-on-surface-variant w-16">2026</span>
-<div>
-<h4 class="font-headline text-2xl italic font-light group-hover:translate-x-4 transition-transform duration-500">제3회 행간애 — Hyper X Flow</h4>
-<p class="text-[10px] tracking-widest text-on-surface-variant uppercase mt-1">홍익대학교 AI 뮤지엄, 서울</p>
+</article>
 </div>
 </div>
-<div class="flex gap-12 md:gap-24 items-baseline group">
-<span class="text-[11px] font-medium tracking-widest text-on-surface-variant w-16">2025</span>
-<div>
-<h4 class="font-headline text-2xl italic font-light group-hover:translate-x-4 transition-transform duration-500">치유하다: 공존 — 제5회 개인전</h4>
-<p class="text-[10px] tracking-widest text-on-surface-variant uppercase mt-1">닝보대학교 갤러리, 중국</p>
+<div class="exhibitions-archive" aria-label="그 밖의 최근 전시">
+<span class="exhibitions-archive-label">Recent record</span>
+<div class="exhibitions-record">
+<time datetime="2025-02-21">2025.02</time>
+<a href="work-detail.html?id=symbiosis-01"><strong>치유하다: 공존 ↗</strong><span>제5회 개인전 · 닝보대학교 칭이탕 전시관</span></a>
 </div>
+<div class="exhibitions-record">
+<time datetime="2024">2024</time>
+<a href="https://www.youtube.com/watch?v=rVaKPiJnExc" target="_blank" rel="noopener noreferrer"><strong>초월의 연결 ↗</strong><span>백남준아트센터 · 경기</span></a>
 </div>
-<div class="flex gap-12 md:gap-24 items-baseline group">
-<span class="text-[11px] font-medium tracking-widest text-on-surface-variant w-16">2025</span>
-<div>
-<h4 class="font-headline text-2xl italic font-light group-hover:translate-x-4 transition-transform duration-500">Blue Moon — Interactive VR</h4>
-<p class="text-[10px] tracking-widest text-on-surface-variant uppercase mt-1">OCAD University, 토론토, 캐나다</p>
-</div>
-</div>
-<div class="flex gap-12 md:gap-24 items-baseline group">
-<span class="text-[11px] font-medium tracking-widest text-on-surface-variant w-16">2025</span>
-<div>
-<h4 class="font-headline text-2xl italic font-light group-hover:translate-x-4 transition-transform duration-500">Hyper Morph</h4>
-<p class="text-[10px] tracking-widest text-on-surface-variant uppercase mt-1">홍익대학교 AI 뮤지엄, 서울</p>
-</div>
-</div>
-<div class="flex gap-12 md:gap-24 items-baseline group">
-<span class="text-[11px] font-medium tracking-widest text-on-surface-variant w-16">2024</span>
-<div>
-<h4 class="font-headline text-2xl italic font-light group-hover:translate-x-4 transition-transform duration-500">초월의 연결</h4>
-<p class="text-[10px] tracking-widest text-on-surface-variant uppercase mt-1">백남준아트센터, 경기</p>
-</div>
+<a class="exhibitions-cv" href="cv.html#exhibitions">전체 이력 ↗</a>
 </div>
 </div>
 </section>
-<!-- Research / Paper Archive -->
-<section id="research-ai-sculpture" class="snap-section min-h-screen bg-[#F6F5F2] px-[15%] py-28 flex flex-col justify-center">
-  <div class="max-w-5xl">
-    <h2 class="text-[10px] tracking-[0.4em] font-semibold text-primary mb-10 uppercase border-b border-black/5 pb-4 inline-block">RESEARCH ARCHIVE</h2>
-    <div class="grid grid-cols-1 md:grid-cols-12 gap-10 items-start">
-      <div class="md:col-span-5">
-        <p class="text-[11px] tracking-[0.25em] uppercase text-on-surface-variant/60 mb-5">KCI Paper · AI Sculpture</p>
-        <h3 class="font-headline text-4xl md:text-5xl font-light leading-tight tracking-[-0.03em] text-primary mb-6">인공지능 활용 입체조형작품의 유형 및 표현 특성 연구</h3>
-        <p class="font-body text-sm leading-7 text-on-surface-variant/70">논문 전문, 발표용 PPT, PDF 원문, 그리고 인공지능 활용 입체조형작품 사례 아카이브를 함께 공개하는 연구형 웹 뷰어입니다. 수록 이후에도 사례를 지속적으로 보강하며 살아있는 아카이브로 확장합니다.</p>
-      </div>
-      <div class="md:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <a href="research/ai-sculpture/index.html" class="group block bg-white border border-black/10 p-7 min-h-[180px] no-underline hover:border-black/40 transition-colors">
-          <span class="block text-[10px] tracking-[0.25em] uppercase text-on-surface-variant/50 mb-10">Viewer</span>
-          <strong class="block font-headline text-2xl font-light text-primary mb-3 group-hover:translate-x-1 transition-transform">논문뷰어</strong>
-          <span class="block text-xs leading-6 text-on-surface-variant/65">논문 전체와 좌측 목차, PPT, PDF, 사례 아카이브 통합 보기</span>
-        </a>
-        <a href="research/ai-sculpture/presentation.html" class="group block bg-white border border-black/10 p-7 min-h-[180px] no-underline hover:border-black/40 transition-colors">
-          <span class="block text-[10px] tracking-[0.25em] uppercase text-on-surface-variant/50 mb-10">Deck</span>
-          <strong class="block font-headline text-2xl font-light text-primary mb-3 group-hover:translate-x-1 transition-transform">논문 PPT</strong>
-          <span class="block text-xs leading-6 text-on-surface-variant/65">21장 흑백 미니멀 발표덱 단독 열기</span>
-        </a>
-        <a href="research/ai-sculpture/paper.pdf" target="_blank" rel="noopener noreferrer" class="group block bg-white border border-black/10 p-7 min-h-[180px] no-underline hover:border-black/40 transition-colors">
-          <span class="block text-[10px] tracking-[0.25em] uppercase text-on-surface-variant/50 mb-10">PDF</span>
-          <strong class="block font-headline text-2xl font-light text-primary mb-3 group-hover:translate-x-1 transition-transform">PDF 원문</strong>
-          <span class="block text-xs leading-6 text-on-surface-variant/65">학회 제출본 형식의 원문 PDF 확인</span>
-        </a>
-      </div>
-    </div>
-  </div>
+<!-- Research Archive -->
+<section id="research-ai-sculpture" class="research-section snap-section h-screen bg-black">
+<div class="research-inner">
+<span class="research-label">RESEARCH ARCHIVE · 2025—2026</span>
+<div class="research-heading">
+<h2>Research</h2>
+<p>입체조형과 실감미디어 전시에서 시작한 연구를 인공지능 기반 조형 표현의 유형과 특성으로 확장하고 있습니다.</p>
+</div>
+<div class="research-list">
+<article class="research-item">
+<div class="research-meta">2026<br/>KCI Journal</div>
+<div><h3>인공지능 활용 입체조형작품의 유형 및 표현 특성 연구</h3><p>한국공간디자인학회 논문집 21(4), 485–492 · 박성하·한정엽</p></div>
+<a class="research-link" href="research/ai-sculpture/index.html">논문 아카이브</a>
+</article>
+<article class="research-item">
+<div class="research-meta">2025.11<br/>Conference</div>
+<div><h3>A Case Study on Visual Art Exhibitions Utilizing Artificial Intelligence Technology</h3><p>KISD Fall International Conference · DDP · Park SeongHa, Han JungYeob</p></div>
+<a class="research-link" href="https://www.kisd.or.kr/sub/sub0304_next_view.php?cate_idx=21&amp;idx=944" target="_blank" rel="noopener noreferrer">학회 기록 ↗</a>
+</article>
+<article class="research-item">
+<div class="research-meta">2025.02<br/>Conference</div>
+<div><h3>A Case Study on 3D Art Exhibition Using Immersive Media</h3><p>KISD Ningbo International Conference · Excellent Paper Award · Park SeongHa, Jungyeob Han</p></div>
+<a class="research-link" href="https://www.kisd.or.kr/sub/sub0304_next_view.php?cate_idx=19&amp;idx=847" target="_blank" rel="noopener noreferrer">학회 기록 ↗</a>
+</article>
+</div>
+<div class="research-footer"><a href="cv.html#research">전체 연구·수상 이력 보기 <span aria-hidden="true">↗</span></a></div>
+</div>
 </section>
 <!-- Contact / Footer Section -->
 <section id="contact" class="contact-section snap-section h-screen bg-surface flex flex-col items-center justify-center text-center px-[15%] relative">
@@ -855,6 +1069,26 @@ menuClose.addEventListener('click', closeMenu);
 mobileMenu.querySelectorAll('a').forEach(link => {
   link.addEventListener('click', closeMenu);
 });
+
+// ── Sixth solo exhibition viewer ─────────────────────────
+const solo6Tabs = Array.from(document.querySelectorAll('.solo6-tab'));
+const solo6Image = document.getElementById('solo6-main-image');
+const solo6Meta = document.getElementById('solo6-main-meta');
+const solo6Title = document.getElementById('solo6-main-title');
+const solo6Description = document.getElementById('solo6-main-description');
+
+function selectSolo6Work(tab) {
+  solo6Tabs.forEach(item => item.setAttribute('aria-selected', item === tab ? 'true' : 'false'));
+  solo6Image.style.opacity = '0';
+  solo6Image.src = tab.dataset.src;
+  solo6Image.alt = tab.dataset.alt;
+  solo6Meta.textContent = tab.dataset.meta;
+  solo6Title.textContent = tab.dataset.title;
+  solo6Description.textContent = tab.dataset.description;
+  requestAnimationFrame(() => { solo6Image.style.opacity = '1'; });
+}
+
+solo6Tabs.forEach(tab => tab.addEventListener('click', () => selectSolo6Work(tab)));
 </script>
 <!-- Lightbox -->
 <div class="lightbox-overlay" id="lightbox">
