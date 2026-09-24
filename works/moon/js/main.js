@@ -167,6 +167,9 @@ function solidTex(rgba, internal = gl.RGBA8, format = gl.RGBA, type = gl.UNSIGNE
 function loadImage(url) {
   return new Promise((res, rej) => {
     const img = new Image();
+    // CORS request, so textures still load when a host redirects assets to another
+    // origin (preview CDNs do); same-origin loads are unaffected
+    img.crossOrigin = 'anonymous';
     img.decoding = 'async';
     img.onload = () => (img.decode ? img.decode().catch(() => {}).then(() => res(img)) : res(img));
     img.onerror = () => rej(new Error('failed: ' + url));
