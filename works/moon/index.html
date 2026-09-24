@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Moon | 박성하</title>
+<meta name="description" content="Moon — 3면 CAVE용 실시간 미디어아트. 지리산 천왕봉의 여름밤, 개기월식, 운해. NASA LRO 달 데이터. 박성하, 2026.">
+<meta property="og:title" content="Moon — 박성하">
+<meta property="og:description" content="3면 CAVE용 실시간 미디어아트 · 지리산 천왕봉 · NASA LRO 데이터">
+<meta name="theme-color" content="#000000">
+<style>
+  :root { color-scheme: dark; --ink: #d9dde4; --dim: #8a919c; --line: rgba(255,255,255,.1); }
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  body { font: 13px/1.6 "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif; color: var(--ink); }
+  #c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; background: #000; touch-action: none; }
+  body.idle, body.idle #c { cursor: none; }
+  [hidden] { display: none !important; }
+
+  /* title card */
+  #overlay { position: fixed; inset: 0; display: grid; place-items: center; z-index: 20;
+    background: radial-gradient(ellipse at 50% 60%, rgba(0,0,0,.35), rgba(0,0,0,.82) 70%);
+    transition: opacity 1.4s ease; }
+  #overlay.gone { opacity: 0; pointer-events: none; }
+  .card { max-width: 560px; padding: 32px 28px; text-align: center; }
+  .card h1 { margin: 0 0 18px; font: 300 40px/1.2 "Pretendard", "Helvetica Neue", Arial, sans-serif; letter-spacing: .42em; text-indent: .42em; }
+  .card p { margin: 0 0 12px; color: #b9bec7; font-size: 14px; line-height: 1.9; word-break: keep-all; }
+  .card .meta { color: var(--dim); font-size: 12px; margin-top: 18px; }
+  .btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 26px; }
+  .btns button, .btns a { font: inherit; color: var(--ink); background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.18);
+    padding: 10px 18px; border-radius: 999px; cursor: pointer; text-decoration: none; }
+  .btns button.primary { background: rgba(255,255,255,.9); color: #000; border-color: transparent; font-weight: 600; }
+  .btns button:hover, .btns a:hover { border-color: rgba(255,255,255,.5); }
+
+  /* wall labels in the triptych preview */
+  #labels .wall-label { position: fixed; text-align: center; color: #5f6671; font-size: 11px; letter-spacing: .18em; pointer-events: none; }
+  body.clean #labels, body.titled #labels, body[data-mode="span"] #labels, body[data-mode="wall"] #labels { display: none; }
+  body.titled #hud { opacity: 0 !important; }
+
+  /* HUD */
+  #hud { position: fixed; left: 22px; bottom: 18px; z-index: 5; pointer-events: none; opacity: 0; transition: opacity 2s; }
+  #hud.show, body:not(.idle) #hud { opacity: .85; }
+  #hud-scene { font: 400 15px/1.3 "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; letter-spacing: .08em; }
+  #hud-scene-en { color: var(--dim); font-size: 11px; letter-spacing: .2em; text-transform: uppercase; }
+  #hud-time { color: #5f6671; font-size: 11px; font-variant-numeric: tabular-nums; margin-top: 2px; }
+  body.clean #hud, body[data-mode="span"] #hud, body[data-mode="wall"] #hud { display: none; }
+
+  #gear { position: fixed; right: 16px; bottom: 14px; z-index: 6; width: 34px; height: 34px; border-radius: 50%;
+    background: rgba(20,22,26,.6); border: 1px solid var(--line); color: var(--dim); cursor: pointer; font-size: 16px; transition: opacity .6s; }
+  body.idle #gear, body.clean #gear { opacity: 0; pointer-events: none; }
+
+  /* loading */
+  #loading { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); z-index: 8; width: min(320px, 70vw); text-align: center;
+    color: var(--dim); font-size: 11px; letter-spacing: .06em; transition: opacity 1.5s; }
+  #loading.done { opacity: 0; pointer-events: none; }
+  body.clean #loading:not(.error) { display: none; }
+  #loading .track { height: 1px; background: rgba(255,255,255,.12); margin-bottom: 8px; overflow: hidden; }
+  #loading-bar { height: 100%; width: 0; background: rgba(255,255,255,.6); transition: width .6s; }
+  #loading.error { color: #f0a0a0; bottom: 45%; }
+
+  /* operator panel */
+  #panel { position: fixed; top: 12px; right: 12px; bottom: 12px; width: 300px; overflow-y: auto; z-index: 30; padding: 14px 14px 18px;
+    background: rgba(12,13,16,.9); backdrop-filter: blur(12px); border: 1px solid var(--line); border-radius: 12px; }
+  #panel h2 { margin: 0 0 8px; font-size: 13px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+  #panel h3 { margin: 14px 0 6px; font-size: 10.5px; letter-spacing: .12em; color: var(--dim); font-weight: 600; border-top: 1px solid var(--line); padding-top: 10px; }
+  #panel .row { display: flex; align-items: center; gap: 8px; margin: 5px 0; }
+  #panel .row label { flex: 1; color: #aab0ba; font-size: 12px; }
+  #panel input[type=number] { width: 70px; }
+  #panel input, #panel select { background: #1c1f25; color: var(--ink); border: 1px solid rgba(255,255,255,.12); border-radius: 6px; padding: 3px 6px; font: inherit; font-size: 12px; }
+  #panel input[type=range] { flex: 0 0 120px; padding: 0; }
+  #panel button { font: inherit; font-size: 12px; background: #22262d; color: var(--ink); border: 1px solid rgba(255,255,255,.12); border-radius: 6px; padding: 4px 8px; cursor: pointer; }
+  #panel button:hover { background: #2c313a; }
+  #p-scenes { display: flex; flex-wrap: wrap; gap: 5px; }
+  #pf { color: var(--dim); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .hint { color: #6d7480; font-size: 11px; line-height: 1.6; margin: 6px 0 0; word-break: keep-all; }
+  kbd { background: #22262d; border: 1px solid rgba(255,255,255,.12); border-radius: 4px; padding: 0 4px; font-size: 10.5px; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="labels"></div>
+
+<div id="overlay">
+  <div class="card">
+    <h1>MOON</h1>
+    <p class="meta">3면 CAVE용 실시간 미디어아트 · 15분 45초 반복<br>
+       지리산 천왕봉 · NASA LRO 달 데이터 · 박성하, 2026</p>
+    <div class="btns">
+      <button id="btn-start" class="primary">감상하기</button>
+      <button id="btn-single">한 화면으로 보기</button>
+      <button id="btn-preview">3면 펼침 보기</button>
+    </div>
+  </div>
+</div>
+
+<div id="hud"><div id="hud-scene"></div><div id="hud-scene-en"></div><div id="hud-time"></div></div>
+<button id="gear" title="운영 패널 (P)">⚙</button>
+<div id="loading"><div class="track"><div id="loading-bar"></div></div><div id="loading-msg">준비 중…</div></div>
+
+<div id="panel" hidden>
+  <h2>운영 패널 <button id="p-close">닫기</button></h2>
+  <div id="pf"></div>
+  <h3>타임라인</h3>
+  <div id="p-scenes"></div>
+  <div class="row"><input id="p-time" type="range" min="0" max="750" step="0.1" style="flex:1"><span id="p-time-v" style="width:44px;text-align:right"></span></div>
+  <div class="row"><button id="p-play">재생/일시정지</button>
+    <label>속도</label><select id="p-speed"><option value="0.5">×0.5</option><option value="1">×1</option><option value="2">×2</option><option value="4">×4</option><option value="8">×8</option><option value="16">×16</option></select></div>
+  <h3>출력</h3>
+  <div class="row"><label>모드</label><select id="p-mode">
+    <option value="preview">3면 펼침 미리보기</option><option value="span">CAVE 3면 (한 창)</option>
+    <option value="wall">벽 1면 (창별)</option><option value="single">일반 화면</option></select></div>
+  <div class="row"><label>벽 순서 (화면 왼쪽→오른쪽)</label><select id="p-order">
+    <option value="left,front,right">좌 · 정면 · 우</option><option value="right,front,left">우 · 정면 · 좌</option>
+    <option value="front,left,right">정면 · 좌 · 우</option><option value="left,right,front">좌 · 우 · 정면</option></select></div>
+  <div class="row"><button id="p-open-walls">벽별 창 3개 열기</button></div>
+  <div class="row"><label>품질</label><select id="p-quality"><option value="auto">자동</option><option value="high">높음 (8K)</option><option value="med">중간</option><option value="low">낮음</option></select></div>
+  <div class="row"><label>보정 격자 <kbd>G</kbd></label><input id="p-grid" type="checkbox"></div>
+  <h3>공간 치수 (m)</h3>
+  <div class="row"><label>정면 벽 너비</label><input id="r-width" type="number" step="0.1"></div>
+  <div class="row"><label>측면 벽 길이</label><input id="r-depth" type="number" step="0.1"></div>
+  <div class="row"><label>투사 높이</label><input id="r-height" type="number" step="0.05"></div>
+  <div class="row"><label>투사 하단 높이</label><input id="r-bottom" type="number" step="0.05"></div>
+  <div class="row"><label>관객 눈높이</label><input id="r-eye" type="number" step="0.05"></div>
+  <div class="row"><label>관객 위치 좌우</label><input id="r-vx" type="number" step="0.1"></div>
+  <div class="row"><label>관객 위치 앞뒤</label><input id="r-vz" type="number" step="0.1"></div>
+  <p class="hint">스윗스팟(관객 기준점)에서 보정 격자의 선이 모서리를 지나도 꺾이지 않으면 치수가 맞은 것입니다.</p>
+  <h3>프로젝터 밝기 맞춤</h3>
+  <div class="row"><label>좌 밝기</label><input id="g-left-gain" type="range" min="0.5" max="1.5" step="0.01"></div>
+  <div class="row"><label>좌 감마</label><input id="g-left-gamma" type="range" min="0.7" max="1.4" step="0.01"></div>
+  <div class="row"><label>좌 블랙</label><input id="g-left-lift" type="range" min="0" max="0.06" step="0.001"></div>
+  <div class="row"><label>정면 밝기</label><input id="g-front-gain" type="range" min="0.5" max="1.5" step="0.01"></div>
+  <div class="row"><label>정면 감마</label><input id="g-front-gamma" type="range" min="0.7" max="1.4" step="0.01"></div>
+  <div class="row"><label>정면 블랙</label><input id="g-front-lift" type="range" min="0" max="0.06" step="0.001"></div>
+  <div class="row"><label>우 밝기</label><input id="g-right-gain" type="range" min="0.5" max="1.5" step="0.01"></div>
+  <div class="row"><label>우 감마</label><input id="g-right-gamma" type="range" min="0.7" max="1.4" step="0.01"></div>
+  <div class="row"><label>우 블랙</label><input id="g-right-lift" type="range" min="0" max="0.06" step="0.001"></div>
+  <h3>단축키</h3>
+  <p class="hint"><kbd>Space</kbd> 일시정지 · <kbd>←</kbd><kbd>→</kbd> 10초 이동 · <kbd>1</kbd>–<kbd>7</kbd> 장면 · <kbd>[</kbd><kbd>]</kbd> 속도 · <kbd>F</kbd> 전체화면 · <kbd>G</kbd> 격자 · <kbd>H</kbd> 화면 정리 · <kbd>P</kbd> 패널</p>
+  <p class="hint">설정은 이 컴퓨터 브라우저에 저장됩니다. CAVE 모드는 고정 기준 시각으로 장면을 정하므로 창·PC가 여러 대여도 같은 장면을 보여줍니다.</p>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
