@@ -1,7 +1,10 @@
 // Moon — real-time moon for a three-wall CAVE.
 import { FULLSCREEN_VS, mainFS, STAR_VS, STAR_FS, COMPOSITE_FS } from './shaders.js';
-import { LOOP, SCENES, stateAt, sceneAt } from './timeline.js';
-import { deriveUniforms, SITE_LAT } from './scene.js';
+import { TRANSMITTANCE_FS, MULTISCAT_FS, SKYVIEW_FS, TRANS_W, TRANS_H, MS_N } from './atmo.js';
+import { NOISE3D_FS, WEATHER_FS, CLOUDSHADOW_FS, SH_N, cloudsFS } from './clouds.js';
+import { terrainCacheFS } from './terrain.js';
+import { LOOP, SCENES, stateAt, sceneAt, EYE_ALT, CAM_EN } from './timeline.js';
+import { deriveUniforms, SITE_LAT, setMS, warmAtmosphere } from './scene.js';
 import { DEFAULT_ROOM, buildLayout } from './cave.js';
 import { initUI } from './ui.js';
 
@@ -141,14 +144,14 @@ function setU(prog, name, v) {
   const l = prog.loc[name];
   if (l == null) return;
   if (typeof v === 'number') gl.uniform1f(l, v);
-  else if (v instanceof Float32Array && v.length === 9) gl.uniformMatrix3fv(l, false, v);
+  else if (v.length === 9) gl.uniformMatrix3fv(l, false, v);
   else if (v.length === 2) gl.uniform2fv(l, v);
   else if (v.length === 3) gl.uniform3fv(l, v);
   else if (v.length === 4) gl.uniform4fv(l, v);
 }
 function setI(prog, name, v) { const l = prog.loc[name]; if (l != null) gl.uniform1i(l, v); }
 
-let progMain, progStar, progComp;
+let progMain, progStar, progComp, progTrans, progMS, progSky, progNoise, progWeather, progCache, progClouds, progCSh;
 const emptyVAO = gl && gl.createVertexArray();
 
 // ------------------------------------------------------------------ textures
@@ -171,6 +174,12 @@ function loadImage(url) {
   });
 }
 function mipLevels(w, h) { return Math.floor(Math.log2(Math.max(w, h))) + 1; }
+function texParams(target, min, wrapS, wrapT) {
+  gl.texParameteri(target, gl.TEXTURE_MIN_FILTER, min);
+  gl.texParameteri(target, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(target, gl.TEXTURE_WRAP_S, wrapS);
+  gl.texParameteri(target, gl.TEXTURE_WRAP_T, wrapT);
+}
 function colorTexture(img, { srgb = true, wrapS = gl.REPEAT, aniso = 8 } = {}) {
   const t = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, t);
@@ -179,17 +188,14 @@ function colorTexture(img, { srgb = true, wrapS = gl.REPEAT, aniso = 8 } = {}) {
   gl.texStorage2D(gl.TEXTURE_2D, mipLevels(img.width, img.height), srgb ? gl.SRGB8_ALPHA8 : gl.RGBA8, img.width, img.height);
   gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, img);
   gl.generateMipmap(gl.TEXTURE_2D);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrapS);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  texParams(gl.TEXTURE_2D, gl.LINEAR_MIPMAP_LINEAR, wrapS, gl.CLAMP_TO_EDGE);
   if (extAniso) gl.texParameterf(gl.TEXTURE_2D, extAniso.TEXTURE_MAX_ANISOTROPY_EXT, Math.min(aniso, gl.getParameter(extAniso.MAX_TEXTURE_MAX_ANISOTROPY_EXT)));
   return t;
 }
 // 16-bit heights are packed as (hi, lo) bytes in R,G of a lossless WebP.
 // Decode on the GPU side (exact bytes via readPixels), then upload as R16F
 // with box-filtered mips built here, since hardware mips of split bytes are wrong.
-async function heightTexture(url, wrapS) {
+async function heightTexture(url, wrapS, decode = (v) => v * 2 - 10000) {
   const img = await loadImage(url);
   const w = img.width, h = img.height;
   const tmp = gl.createTexture();
@@ -207,7 +213,7 @@ async function heightTexture(url, wrapS) {
   gl.deleteFramebuffer(fb);
   gl.deleteTexture(tmp);
   let cur = new Float32Array(w * h);
-  for (let i = 0, j = 0; i < cur.length; i++, j += 4) cur[i] = (px[j] * 256 + px[j + 1]) * 2 - 10000;
+  for (let i = 0, j = 0; i < cur.length; i++, j += 4) cur[i] = decode(px[j] * 256 + px[j + 1]);
   const t = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, t);
   const levels = mipLevels(w, h);
@@ -227,29 +233,84 @@ async function heightTexture(url, wrapS) {
     }
     cur = nx; lw = nw; lh = nh;
   }
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrapS);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  texParams(gl.TEXTURE_2D, gl.LINEAR_MIPMAP_LINEAR, wrapS, gl.CLAMP_TO_EDGE);
   return { tex: t, w, h };
+}
+
+// ------------------------------------------------------------------ generated data (GPU)
+function target2D(w, h, internal, levels = 1, min = gl.LINEAR, wrap = gl.CLAMP_TO_EDGE) {
+  const tex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texStorage2D(gl.TEXTURE_2D, levels, internal, w, h);
+  texParams(gl.TEXTURE_2D, min, wrap, wrap === gl.REPEAT ? gl.REPEAT : gl.CLAMP_TO_EDGE);
+  const fb = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  return { tex, fb, w, h };
+}
+function drawTo(t, prog, setup) {
+  gl.bindFramebuffer(gl.FRAMEBUFFER, t.fb);
+  gl.drawBuffers([gl.COLOR_ATTACHMENT0]);
+  gl.viewport(0, 0, t.w, t.h);
+  gl.disable(gl.SCISSOR_TEST);
+  gl.disable(gl.BLEND);
+  gl.useProgram(prog.p);
+  gl.bindVertexArray(emptyVAO);
+  setup && setup(prog);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+}
+function make3DNoise(size, kind) {
+  const tex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_3D, tex);
+  gl.texStorage3D(gl.TEXTURE_3D, mipLevels(size, size), gl.RGBA8, size, size, size);
+  gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+  gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  for (const w of [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T, gl.TEXTURE_WRAP_R]) gl.texParameteri(gl.TEXTURE_3D, w, gl.REPEAT);
+  const fb = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+  gl.drawBuffers([gl.COLOR_ATTACHMENT0]);
+  gl.viewport(0, 0, size, size);
+  gl.useProgram(progNoise.p);
+  gl.bindVertexArray(emptyVAO);
+  setU(progNoise, 'uSize', size);
+  setI(progNoise, 'uKind', kind);
+  for (let z = 0; z < size; z++) {
+    gl.framebufferTextureLayer(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, tex, 0, z);
+    setU(progNoise, 'uZ', (z + 0.5) / size);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.deleteFramebuffer(fb);
+  gl.bindTexture(gl.TEXTURE_3D, tex);
+  gl.generateMipmap(gl.TEXTURE_3D);
+  return tex;
 }
 
 const patches = {};
 let stars = null;
+let terrainMeta = null;
 
 async function loadAssets() {
   const q = pickQuality();
   const jobs = [];
   const step = (p) => p.then((v) => { status.loaded++; return v; });
-  status.total = 9;
-  status.msg = '달 표면 데이터를 불러오는 중…';
-  // fast first light
-  const [c2, h2] = await Promise.all([
+  status.total = 13;
+  status.msg = '달 표면과 지리산 지형 데이터를 불러오는 중…';
+  const terDecode = (v) => v * 0.0625;
+  const [c2, h2, tm, tn, tf, mw] = await Promise.all([
     step(loadImage(A + 'moon_color_2k.jpg')),
     step(heightTexture(A + 'moon_height_2k.webp', gl.REPEAT)),
+    fetch(A + 'terrain.json').then((r) => r.json()),
+    step(heightTexture(A + 'terrain_near.webp', gl.CLAMP_TO_EDGE, terDecode)),
+    step(heightTexture(A + 'terrain_far.webp', gl.CLAMP_TO_EDGE, terDecode)),
+    step(loadImage(A + 'milkyway_4k.jpg')),
   ]);
   T.color = colorTexture(c2);
   T.height = h2.tex; T.heightSize = [h2.w, h2.h];
+  T.terNear = tn.tex; T.terFar = tf.tex;
+  terrainMeta = tm;
+  T.mw = colorTexture(mw, { srgb: false, aniso: 4 });
   status.ready = true;
   jobs.push(step(fetch(A + 'stars_hyg_m65.f32').then((r) => r.arrayBuffer())).then((buf) => {
     const arr = new Float32Array(buf);
@@ -276,8 +337,7 @@ async function loadAssets() {
     patches.southpole = { type: 2, h: h.tex, bounds: [m.rho, 0, 0, 0], texel: (4 * m.rho) / m.w };
   }));
   await Promise.all(jobs);
-  // high resolution surface
-  status.msg = '고해상도 지형을 올리는 중…';
+  status.msg = '고해상도 달 표면을 올리는 중…';
   const hiColor = q.color === 8 ? 'moon_color_8k.webp' : q.color === 4 ? 'moon_color_4k.webp' : null;
   if (hiColor) {
     const img = await loadImage(A + hiColor);
@@ -296,9 +356,9 @@ function pickQuality() {
   let q = cfg.quality;
   if (q === 'auto') q = isMobile || maxTex < 8192 ? 'low' : 'high';
   const presets = {
-    high: { color: 8, height: 4, scale: 1.0, min: 0.5 },
-    med: { color: 4, height: 4, scale: 0.8, min: 0.45 },
-    low: { color: 4, height: 2, scale: 0.6, min: 0.35 },
+    high: { color: 8, height: 4, scale: 1.0, min: 0.5, cache: 1.0 },
+    med: { color: 4, height: 4, scale: 0.8, min: 0.45, cache: 0.8 },
+    low: { color: 4, height: 2, scale: 0.6, min: 0.35, cache: 0.6 },
   };
   const p = presets[q] || presets.high;
   if (maxTex < 8192 && p.color === 8) p.color = 4;
@@ -315,10 +375,7 @@ function makeTargets(w, h) {
   gl.bindTexture(gl.TEXTURE_2D, col);
   const levels = Math.min(8, mipLevels(w, h));
   gl.texStorage2D(gl.TEXTURE_2D, levels, extCBF ? gl.RGBA16F : gl.RGBA8, w, h);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  texParams(gl.TEXTURE_2D, gl.LINEAR_MIPMAP_LINEAR, gl.CLAMP_TO_EDGE, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAX_LEVEL, levels - 1);
   const aux = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, aux);
@@ -333,6 +390,75 @@ function makeTargets(w, h) {
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   if (ok !== gl.FRAMEBUFFER_COMPLETE) throw new Error('framebuffer incomplete: ' + ok);
   fbo = { fb, col, aux, w, h };
+  // half-resolution volumetric buffers (ping-pong for temporal accumulation)
+  if (vol) { for (const v of vol.t) { gl.deleteFramebuffer(v.fb); gl.deleteTexture(v.tex); } }
+  const vw = Math.max(4, Math.ceil(w / 2)), vh = Math.max(4, Math.ceil(h / 2));
+  vol = { t: [target2D(vw, vh, extCBF ? gl.RGBA16F : gl.RGBA8), target2D(vw, vh, extCBF ? gl.RGBA16F : gl.RGBA8)], i: 0, w: vw, h: vh, fresh: true };
+}
+let vol = null;
+
+// terrain cache: per-wall G-buffer at the layout's native resolution, filled in bands
+let cache = null;
+function makeCache() {
+  if (cache) { gl.deleteFramebuffer(cache.fb); gl.deleteTexture(cache.a); gl.deleteTexture(cache.b); }
+  const s = quality.cache;
+  const w = Math.max(8, Math.round(layout.srcW * s)), h = Math.max(8, Math.round(layout.srcH * s));
+  const a = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, a);
+  gl.texStorage2D(gl.TEXTURE_2D, 1, extCBF ? gl.RGBA16F : gl.RGBA8, w, h);
+  texParams(gl.TEXTURE_2D, gl.NEAREST, gl.CLAMP_TO_EDGE, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  const b = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, b);
+  gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA8, w, h);
+  texParams(gl.TEXTURE_2D, gl.LINEAR, gl.CLAMP_TO_EDGE, gl.CLAMP_TO_EDGE);
+  const fb = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, a, 0);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT1, gl.TEXTURE_2D, b, 0);
+  gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
+  gl.clearBufferfv(gl.COLOR, 0, [0, 1, 0, -1]);
+  gl.clearBufferfv(gl.COLOR, 1, [0, 0, 0, 0]);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  const rects = layout.views.map((v) => v.src.map((x) => Math.round(x * s)));
+  cache = { fb, a, b, w, h, rects, row: 0, done: false, scale: s };
+}
+function stepCache(S) {
+  if (!cache || cache.done || !terrainMeta || !T.terNear) return;
+  const band = params.has('band') ? parseInt(params.get('band'), 10) : 40;
+  gl.bindFramebuffer(gl.FRAMEBUFFER, cache.fb);
+  gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
+  gl.disable(gl.BLEND);
+  gl.useProgram(progCache.p);
+  gl.bindVertexArray(emptyVAO);
+  bindTerrain(progCache, 0);
+  setU(progCache, 'uCamAlt', S.camAltEye);
+  let maxH = 0;
+  layout.views.forEach((v, i) => {
+    const r = cache.rects[i];
+    maxH = Math.max(maxH, r[3]);
+    if (cache.row >= r[3]) return;
+    gl.viewport(r[0], r[1], r[2], r[3]);
+    gl.enable(gl.SCISSOR_TEST);
+    gl.scissor(r[0], r[1] + cache.row, r[2], Math.min(band, r[3] - cache.row));
+    setU(progCache, 'uView', r);
+    setU(progCache, 'uPA', v.geo.pa); setU(progCache, 'uDU', v.geo.du); setU(progCache, 'uDV', v.geo.dv);
+    setU(progCache, 'uBand', [cache.row, cache.row + band]);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  });
+  gl.disable(gl.SCISSOR_TEST);
+  cache.row += band;
+  if (cache.row >= maxH) cache.done = true;
+  status.cache = Math.min(1, cache.row / maxH);
+}
+function bindTerrain(P, unit0) {
+  gl.activeTexture(gl.TEXTURE0 + unit0); gl.bindTexture(gl.TEXTURE_2D, T.terNear); setI(P, 'tTerNear', unit0);
+  gl.activeTexture(gl.TEXTURE0 + unit0 + 1); gl.bindTexture(gl.TEXTURE_2D, T.terFar); setI(P, 'tTerFar', unit0 + 1);
+  const n = terrainMeta.near, f = terrainMeta.far;
+  setU(P, 'uNearB', [n.x0, n.x1, n.y0, n.y1]);
+  setU(P, 'uFarB', [f.x0, f.x1, f.y0, f.y1]);
+  setU(P, 'uTerTex', [n.n, f.n]);
+  setU(P, 'uCamEN', CAM_EN);
 }
 
 // ------------------------------------------------------------------ layout & sizing
@@ -349,6 +475,7 @@ function resize() {
     layout = buildLayout(cfg.mode, cfg, w, h);
     layoutDirty = false;
     allocTargets();
+    makeCache();
     ui && ui.onLayout(layout, dpr);
   }
 }
@@ -365,17 +492,13 @@ export const ART = {
   crater: 1.0,
   rough: 1.0,
   sunI: 1.3,
-  skyZen: [0.0026, 0.0042, 0.0098],
-  skyHor: [0.0100, 0.0108, 0.0135],
-  atmScale: 1.45,
   extMix: 0.55,
-  fog: 0.85,
   earthAngR: 2.2,
-  bloom: 0.55,
-  halation: 0.6,
   grain: 0.012,
-  starLim: 3.6,
-  starGain: 0.42,
+  ms: 1.0,
+  fogVar: 260,
+  cloudBase: 2600,
+  cloudTop: 3900,
 };
 
 // tuning hook: ?a.bump=1.3&a.alb=1.4,1.1,1,1
@@ -385,25 +508,27 @@ for (const [k, v] of params) {
   if (!(key in ART)) continue;
   ART[key] = Array.isArray(ART[key]) ? v.split(',').map(Number) : parseFloat(v);
 }
+setMS(ART.ms);
 
 // ------------------------------------------------------------------ frame
 let ui = null;
-let frameNo = 0, lastNow = 0, ema = 16.7, lastAdjust = 0;
+let frameNo = 0, lastNow = 0, ema = 16.7, lastAdjust = 0, lastMie = -1, lastEarth = -1, lastCamAlt = -1;
 const perf = { fps: 0, scale: 1, ms: 0 };
 export function getPerf() { return perf; }
 
 const lockScale = params.has('scale');
 const stopAfter = params.has('frames') ? parseInt(params.get('frames'), 10) : 0;
-let hiresFrames = 0;
+let hiresFrames = 0, wantTerrain = true;
 function drawFrame(now) {
-  if (stopAfter && status.hires && hiresFrames >= stopAfter) { window.__moon.done = true; return; }
+  if (stopAfter && status.hires && hiresFrames >= stopAfter && (!cache || cache.done || !wantTerrain)) { window.__moon.done = true; return; }
   requestAnimationFrame(drawFrame);
   if (!status.ready || !progMain) return;
   if (status.hires) hiresFrames++;
   resize();
   const t = clock.now();
   const S = stateAt(t);
-  const U = deriveUniforms(S);
+  S.camAltEye = EYE_ALT;
+  const U = deriveUniforms(S, stateAt);
   frameNo++;
 
   // ---- dynamic resolution (keeps motion smooth: judder is worse than softness)
@@ -417,9 +542,102 @@ function drawFrame(now) {
   }
   perf.fps = 1000 / ema; perf.scale = renderScale; perf.ms = ema;
 
-  const patch = patches[S.patch];
+  const rects = layout.views.map((v) => v.src.map((x) => Math.round(x * renderScale)));
+  const earth = U.earthMode;
+
+  // ---- atmosphere LUTs (only on the Earth)
+  if (earth) {
+    if (Math.abs(S.mie - lastMie) > 0.01) {
+      drawTo(T.trans, progTrans, (P) => { setU(P, 'uSize', [T.trans.w, T.trans.h]); setU(P, 'uMie', S.mie); });
+      drawTo(T.ms, progMS, (P) => {
+        setU(P, 'uSize', [T.ms.w, T.ms.h]); setU(P, 'uMie', S.mie);
+        gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, T.trans.tex); setI(P, 'tTrans', 0);
+      });
+      lastMie = S.mie;
+    }
+    drawTo(T.sky, progSky, (P) => {
+      setU(P, 'uSize', [T.sky.w, T.sky.h]);
+      setU(P, 'uCamAlt', S.camAlt);
+      setU(P, 'uSunDir', U.uSunDirW); setU(P, 'uMoonDir', U.uMoonDirW);
+      setU(P, 'uSunE', U.uSunE); setU(P, 'uMoonE', U.uMoonE);
+      setU(P, 'uMS', ART.ms); setU(P, 'uMie', S.mie);
+      setU(P, 'uAirglow', U.uAirglow);
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, T.trans.tex); setI(P, 'tTrans', 0);
+      gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, T.ms.tex); setI(P, 'tMS', 1);
+    });
+    gl.bindTexture(gl.TEXTURE_2D, T.sky.tex);
+    gl.generateMipmap(gl.TEXTURE_2D);
+    if (U.terrainValid) stepCache(S);
+  }
+  const terrainReady = earth && U.terrainValid && cache && cache.done && !params.has('noterrain');
+  wantTerrain = earth && U.terrainValid;
+
+  // ---- volumetric fog and clouds (half resolution, accumulated over frames)
+  const volOn = earth && (S.fogDens > 1e-5 || S.cloudCov > 0.01) && !params.has('nocloud');
+  const setCloudU = (C) => {
+    gl.activeTexture(gl.TEXTURE0 + 6); gl.bindTexture(gl.TEXTURE_3D, T.shape); setI(C, 'tShape', 6);
+    gl.activeTexture(gl.TEXTURE0 + 7); gl.bindTexture(gl.TEXTURE_3D, T.detail); setI(C, 'tDetail', 7);
+    gl.activeTexture(gl.TEXTURE0 + 2); gl.bindTexture(gl.TEXTURE_2D, T.weather.tex); setI(C, 'tWeather', 2);
+    setU(C, 'uTime', t);
+    setU(C, 'uKeyDir', U.keyLight);
+    setU(C, 'uCloudBase', ART.cloudBase); setU(C, 'uCloudTop', ART.cloudTop);
+    setU(C, 'uCloudCov', S.cloudCov); setU(C, 'uCloudDens', S.cloudDens);
+    setU(C, 'uWind', [S.windX, S.windX * 0.35]);
+    setU(C, 'uColumn', S.column);
+  };
+  // ---- shadow of the cloud deck toward the key light (for the mountains)
+  if (volOn && S.cloudCov > 0.01) {
+    drawTo(T.csh, progCSh, (P) => setCloudU(P));
+  } else if (earth && !T.cshClear) {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, T.csh.fb);
+    gl.clearColor(1, 1, 1, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+  }
+  T.cshClear = !(volOn && S.cloudCov > 0.01);
+  if (volOn) {
+    const cur = vol.t[vol.i], hist = vol.t[1 - vol.i];
+    let taa = 0.86;
+    if (vol.fresh || lastEarth !== 1 || Math.abs(S.camAlt - lastCamAlt) > 400) taa = 0;
+    else if (Math.abs(S.camAlt - lastCamAlt) > 1) taa = 0.55;
+    vol.fresh = false;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, cur.fb);
+    gl.drawBuffers([gl.COLOR_ATTACHMENT0]);
+    gl.disable(gl.BLEND);
+    gl.enable(gl.SCISSOR_TEST);
+    gl.useProgram(progClouds.p);
+    gl.bindVertexArray(emptyVAO);
+    const C = progClouds;
+    const units = [['tTrans', T.trans.tex], ['tSkyView', T.sky.tex], ['tWeather', T.weather.tex], ['tHist', hist.tex], ['tCacheA', cache.a], ['tCacheB', cache.b]];
+    units.forEach(([n, tex], i) => { gl.activeTexture(gl.TEXTURE0 + i); gl.bindTexture(gl.TEXTURE_2D, tex); setI(C, n, i); });
+    setCloudU(C);
+    bindTerrain(C, 8);
+    setU(C, 'uHistSize', [vol.w, vol.h]);
+    setU(C, 'uTAA', taa);
+    setU(C, 'uFrame', frameNo % 4096);
+    setU(C, 'uCamAlt', S.camAlt);
+    setU(C, 'uMie', S.mie);
+    setU(C, 'uSunDir', U.uSunDirW); setU(C, 'uMoonDir', U.uMoonDirW);
+    setU(C, 'uSunE', U.uSunE); setU(C, 'uMoonE', U.uMoonE);
+    setU(C, 'uFogTop', S.fogTop); setU(C, 'uFogVar', ART.fogVar); setU(C, 'uFogDens', S.fogDens);
+    setU(C, 'uTerrain', terrainReady ? 1 : 0);
+    setU(C, 'uCacheSize', [cache.w, cache.h]);
+    setU(C, 'uAurMax', U.aurMax);
+    layout.views.forEach((v, i) => {
+      const r = rects[i].map((x) => Math.round(x / 2));
+      gl.viewport(r[0], r[1], r[2], r[3]);
+      gl.scissor(r[0], r[1], r[2], r[3]);
+      setU(C, 'uView', r);
+      setU(C, 'uCacheRect', cache.rects[i]);
+      setU(C, 'uPA', v.geo.pa); setU(C, 'uDU', v.geo.du); setU(C, 'uDV', v.geo.dv);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+    });
+    gl.disable(gl.SCISSOR_TEST);
+  }
+  lastEarth = earth ? 1 : 0;
+  lastCamAlt = S.camAlt;
 
   // ---- main pass
+  const patch = patches[S.patch];
   gl.bindFramebuffer(gl.FRAMEBUFFER, fbo.fb);
   gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
   gl.disable(gl.BLEND);
@@ -427,8 +645,14 @@ function drawFrame(now) {
   gl.useProgram(progMain.p);
   gl.bindVertexArray(emptyVAO);
   const P = progMain;
-  const texUnits = [['tColor', T.color], ['tHeight', T.height], ['tPatchH', patch ? patch.h : T.flatH], ['tPatchC', T.patchC || T.gray], ['tEarthDay', T.earthDay || T.gray], ['tEarthCN', T.earthCN || T.black]];
+  const volTex = volOn ? vol.t[vol.i].tex : T.black;
+  const texUnits = [
+    ['tColor', T.color], ['tHeight', T.height], ['tPatchH', patch ? patch.h : T.flatH], ['tPatchC', T.patchC || T.gray],
+    ['tEarthDay', T.earthDay || T.gray], ['tEarthCN', T.earthCN || T.black], ['tTrans', T.trans.tex], ['tSkyView', T.sky.tex],
+    ['tMW', T.mw || T.black], ['tCacheA', cache.a], ['tCacheB', cache.b], ['tVol', volTex], ['tCloudSh', T.csh.tex],
+  ];
   texUnits.forEach(([n, tex], i) => { gl.activeTexture(gl.TEXTURE0 + i); gl.bindTexture(gl.TEXTURE_2D, tex); setI(P, n, i); });
+  bindTerrain(P, texUnits.length);
   setU(P, 'uTexH', T.heightSize);
   setI(P, 'uPatchType', patch ? patch.type : 0);
   setU(P, 'uPatchB', patch ? patch.bounds : [0, 0, 0, 0]);
@@ -438,34 +662,41 @@ function drawFrame(now) {
   setU(P, 'uExposure', U.exposure);
   setU(P, 'uGrid', cfg.grid ? 1 : 0);
   setU(P, 'uJitter', [0, 0]);
-  for (const k of ['uM', 'uCamB', 'uSunB', 'uEarthB', 'uEarthshine', 'uRelief', 'uLimbSoft', 'uLodBias', 'uMoonDirW', 'uMoonAngR', 'uMoonLum', 'uMoonTint', 'uAtmo', 'uExt', 'uHaze', 'uGlow', 'uClouds', 'uLand', 'uLandSink', 'uRefr', 'uShimmer', 'uStars', 'uPreGlow', 'uEarthVis', 'uEarthDirW', 'uEarthRot', 'uSunW', 'uSunVis']) setU(P, k, U[k]);
+  for (const k of ['uM', 'uCamB', 'uSunB', 'uEarthB', 'uEarthshine', 'uRelief', 'uLimbSoft', 'uLodBias', 'uMoonDirW', 'uMoonAngR', 'uMoonLum', 'uMoonTint',
+    'uGlow', 'uRefr', 'uShimmer', 'uStars', 'uEarthVis', 'uEarthDirW', 'uEarthRot', 'uSunW', 'uSunVis', 'uEclC', 'uEcl', 'uEarth', 'uCamAlt', 'uMie',
+    'uSunDirW', 'uSunE', 'uMoonE', 'uMoonScale', 'uMWGain', 'uAbsScale']) setU(P, k, U[k]);
+  setU(P, 'uLST', U.lst);
+  setU(P, 'uKeyDirW', U.keyLight);
+  setU(P, 'uKeyMoon', U.keyLight === U.uMoonDirW ? 1 : 0);
+  setU(P, 'uLat', SITE_LAT);
+  setU(P, 'uTerrain', terrainReady ? 1 : 0);
+  setU(P, 'uCacheSize', [cache.w, cache.h]);
+  setU(P, 'uVolOn', volOn ? 1 : 0);
+  setU(P, 'uVolSize', [vol.w, vol.h]);
   setU(P, 'uMoonVis', 1);
   setU(P, 'uAlb', ART.alb);
   setU(P, 'uBump', ART.bump);
   setU(P, 'uCrater', ART.crater);
   setU(P, 'uRough', ART.rough);
   setU(P, 'uSunI', ART.sunI);
-  setU(P, 'uSkyZen', ART.skyZen);
-  setU(P, 'uSkyHor', ART.skyHor);
-  setU(P, 'uAtmScale', ART.atmScale);
   setU(P, 'uExtMix', ART.extMix);
-  setU(P, 'uFog', ART.fog);
-  setU(P, 'uCloudOff', [t * 0.0042, t * 0.0011]);
   setU(P, 'uEarthAngR', (ART.earthAngR * Math.PI) / 180);
   setU(P, 'uFocus', 0);
   setU(P, 'uDof', 0);
-  const rects = layout.views.map((v) => v.src.map((x) => Math.round(x * renderScale)));
   layout.views.forEach((v, i) => {
     const r = rects[i];
     gl.viewport(r[0], r[1], r[2], r[3]);
     gl.scissor(r[0], r[1], r[2], r[3]);
     setU(P, 'uView', r);
+    setU(P, 'uCacheRect', cache.rects[i]);
+    setU(P, 'uVolRect', r.map((x) => Math.round(x / 2)));
     setU(P, 'uPA', v.geo.pa); setU(P, 'uDU', v.geo.du); setU(P, 'uDV', v.geo.dv);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   });
+  if (volOn) vol.i = 1 - vol.i;
 
   // ---- stars (real catalogue, additive, masked by the sky visibility in alpha)
-  if (stars && U.uStars > 0.005 && U.exposure > 0.001) {
+  if (stars && earth && U.starGain > 0) {
     gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.NONE]);
     gl.enable(gl.BLEND);
     gl.blendEquation(gl.FUNC_ADD);
@@ -475,11 +706,9 @@ function drawFrame(now) {
     const SP = progStar;
     setU(SP, 'uLat', SITE_LAT);
     setU(SP, 'uLST', U.lst);
-    setU(SP, 'uLimMag', ART.starLim);
-    setU(SP, 'uGain', ART.starGain);
+    setU(SP, 'uGain', U.starGain);
     setU(SP, 'uTime', t);
-    setU(SP, 'uExposure', U.exposure);
-    setU(SP, 'uExt', U.uExt);
+    setU(SP, 'uExt', S.mie);
     layout.views.forEach((v, i) => {
       const r = rects[i];
       gl.viewport(r[0], r[1], r[2], r[3]);
@@ -492,7 +721,6 @@ function drawFrame(now) {
   }
 
   // ---- lens: blur / bloom need mips of the HDR image
-  const blurPx = U.blur;
   gl.bindTexture(gl.TEXTURE_2D, fbo.col);
   gl.generateMipmap(gl.TEXTURE_2D);
 
@@ -506,30 +734,30 @@ function drawFrame(now) {
   gl.enable(gl.SCISSOR_TEST);
   gl.useProgram(progComp.p);
   gl.bindVertexArray(emptyVAO);
-  const C = progComp;
-  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, fbo.col); setI(C, 'tHDR', 0);
-  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, fbo.aux); setI(C, 'tAux', 1);
-  setU(C, 'uSrcSize', [fbo.w, fbo.h]);
-  setU(C, 'uBloom', U.bloom);
-  setU(C, 'uHalation', U.halation);
-  setU(C, 'uVigDir', [0, 0.1, -1]);
-  setU(C, 'uVig', U.vig);
-  setU(C, 'uGrain', ART.grain);
-  setU(C, 'uFrame', frameNo % 65536);
-  setU(C, 'uFade', 1);
+  const CP = progComp;
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, fbo.col); setI(CP, 'tHDR', 0);
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, fbo.aux); setI(CP, 'tAux', 1);
+  setU(CP, 'uSrcSize', [fbo.w, fbo.h]);
+  setU(CP, 'uBloom', U.bloom);
+  setU(CP, 'uHalation', U.halation);
+  setU(CP, 'uVigDir', [0, 0.1, -1]);
+  setU(CP, 'uVig', U.vig);
+  setU(CP, 'uGrain', ART.grain);
+  setU(CP, 'uFrame', frameNo % 65536);
+  setU(CP, 'uFade', 1);
   layout.views.forEach((v, i) => {
     const r = rects[i];
     const d = v.dst;
     gl.viewport(d[0], d[1], d[2], d[3]);
     gl.scissor(d[0], d[1], d[2], d[3]);
-    setU(C, 'uSrcRect', r);
-    setU(C, 'uDstRect', d);
-    setU(C, 'uBlur', blurPx * (r[3] / 1080));
-    setU(C, 'uPA', v.geo.pa); setU(C, 'uDU', v.geo.du); setU(C, 'uDV', v.geo.dv);
+    setU(CP, 'uSrcRect', r);
+    setU(CP, 'uDstRect', d);
+    setU(CP, 'uBlur', U.blur * (r[3] / 1080));
+    setU(CP, 'uPA', v.geo.pa); setU(CP, 'uDU', v.geo.du); setU(CP, 'uDV', v.geo.dv);
     const g = cfg.grade[v.name] || {};
-    setU(C, 'uGain', [g.r ?? g.gain ?? 1, g.g ?? g.gain ?? 1, g.b ?? g.gain ?? 1]);
-    setU(C, 'uGamma', g.gamma ?? 1);
-    setU(C, 'uLift', g.lift ?? 0);
+    setU(CP, 'uGain', [g.r ?? g.gain ?? 1, g.g ?? g.gain ?? 1, g.b ?? g.gain ?? 1]);
+    setU(CP, 'uGamma', g.gamma ?? 1);
+    setU(CP, 'uLift', g.lift ?? 0);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   });
   gl.disable(gl.SCISSOR_TEST);
@@ -544,6 +772,14 @@ async function boot() {
     progMain = program(FULLSCREEN_VS, mainFS());
     progStar = program(STAR_VS, STAR_FS);
     progComp = program(FULLSCREEN_VS, COMPOSITE_FS);
+    progTrans = program(FULLSCREEN_VS, TRANSMITTANCE_FS);
+    progMS = program(FULLSCREEN_VS, MULTISCAT_FS);
+    progSky = program(FULLSCREEN_VS, SKYVIEW_FS);
+    progNoise = program(FULLSCREEN_VS, NOISE3D_FS);
+    progWeather = program(FULLSCREEN_VS, WEATHER_FS);
+    progCache = program(FULLSCREEN_VS, terrainCacheFS());
+    progClouds = program(FULLSCREEN_VS, cloudsFS());
+    progCSh = program(FULLSCREEN_VS, CLOUDSHADOW_FS);
   } catch (e) {
     console.error(e);
     ui.fatal('셰이더 오류: ' + e.message);
@@ -552,9 +788,23 @@ async function boot() {
   T.gray = solidTex([128, 128, 128, 255]);
   T.black = solidTex([0, 0, 0, 255]);
   T.flatH = solidTex(null, gl.R16F, gl.RED, gl.FLOAT, new Float32Array([0]));
+  const hdr = extCBF ? gl.RGBA16F : gl.RGBA8;
+  T.trans = target2D(TRANS_W, TRANS_H, hdr);
+  T.ms = target2D(MS_N, MS_N, hdr);
+  T.csh = target2D(SH_N, SH_N, hdr, 1, gl.LINEAR, gl.CLAMP_TO_EDGE);
+  T.sky = target2D(384, 192, hdr, 8, gl.LINEAR_MIPMAP_LINEAR, gl.CLAMP_TO_EDGE);
+  gl.bindTexture(gl.TEXTURE_2D, T.sky.tex);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+  T.weather = target2D(512, 512, gl.RGBA8, mipLevels(512, 512), gl.LINEAR_MIPMAP_LINEAR, gl.REPEAT);
+  drawTo(T.weather, progWeather, (P) => setU(P, 'uSize', 512));
+  gl.bindTexture(gl.TEXTURE_2D, T.weather.tex);
+  gl.generateMipmap(gl.TEXTURE_2D);
+  T.shape = make3DNoise(params.has('small3d') ? 32 : 128, 0);
+  T.detail = make3DNoise(32, 1);
   quality = pickQuality();
   renderScale = params.has('scale') ? parseFloat(params.get('scale')) : quality.scale;
   clock.init();
+  warmAtmosphere();
   requestAnimationFrame(drawFrame);
   loadAssets().catch((e) => { console.error(e); status.error = String(e.message || e); ui.fatal(status.error); });
 }
@@ -564,9 +814,10 @@ function setQuality(q) {
   quality = pickQuality();
   renderScale = quality.scale;
   allocTargets();
+  makeCache();
   saveConfig();
 }
 
 window.addEventListener('resize', () => { layoutDirty = true; });
-window.__moon = { status, clock, cfg, ART, frames: () => frameNo };
+window.__moon = { status, clock, cfg, ART, frames: () => frameNo, cache: () => cache };
 boot();

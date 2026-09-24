@@ -4,6 +4,10 @@
 // World frame: x right, y up, -z = front wall. Moon body frame: +z = lon 0
 // (near-side centre), +x = lon 90°E, +y = north pole. Distances in lunar radii.
 
+import { ATMO_COMMON } from './atmo.js';
+import { TERRAIN_COMMON } from './terrain.js';
+import { SH_HALF, SH_REF } from './clouds.js';
+
 // Random rotations that decorrelate the crater grids of each octave.
 function octaveRotations(n, seed) {
   let s = seed >>> 0;
@@ -79,27 +83,41 @@ uniform vec4  uPatchB;
 uniform float uPatchTexel;
 uniform float uPatchColor;
 
-// ---------------- earth sky
-uniform float uAtmo;
+// ---------------- earth scenes (physical sky, real terrain, volumetrics)
+uniform float uEarth;          // 1 = viewer on the Earth (sky LUT + terrain), 0 = space
+uniform float uCamAlt;
+uniform sampler2D tTrans;
+uniform sampler2D tSkyView;
+uniform sampler2D tMW;
+uniform float uLST, uLat;
+uniform float uMWGain;
+uniform vec3  uSunDirW;
+uniform vec3  uMoonE, uSunE;   // pre-exposed irradiance (rgb)
+uniform float uMoonScale;      // moon disc brightness on Earth (display-referred)
+uniform float uAbsScale;       // HDR value -> cd/m2, for night vision (0 = off)
+uniform sampler2D tCloudSh;    // transmittance of the cloud deck toward the key light
+uniform vec3  uKeyDirW;
+uniform float uKeyMoon;        // 1 when the key light is the moon
+uniform sampler2D tCacheA;
+uniform sampler2D tCacheB;
+uniform vec4  uCacheRect;
+uniform vec2  uCacheSize;
+uniform float uTerrain;
+uniform sampler2D tVol;
+uniform vec4  uVolRect;
+uniform vec2  uVolSize;
+uniform float uVolOn;
+uniform vec3  uEclC;           // Earth-shadow axis offset in the moon frame (lunar radii)
+uniform float uEcl;
 uniform vec3  uMoonDirW;
 uniform float uMoonAngR;
 uniform float uMoonLum;
 uniform vec3  uMoonTint;
-uniform vec3  uSkyZen, uSkyHor;
-uniform float uExt;
-uniform float uAtmScale;
 uniform float uExtMix;
-uniform float uHaze;
 uniform float uGlow;
-uniform float uClouds;
-uniform vec2  uCloudOff;
-uniform float uLand;
-uniform float uLandSink;
-uniform float uFog;
 uniform float uRefr;
 uniform float uShimmer;
 uniform float uStars;
-uniform float uPreGlow;
 
 // ---------------- space extras
 uniform float uEarthVis;
@@ -341,6 +359,22 @@ void craterField(vec3 n0, vec3 Nm, vec3 L, float fp, float lum,
   }
 }
 
+// ------------------------------------------------------------ lunar eclipse
+// Earth's shadow at the moon: penumbra (part of the solar disc hidden) and umbra
+// (only sunlight bent through Earth's atmosphere: red, with a turquoise rim where
+// it grazed the ozone layer). Radii in lunar radii at the moon's distance.
+vec3 eclipseLight(vec3 p) {
+  vec3 q = p - uSunB * dot(p, uSunB) - uEclC;
+  float r = length(q);
+  const float RU = 2.65, RP = 4.65;
+  float f = clamp((r - RU) / (RP - RU), 0.0, 1.0);
+  f = mix(f * f * (3.0 - 2.0 * f), f, 0.25);
+  float x = clamp(r / RU, 0.0, 1.0);
+  vec3 red = vec3(1.0, 0.2, 0.055) * (0.0035 + 0.016 * pow(x, 5.0));
+  vec3 turq = vec3(0.32, 0.72, 1.0) * 0.022 * exp(-pow((1.0 - x) / 0.045, 2.0));
+  return vec3(f) + (red + turq) * (1.0 - f);
+}
+
 // ------------------------------------------------------------ moon trace
 struct MoonHit { float cov; float t; vec3 n0; };
 
@@ -461,34 +495,26 @@ vec3 shadeMoon(MoonHit mh, vec3 ro, vec3 rd, vec3 rdx, vec3 rdy, float angPix) {
   if (lit > 0.0) sh = terrainShadow(n0, h0, L, dl, texel) * crSh;
   float phaseF = exp(-0.55 * alpha) * (1.0 + 0.3 * exp(-alpha / 0.06));
   float rough = 1.0 - clamp(unres * uRough, 0.0, 0.6);
-  vec3 rad = alb * (lit * sh * phaseF * rough * uSunI);
+  vec3 ecl = uEcl > 0.0 ? eclipseLight(n0) : vec3(1.0);
+  vec3 rad = alb * (lit * sh * phaseF * rough * uSunI) * ecl;
   // soft bounce from nearby sunlit ground keeps shadows from going digital-black
   float sinEm = dot(Nm, L);
-  rad += alb * uSunI * 0.02 * smoothstep(-0.02, 0.25, sinEm) * (1.0 - sh * min(lit, 1.0));
+  rad += alb * uSunI * 0.02 * smoothstep(-0.02, 0.25, sinEm) * (1.0 - sh * min(lit, 1.0)) * ecl;
   // earthshine: diffuse light from the Earth (blue-white)
   float es = max(dot(N, uEarthB), 0.0);
   rad += alb * es * uEarthshine * vec3(0.78, 0.86, 1.0);
   return rad;
 }
 
-// ------------------------------------------------------------ earth sky
-float airmass(float hdeg) {
-  hdeg = max(hdeg, -0.6);
-  return 1.0 / (sin(radians(hdeg)) + 0.50572 * pow(hdeg + 6.07995, -1.6364));
-}
-vec3 extinctionT(float elRad) {
-  float X = airmass(degrees(elRad) * uAtmScale);
-  return exp(-vec3(0.075, 0.135, 0.27) * uExt * X);
-}
-float hg(float c, float g) {
-  float g2 = g * g;
-  return (1.0 - g2) / (4.0 * PI * pow(1.0 + g2 - 2.0 * g * c, 1.5));
-}
+// ------------------------------------------------------------ earth: sky, stars, terrain
+${ATMO_COMMON}
+${TERRAIN_COMMON}
 
+// magnified atmospheric refraction: the low moon is flattened and shimmers
 vec3 atmoBend(vec3 d) {
   float el = asin(clamp(d.y, -1.0, 1.0));
   float az = atan(d.x, -d.z);
-  const float M = 10.0;
+  const float M = 2.5;
   float e0 = max(degrees(el), -0.3) / M;
   float R  = 1.0 / tan(radians(e0 + 7.31 / (e0 + 4.4)));
   float R0 = 1.0 / tan(radians(7.31 / 4.4));
@@ -503,106 +529,125 @@ vec3 atmoBend(vec3 d) {
   return vec3(sin(az) * cos(e2), sin(e2), -cos(az) * cos(e2));
 }
 
-vec3 skyColor(vec3 d) {
-  float s = clamp(d.y, 0.0, 1.0);
-  vec3 base = mix(uSkyHor, uSkyZen, pow(s, 0.42));
-  float cg = dot(d, uMoonDirW);
-  float X = min(airmass(degrees(asin(clamp(d.y, -1.0, 1.0))) * 0.6 + 0.4), 14.0);
-  vec3 rayl = vec3(0.16, 0.36, 1.0) * 0.75 * (1.0 + cg * cg);
-  float mie = hg(cg, 0.78) * (0.35 + 1.4 * uHaze);
-  vec3 scat = uMoonLum * (rayl * 0.0026 * X + uMoonTint * mie * 0.030);
-  // glow along the horizon where the moon is about to rise / has just set
-  float mAz = atan(uMoonDirW.x, -uMoonDirW.z);
-  float az = atan(d.x, -d.z);
-  float da = abs(mod(az - mAz + PI, TAU) - PI);
-  float hz = exp(-max(asin(clamp(d.y, -1.0, 1.0)), 0.0) / 0.09);
-  scat += uPreGlow * vec3(0.9, 0.62, 0.38) * exp(-da * da / 0.09) * hz * 0.012;
-  return base + scat;
+// NASA Deep Star Maps 2020 (Gaia DR2 etc.): diffuse Milky Way, RA/Dec plate carree
+vec3 milkyWay(vec3 d) {
+  float sp = sin(uLat), cp = cos(uLat);
+  float dec = asin(clamp(d.y * sp + d.z * cp, -1.0, 1.0));
+  float H = atan(d.x, d.y * cp - d.z * sp);
+  float ra = uLST - H;
+  vec2 uv = vec2(fract(0.5 - ra / TAU), 0.5 - dec / PI);
+  vec3 c = textureLod(tMW, uv, 0.4).rgb;
+  return c * c * 0.14;
 }
 
-// thin moonlit cloud layer; returns in-scattered light (rgb) and transmittance (a)
-vec4 cloudLayer(vec3 d, float angPix) {
-  if (uClouds <= 0.001 || d.y < 0.004) return vec4(0.0, 0.0, 0.0, 1.0);
-  float q = 1.0 / (d.y + 0.07);
-  vec2 p = d.xz * q * 0.8 + uCloudOff;
-  float fw = angPix * 0.8 * q * q;
-  vec2 w = vec2(fbm2l(p * 0.5, 4, fw * 0.5), fbm2l(p * 0.5 + 7.31, 4, fw * 0.5));
-  float n = fbm2l(p * vec2(1.0, 1.3) + w * 1.3, 7, fw);
-  n *= 0.76 + 0.48 * fbm2l(p * 3.7 + w, 4, fw * 3.7);
-  float cov = uClouds;
-  float dens = smoothstep(0.60 - cov * 0.40, 0.90 - cov * 0.30, n);
-  dens *= smoothstep(0.004, 0.14, d.y);
-  float gm = acos(clamp(dot(d, uMoonDirW), -1.0, 1.0));
-  dens *= mix(0.45, 1.0, smoothstep(uMoonAngR * 0.9, uMoonAngR * 2.2, gm));
-  float T = exp(-dens * 3.8);
-  // forward scattering measured from the (magnified) moon's limb, so a cloud in
-  // front of the disc glows but never outshines the moon behind it
-  float xg = max(gm - uMoonAngR, 0.0) / max(uMoonAngR, 1e-3);
-  float fwd = exp(-xg * 3.2) + 0.22 * exp(-xg * 0.7);
-  float thin = exp(-dens * 3.2);
-  vec3 amb = uSkyHor * (1.2 + 1.0 * n);
-  vec3 moonC = mix(uMoonTint, vec3(1.0), 0.4);
-  vec3 lightC = amb + moonC * uMoonLum * (0.010 + 0.55 * fwd * thin);
-  return vec4(lightC * (1.0 - T), T);
-}
-
-// sea of clouds (운해) filling the valleys below the viewer, lit by a low moon
-vec3 cloudSea(vec3 d, float angPix) {
-  float ay = max(-d.y, 0.0035);
-  float t = 1.0 / ay;
-  vec2 P = d.xz * t;
-  vec2 p = P * 0.55 + vec2(uTime * 0.010, uTime * 0.0035);
-  float fw = angPix * t / sqrt(ay) * 0.55;
-  vec2 w = vec2(fbm2l(p * 0.3 + 3.1, 3, fw * 0.3), fbm2l(p * 0.3 + 8.7, 3, fw * 0.3));
-  vec2 pw = p + w * 0.9;
-  // billows: soft domes rather than sharp noise
-  float h = fbm2l(pw, 4, fw);
-  h = smoothstep(0.22, 0.78, h);
-  vec2 md = normalize(uMoonDirW.xz + vec2(1e-4));
-  float h2 = smoothstep(0.22, 0.78, fbm2l(pw + md * 0.12, 4, fw));
-  float slope = (h2 - h) / 0.12;
-  float lit = clamp(0.82 + slope * 0.22, 0.55, 1.2);
-  float az = dot(normalize(d.xz + vec2(1e-5)), md);
-  // forward scattering: the fog glows toward the moon, strongest near the horizon
-  float fwd = pow(max(az, 0.0), 7.0) * (0.25 + 0.75 * exp(-ay * 5.0));
-  vec3 silver = vec3(0.70, 0.78, 0.96);
-  vec3 moonC = mix(uMoonTint, vec3(1.0), 0.35);
-  vec3 fog = silver * uSkyHor * (5.2 * lit * (0.72 + 0.28 * h))
-           + moonC * uMoonLum * (0.016 * lit + 0.10 * fwd);
-  float far = 1.0 - exp(-t * 0.03);
-  vec3 hz = skyColor(normalize(vec3(d.x, 0.02, d.z))) * 1.35;
-  return mix(fog, hz, far * 0.85);
-}
-
-// layered mountain ridges (Korean ink-wash style), elevation in radians
-float ridgeEl(float az, int k) {
-  vec2 c = vec2(cos(az), sin(az));
-  float fr = k == 0 ? 2.4 : k == 1 ? 3.9 : k == 2 ? 6.0 : 8.5;
-  float base = k == 0 ? 4.2 : k == 1 ? 2.2 : k == 2 ? 0.5 : -1.2;
-  float amp = k == 0 ? 3.6 : k == 1 ? 3.2 : k == 2 ? 2.6 : 3.0;
-  float n = fbm2(c * fr + vec2(float(k) * 13.1, float(k) * 7.7), 6);
-  // sharpen into peaks and saddles, like ink-wash ranges
-  n = n + 0.35 * (1.0 - abs(fbm2(c * fr * 2.1 + 3.3, 4) * 2.0 - 1.0)) - 0.17;
-  float e = base + amp * (n - 0.5) * 2.4;
-  if (k == 3) {
-    // tree line: small conifer silhouettes on the nearest ridge
-    float cellW = 0.0042;
-    float u = (az + PI) / cellW;
-    float ci = floor(u);
-    float tr = 0.0;
-    for (int j = -2; j <= 2; j++) {
-      float id = ci + float(j);
-      vec4 r = rnd4(ivec4(int(id), 77, 3, 1));
-      float cx = (id + 0.5 + (r.x - 0.5) * 0.8) * cellW;
-      float hgt = (0.25 + 0.75 * r.y) * 0.62 * step(0.22, r.z);
-      float dx = abs(u * cellW - cx);
-      float prof = hgt - dx / cellW * (hgt / (0.55 + 0.9 * r.w));
-      prof += 0.05 * hgt * sin(dx / cellW * 38.0 + r.x * 9.0);
-      tr = max(tr, prof);
-    }
-    e += tr;
+vec3 shadeTerrain(vec3 d, vec4 ca, vec4 cb, float angPix) {
+  vec3 N = ca.xyz;
+  float t = ca.w;
+  vec3 p = d * t;
+  vec3 Ce = vec3(0.0, -(Rg + uCamAlt), 0.0);
+  vec3 q = p - Ce;
+  float r = length(q);
+  vec3 up = q / r;
+  float alt = r - Rg;
+  vec2 en = uCamEN + vec2(-p.x, p.z);
+  float forest = cb.y, rock = cb.z, water = cb.w;
+  vec3 aForest = vec3(0.030, 0.042, 0.030);
+  vec3 aMeadow = vec3(0.115, 0.108, 0.080);
+  vec3 aRock = vec3(0.13, 0.128, 0.122);
+  vec3 alb = aForest * forest + aRock * rock + aMeadow * max(1.0 - forest - rock, 0.0);
+  alb *= 0.78 + 0.44 * vnoise2(en / 85.0);
+  if (t < 1500.0) {
+    // near the summit: patches of grass, bamboo grass, lichen and bare soil
+    float nn = vnoise2(en / 11.0) * 0.6 + vnoise2(en / 3.1) * 0.4;
+    alb *= mix(1.0, 0.6 + 0.8 * nn, smoothstep(1500.0, 300.0, t));
   }
-  return radians(e) - uLandSink;
+  alb = mix(alb, vec3(0.015, 0.022, 0.03), water);
+  vec3 Em = uMoonE * transmittance(tTrans, r, dot(up, uMoonDirW));
+  vec3 Es = uSunE * transmittance(tTrans, r, dot(up, uSunDirW));
+  // patches of light and shadow from the cloud deck, drifting over the ranges
+  {
+    vec2 xz = p.xz + uKeyDirW.xz * (${SH_REF}.0 - alt) / max(uKeyDirW.y, 0.035);
+    vec2 suv = xz / ${2 * SH_HALF}.0 + 0.5;
+    float inMap = step(0.0, suv.x) * step(suv.x, 1.0) * step(0.0, suv.y) * step(suv.y, 1.0);
+    float csh = mix(1.0, texture(tCloudSh, suv).r, inMap);
+    if (uKeyMoon > 0.5) Em *= csh; else Es *= csh;
+  }
+  float fp = t * angPix;
+  float nm = max(dot(N, uMoonDirW), 0.0), ns = max(dot(N, uSunDirW), 0.0);
+  float shm = (nm > 0.0 && dot(Em, vec3(1.0)) > 1e-9) ? terrainShadowE(en, alt, uMoonDirW, fp) : 0.0;
+  float shs = (ns > 0.0 && dot(Es, vec3(1.0)) > 1e-9) ? terrainShadowE(en, alt, uSunDirW, fp) : 0.0;
+  if (t < 700.0 && (shm > 0.0 || shs > 0.0)) {
+    // boulders and outcrops shadow each other (the DEM test above cannot see them)
+    vec3 Lk = uKeyMoon > 0.5 ? uMoonDirW : uSunDirW;
+    vec2 hd = normalize(vec2(-Lk.x, Lk.z) + vec2(1e-6));
+    float tanE = Lk.y / max(length(Lk.xz), 1e-4);
+    float occ = -1.0, s = 0.35;
+    for (int i = 0; i < 10; i++) {
+      float hq = terrainH(en + hd * s, max(fp, s * 0.03));
+      occ = max(occ, (hq - (alt + 0.12 + s * tanE)) / s);
+      s *= 1.6;
+    }
+    float ms = smoothstep(0.03, -0.03, occ);
+    if (uKeyMoon > 0.5) shm *= ms; else shs *= ms;
+  }
+  vec3 ambUp = textureLod(tSkyView, vec2(0.5, 0.97), 6.0).rgb;
+  vec3 ambH = textureLod(tSkyView, vec2(0.5, 0.56), 6.0).rgb;
+  vec3 amb = mix(ambH, ambUp, 0.5 + 0.5 * N.y);
+  vec3 col = alb / PI * (Em * nm * shm + Es * ns * shs) + alb * amb;
+  if (water > 0.0) {
+    vec3 hv = normalize(uMoonDirW - d);
+    col += water * Em * pow(max(hv.y, 0.0), 600.0) * 2.5;
+  }
+  // aerial perspective: the far ranges fade into the colour of the horizon sky
+  float hA = 0.5 * (uCamAlt + alt);
+  // plus the moist valley haze of a Korean summer night, thickest low down
+  float valleyHaze = 5.5e-5 * uMie * exp(-max(min(alt, uCamAlt) - 350.0, 0.0) / 750.0);
+  vec3 sig = BR * exp(-hA / HR) + vec3(BM_E * uMie * exp(-hA / HM) + valleyHaze);
+  vec3 Ta = exp(-sig * t);
+  vec3 skyH = texture(tSkyView, skyUV(normalize(vec3(d.x, min(d.y, -0.003), d.z)))).rgb;
+  return col * Ta + skyH * (1.0 - Ta);
+}
+
+// Night vision. Below a few cd/m2 the rods take over from the cones: colour drains
+// away and blues read brighter than reds (Purkinje). The moon itself stays photopic.
+vec3 mesopic(vec3 c) {
+  if (uAbsScale <= 0.0) return c;
+  float Y = dot(c, LUMA);
+  float lcd = max(Y * uAbsScale, 1e-7);
+  float s = smoothstep(0.3, -2.3, log(lcd) / 2.302585) * 0.6;
+  float V = dot(c, vec3(0.033, 0.765, 0.2));
+  return mix(c, V * vec3(0.74, 0.9, 1.24), s);
+}
+
+// depth of the terrain the volume pass saw at wall position f (1e9 = open sky)
+float terrainDepth(vec2 f) {
+  if (uTerrain < 0.5) return 1e9;
+  vec2 cuv = (uCacheRect.xy + f * uCacheRect.zw) / uCacheSize;
+  vec4 ca = texture(tCacheA, cuv);
+  float cov = texture(tCacheB, cuv).x;
+  return (ca.w > 0.0 && cov > 0.5) ? ca.w : 1e9;
+}
+// the fog and cloud buffer is half resolution: upsample it depth-aware, so fog behind a
+// ridge does not bleed over the ridge line (and the ridge does not punch holes in it)
+vec4 volUpsample(vec2 f, float myDepth) {
+  vec2 vp = uVolRect.xy + f * uVolRect.zw - 0.5;
+  vec2 b = floor(vp), fr = vp - b;
+  vec4 acc = vec4(0.0), plain = vec4(0.0);
+  float ws = 0.0;
+  float lz = log(myDepth);
+  for (int k = 0; k < 4; k++) {
+    vec2 o = vec2(float(k & 1), float(k >> 1));
+    vec2 tp = b + o + 0.5;
+    vec4 v = texture(tVol, tp / uVolSize);
+    float wb = mix(1.0 - fr.x, fr.x, o.x) * mix(1.0 - fr.y, fr.y, o.y);
+    float dz = terrainDepth((tp - uVolRect.xy) / uVolRect.zw);
+    float dl = lz - log(dz);
+    float w = wb * exp(-dl * dl * 6.0) + 1e-5 * wb;
+    acc += v * w;
+    ws += w;
+    plain += v * wb;
+  }
+  return ws > 1e-4 ? acc / ws : plain;
 }
 
 // ------------------------------------------------------------ earth globe
@@ -653,106 +698,99 @@ void main() {
   vec3 ddx = dFdx(d), ddy = dFdy(d);
   float angPix = max(max(length(ddx), length(ddy)), 1e-6);
 
-  vec3 dm = d;
-  if (uAtmo > 0.001) dm = normalize(mix(d, atmoBend(d), uAtmo));
-
   vec3 col = vec3(0.0);
   float starVis = 1.0;
   float depth = 1e9;
+  float expo = uExposure;
 
-  if (uAtmo > 0.001) col = skyColor(d) * uAtmo;
+  if (uEarth > 0.5) {
+    // ---------------- on the Earth: everything below is already exposed
+    expo = 1.0;
+    col = texture(tSkyView, skyUV(d)).rgb;
+    vec3 Tv = transmittance(tTrans, Rg + uCamAlt, d.y);
+    col += milkyWay(d) * uMWGain * Tv;
+    starVis *= dot(Tv, vec3(0.3, 0.5, 0.2)) * smoothstep(-0.01, 0.03, d.y);
 
-  // Earth and Sun (space scenes)
-  if (uEarthVis > 0.001) {
-    vec4 e = earthShade(d, angPix);
-    col = mix(col, e.rgb, e.a * uEarthVis) + e.rgb * (1.0 - e.a) * uEarthVis;
-    starVis *= 1.0 - e.a * uEarthVis;
-  }
-  if (uSunVis > 0.001) {
-    float gs = acos(clamp(dot(d, uSunW), -1.0, 1.0));
-    float disc = smoothstep(SUN_R + angPix, SUN_R - angPix, gs);
-    col += uSunVis * vec3(1.0, 0.975, 0.93) * (disc * 900.0);
-  }
-
-  // Moon
-  vec3 ro = uCamB;
-  vec3 rd = uM * dm;
-  MoonHit mh = traceMoon(ro, rd, angPix);
-  if (mh.cov > 0.0) {
-    vec3 mc = shadeMoon(mh, ro, rd, uM * ddx, uM * ddy, angPix);
-    if (uAtmo > 0.001) {
-      float elP = asin(clamp(dm.y, -1.0, 1.0));
-      float elC = asin(clamp(uMoonDirW.y, -1.0, 1.0));
-      vec3 T = extinctionT(mix(elP, elC, uExtMix));
-      T = mix(vec3(1.0), T, uAtmo);
-      // haze veil: lowers contrast of surface detail
-      vec3 veil = uMoonTint * uMoonLum * 0.55;
-      mc = mix(mc, veil, uHaze * 0.35 * uAtmo);
-      col += mc * T * mh.cov;
-    } else {
-      col = mix(col, mc, mh.cov);
+    vec3 dm = normalize(mix(d, atmoBend(d), 1.0));
+    vec3 ro = uCamB;
+    vec3 rd = uM * dm;
+    // the moon and its glow are kept apart so they can pass through terrain and cloud
+    // and stay in colour when the rest of the night goes grey
+    vec3 moonC = vec3(0.0);
+    MoonHit mh = traceMoon(ro, rd, angPix);
+    if (mh.cov > 0.0) {
+      vec3 mc = shadeMoon(mh, ro, rd, uM * ddx, uM * ddy, angPix) * uMoonScale;
+      float muM = mix(dm.y, uMoonDirW.y, uExtMix);
+      vec3 Tm = transmittance(tTrans, Rg + uCamAlt, muM);
+      moonC = mc * Tm * mh.cov;
+      starVis *= 1.0 - mh.cov;
     }
-    starVis *= 1.0 - mh.cov;
-    if (mh.cov > 0.5) depth = mh.t;
-  }
-
-  // sun glare after the moon so terrain can hide the disc but not all the bloom
-  if (uSunVis > 0.001) {
-    float gs = acos(clamp(dot(d, uSunW), -1.0, 1.0));
-    float vis = 1.0 - (mh.cov > 0.0 ? mh.cov : 0.0) * 0.85;
-    col += uSunVis * vis * vec3(1.0, 0.96, 0.9) * (0.25 / (1.0 + pow(gs / 0.004, 2.0)) + 0.006 * exp(-gs / 0.06));
-  }
-
-  // aureole / glare around the moon
-  if (uGlow > 0.001) {
-    float gam = acos(clamp(dot(dm, uMoonDirW), -1.0, 1.0));
-    float x = max(gam - uMoonAngR, 0.0) / max(uMoonAngR, 1e-4);
-    float g = 0.09 * exp(-x * 5.0) + 0.028 * exp(-x * 1.2) + 0.007 * exp(-x * 0.35);
-    col += uGlow * uMoonLum * g * uMoonTint * (0.6 + uHaze);
-  }
-
-  if (uAtmo > 0.001) {
-    vec4 cl = cloudLayer(d, angPix);
-    col = col * mix(1.0, cl.a, uAtmo) + cl.rgb * uAtmo;
-    starVis *= mix(1.0, cl.a, uAtmo);
-    starVis *= smoothstep(-0.01, 0.06, d.y) * mix(1.0, 0.35, uHaze);
-  }
-
-  // landscape: layered ridges rising out of a moonlit sea of clouds
-  if (uLand > 0.001 && asin(clamp(d.y, -1.0, 1.0)) + uLandSink < 0.2) {
-    float el = asin(clamp(d.y, -1.0, 1.0));
-    float elL = el + uLandSink;
-    float az = atan(d.x, -d.z);
-    float mAz = atan(uMoonDirW.x, -uMoonDirW.z);
-    float da = abs(mod(az - mAz + PI, TAU) - PI);
-    float back = exp(-da * da / 0.45);
-    vec3 horizon = skyColor(normalize(vec3(d.x, 0.02, d.z)));
-    vec3 cool = vec3(0.62, 0.72, 0.95);
-    float fogTop = radians(-0.9 + 1.1 * (fbm2(vec2(cos(az), sin(az)) * 3.3 + 5.0, 3) - 0.5));
-    for (int k = 0; k < 4; k++) {
-      float re = ridgeEl(az, k);
-      float cov = smoothstep(-angPix, angPix, re - el);
-      if (k == 3) cov *= smoothstep(fogTop - radians(2.6), fogTop + radians(0.2), elL);
-      if (cov <= 0.0) continue;
-      float below = max(re - el, 0.0);
-      float aerial = k == 0 ? 0.58 : k == 1 ? 0.40 : k == 2 ? 0.22 : 0.05;
-      float valley = 1.0 - exp(-below / (0.016 + 0.008 * float(k)));
-      float fogA = clamp(aerial + (1.0 - aerial) * valley * uFog * (k == 3 ? 0.4 : 0.8), 0.0, 1.0);
-      vec3 sil = uSkyZen * (0.22 + 0.08 * float(3 - k)) * cool;
-      vec3 lc = mix(sil, horizon * cool * 1.25, fogA);
-      float rim = exp(-below / (0.0010 + 0.0008 * float(k))) * back;
-      lc += mix(uMoonTint, vec3(1.0), 0.3) * uMoonLum * rim * (k == 3 ? 0.06 : 0.035) * (0.4 + uHaze);
-      col = mix(col, lc, cov * uLand);
-      starVis *= 1.0 - cov * uLand;
-      if (k == 2) {
-        float seaA = smoothstep(fogTop + radians(0.6), fogTop - radians(1.0), elL);
-        if (seaA > 0.0) {
-          vec3 dS = normalize(vec3(d.x, sin(min(elL, -0.0035)), d.z));
-          vec3 sc = cloudSea(dS, angPix);
-          col = mix(col, sc, seaA * uLand);
-          starVis *= 1.0 - seaA * uLand;
+    if (uGlow > 0.001) {
+      float gam = acos(clamp(dot(dm, uMoonDirW), -1.0, 1.0));
+      float x = max(gam - uMoonAngR, 0.0) / max(uMoonAngR, 1e-4);
+      float g = 0.07 * exp(-x * 5.0) + 0.02 * exp(-x * 1.2);
+      vec3 Tg = transmittance(tTrans, Rg + uCamAlt, uMoonDirW.y);
+      moonC += uGlow * uMoonLum * uMoonScale * g * Tg;
+    }
+    float myDepth = terrainDepth(f);
+    if (uTerrain > 0.5) {
+      vec2 cuv = (uCacheRect.xy + f * uCacheRect.zw) / uCacheSize;
+      vec4 cb = texture(tCacheB, cuv);
+      if (cb.x > 0.002) {
+        vec4 ca = texelFetch(tCacheA, ivec2(cuv * uCacheSize), 0);
+        if (ca.w < 0.0) {
+          // coverage came from a neighbouring texel: take the nearest hit
+          for (int k = 0; k < 4; k++) {
+            ivec2 o = ivec2(k & 1, k >> 1) * 2 - 1;
+            vec4 c2 = texelFetch(tCacheA, ivec2(cuv * uCacheSize) + o, 0);
+            if (c2.w > 0.0) { ca = c2; break; }
+          }
+        }
+        if (ca.w > 0.0) {
+          vec3 tc = shadeTerrain(d, ca, cb, angPix);
+          col = mix(col, tc, cb.x);
+          moonC *= 1.0 - cb.x;
+          starVis *= 1.0 - cb.x;
         }
       }
+    }
+    if (uVolOn > 0.5) {
+      vec4 v = volUpsample(f, myDepth);
+      col = col * v.a + v.rgb;
+      moonC *= v.a;
+      starVis *= v.a;
+    }
+    col = mesopic(col) + moonC;
+  } else {
+    // ---------------- in space
+    if (uEarthVis > 0.001) {
+      vec4 e = earthShade(d, angPix);
+      col = col * (1.0 - e.a * uEarthVis) + e.rgb * uEarthVis;
+      starVis *= 1.0 - e.a * uEarthVis;
+    }
+    if (uSunVis > 0.001) {
+      float gs = acos(clamp(dot(d, uSunW), -1.0, 1.0));
+      float disc = smoothstep(SUN_R + angPix, SUN_R - angPix, gs);
+      col += uSunVis * vec3(1.0, 0.975, 0.93) * (disc * 900.0);
+    }
+    vec3 ro = uCamB;
+    vec3 rd = uM * d;
+    MoonHit mh = traceMoon(ro, rd, angPix);
+    if (mh.cov > 0.0) {
+      vec3 mc = shadeMoon(mh, ro, rd, uM * ddx, uM * ddy, angPix);
+      col = mix(col, mc, mh.cov);
+      starVis *= 1.0 - mh.cov;
+      if (mh.cov > 0.5) depth = mh.t;
+    }
+    if (uSunVis > 0.001) {
+      float gs = acos(clamp(dot(d, uSunW), -1.0, 1.0));
+      float vis = 1.0 - (mh.cov > 0.0 ? mh.cov : 0.0) * 0.85;
+      col += uSunVis * vis * vec3(1.0, 0.96, 0.9) * (0.25 / (1.0 + pow(gs / 0.004, 2.0)) + 0.006 * exp(-gs / 0.06));
+    }
+    if (uGlow > 0.001) {
+      float gam = acos(clamp(dot(d, uMoonDirW), -1.0, 1.0));
+      float x = max(gam - uMoonAngR, 0.0) / max(uMoonAngR, 1e-4);
+      col += uGlow * uMoonLum * (0.05 * exp(-x * 5.0) + 0.015 * exp(-x * 1.2));
     }
   }
 
@@ -764,17 +802,16 @@ void main() {
     float w = degrees(angPix) * 1.3;
     float line = max(smoothstep(w, 0.0, le), smoothstep(w, 0.0, la));
     float hz = smoothstep(w * 1.5, 0.0, abs(el));
-    col = mix(col, vec3(0.55, 0.7, 0.9) / max(uExposure, 1e-4), line * 0.7);
-    col = mix(col, vec3(1.0, 0.35, 0.3) / max(uExposure, 1e-4), hz);
+    col = mix(col, vec3(0.55, 0.7, 0.9) / max(expo, 1e-6), line * 0.7);
+    col = mix(col, vec3(1.0, 0.35, 0.3) / max(expo, 1e-6), hz);
   }
 
   float coc = 0.0;
   if (uDof > 0.0) {
-    float z = depth;
-    coc = uFocus > 0.0 ? uDof * abs(1.0 - uFocus / z) : 0.0;
+    coc = uFocus > 0.0 ? uDof * abs(1.0 - uFocus / depth) : 0.0;
     coc = min(coc, 40.0);
   }
-  oCol = vec4(max(col, vec3(0.0)) * uExposure, clamp(starVis * uStars, 0.0, 1.0));
+  oCol = vec4(max(col, vec3(0.0)) * expo, clamp(starVis * uStars, 0.0, 1.0));
   oAux = vec4(coc, 0.0, 0.0, 1.0);
 }`;
 }
@@ -784,13 +821,12 @@ precision highp float;
 layout(location = 0) in vec4 aStar;   // ra(deg) dec(deg) mag bv
 uniform vec3  uPA, uDU, uDV;
 uniform float uLat, uLST;             // radians
-uniform float uLimMag, uGain, uTime, uPx, uExposure, uExt;
+uniform float uGain, uTime, uPx, uExt;
 out vec3 vCol;
 out float vI;
 out float vR;
 
 vec3 bvColor(float bv) {
-  // approximate blackbody tint from B-V
   bv = clamp(bv, -0.4, 2.0);
   float t = 4600.0 * (1.0 / (0.92 * bv + 1.7) + 1.0 / (0.92 * bv + 0.62));
   float x = clamp((t - 2000.0) / 10000.0, 0.0, 1.0);
@@ -807,8 +843,9 @@ void main() {
                 sin(dec) * cos(uLat) - cos(dec) * cos(H) * sin(uLat));
   vec3 n = cross(uDU, uDV);
   float dn = dot(d, n), pn = dot(uPA, n);
-  float flux = pow(10.0, -0.4 * (aStar.z - uLimMag));
-  if (dn * pn <= 0.0 || flux < 0.12 || d.y < -0.02) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }
+  // flux in display units: magnitude scale times the scene exposure
+  float I0 = pow(10.0, -0.4 * aStar.z) * uGain;
+  if (dn * pn <= 0.0 || I0 < 0.0015 || d.y < -0.02) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }
   vec3 P = d * (pn / dn);
   vec3 q = P - uPA;
   float u = dot(q, uDU) / dot(uDU, uDU);
@@ -820,10 +857,10 @@ void main() {
   // slow, subtle scintillation near the horizon
   float tw = 1.0 + 0.35 * exp(-el / 0.25) * sin(uTime * (2.0 + fract(aStar.x * 7.1) * 3.0) + aStar.y * 11.0);
   vCol = bvColor(aStar.w) * T;
-  float I = min(flux, 40.0) * uGain * tw;
-  vR = uPx * (0.9 + 0.22 * log(1.0 + min(flux, 40.0)));
+  float I = min(I0, 40.0) * tw;
+  vR = uPx * (0.9 + 0.22 * log(1.0 + min(I0 * 8.0, 40.0)));
   gl_PointSize = ceil(vR * 3.0) * 2.0 + 1.0;
-  vI = I * uExposure;
+  vI = I;
 }`;
 
 export const STAR_FS = `#version 300 es

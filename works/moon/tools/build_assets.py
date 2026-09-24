@@ -8,9 +8,15 @@ Sources (public domain, NASA):
   Visible Earth  world.topo.bathy.200408.3x5400x2700.jpg, cloud_combined_2048.jpg,
                  dnb_land_ocean_ice.2012.3600x1800.jpg
   HYG star database v4.1 (CC BY-SA 4.0)  hygdata_v41.csv
+  NASA SVS Deep Star Maps 2020  https://svs.gsfc.nasa.gov/4851
+    milkyway_2020_8k.exr  (diffuse Milky Way, equatorial plate carree)
+  Terrain Tiles (Mapzen / AWS Open Data; SRTM over Korea), terrarium PNG tiles:
+    zoom 12 over 35.00-35.58N 127.18-127.92E  ->  <source_dir>/terrain/t_12_<x>_<y>.png
+    zoom  9 over 33.9-36.7N 125.9-129.2E      ->  <source_dir>/terrain/t_9_<x>_<y>.png
+    https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png
 
 Usage:
-  pip install numpy pillow tifffile imagecodecs scipy
+  pip install numpy pillow tifffile imagecodecs scipy OpenEXR
   python3 build_assets.py <source_dir> <out_dir>
 
 Height maps are stored losslessly as 16-bit values split over R (high) and G (low)
@@ -120,4 +126,64 @@ with open(src('hygdata_v41.csv'), newline='') as f:
         rows_.append((float(r['ra']) * 15.0, float(r['dec']), m, ci))
 arr = np.array(sorted(rows_, key=lambda x: x[2]), dtype=np.float32)
 arr.tofile(os.path.join(OUT, 'stars_hyg_m65.f32'))
+
+# ---------------------------------------------------------------- Milky Way (sqrt-encoded, 1 = 0.14 of the EXR's scale)
+import OpenEXR  # noqa: E402
+ch = OpenEXR.File(src('milkyway_2020_8k.exr')).parts[0].channels
+if 'RGB' in ch:
+    mw = np.asarray(ch['RGB'].pixels, dtype=np.float32)
+else:
+    pick = lambda k: next(np.asarray(ch[n].pixels, dtype=np.float32) for n in ch if n.split('.')[-1] == k)
+    mw = np.stack([pick('R'), pick('G'), pick('B')], -1)
+mw = mw.reshape(2048, 2, 4096, 2, 3).mean(axis=(1, 3))
+Image.fromarray((np.sqrt(np.clip(mw / 0.14, 0, 1)) * 255 + 0.5).astype(np.uint8)).save(
+    os.path.join(OUT, 'milkyway_4k.jpg'), 'JPEG', quality=90, subsampling=0, optimize=True)
+
+# ---------------------------------------------------------------- Jirisan terrain
+# Azimuthal equidistant grid centred on Nogodan (x = east, y = north, metres), heights
+# stored as metres / 16 in 16 bits over R (high) and G (low).
+import glob  # noqa: E402
+import math  # noqa: E402
+LAT0, LON0, RE = 35.2946, 127.5311, 6371008.8
+
+
+def mosaic(z):
+    fs = glob.glob(src(f'terrain/t_{z}_*.png'))
+    key = lambda f: os.path.basename(f)[:-4].split('_')
+    xs = sorted({int(key(f)[2]) for f in fs})
+    ys = sorted({int(key(f)[3]) for f in fs})
+    H = np.zeros((len(ys) * 256, len(xs) * 256), np.float32)
+    for i, y in enumerate(ys):
+        for j, x in enumerate(xs):
+            a = np.asarray(Image.open(src(f'terrain/t_{z}_{x}_{y}.png')).convert('RGB')).astype(np.float32)
+            H[i * 256:(i + 1) * 256, j * 256:(j + 1) * 256] = a[..., 0] * 256 + a[..., 1] + a[..., 2] / 256 - 32768
+    return H, xs[0], ys[0]
+
+
+def terrain_grid(z, x0m, x1m, y0m, y1m, n):
+    H, tx0, ty0 = mosaic(z)
+    X, Y = np.meshgrid(x0m + (np.arange(n) + 0.5) / n * (x1m - x0m), y1m - (np.arange(n) + 0.5) / n * (y1m - y0m))
+    rho = np.hypot(X, Y) + 1e-9
+    c = rho / RE
+    p0 = math.radians(LAT0)
+    lat = np.arcsin(np.cos(c) * math.sin(p0) + Y * np.sin(c) * math.cos(p0) / rho)
+    lon = math.radians(LON0) + np.arctan2(X * np.sin(c), rho * math.cos(p0) * np.cos(c) - Y * math.sin(p0) * np.sin(c))
+    NP = 2 ** z * 256
+    px = (np.degrees(lon) + 180) / 360 * NP - tx0 * 256 - 0.5
+    py = (1 - np.log(np.tan(lat) + 1 / np.cos(lat)) / math.pi) / 2 * NP - ty0 * 256 - 0.5
+    return map_coordinates(H, [py.ravel(), px.ravel()], order=1, mode='nearest').reshape(n, n)
+
+
+def enc_terrain(h, step=0.0625):
+    v = np.clip(np.round(np.maximum(h, 0.0) / step), 0, 65535).astype(np.uint32)
+    return np.stack([(v >> 8).astype(np.uint8), (v & 255).astype(np.uint8), np.zeros(v.shape, np.uint8)], -1)
+
+
+tmeta = dict(site=dict(name='Nogodan, Jirisan', lat=LAT0, lon=LON0),
+             near=dict(x0=-24000, x1=32000, y0=-30000, y1=26000, n=2048, step=0.0625),
+             far=dict(x0=-150000, x1=150000, y0=-150000, y1=150000, n=2048, step=0.0625))
+for key, z in (('near', 12), ('far', 9)):
+    m = tmeta[key]
+    save_webp_lossless(enc_terrain(terrain_grid(z, m['x0'], m['x1'], m['y0'], m['y1'], m['n'])), f'terrain_{key}.webp')
+json.dump(tmeta, open(os.path.join(OUT, 'terrain.json'), 'w'), indent=1)
 print('done:', sorted(os.listdir(OUT)))
