@@ -4,15 +4,25 @@
 // exact off-axis perspective, so the image is continuous across the corners
 // when seen from the sweet spot.
 
+// Each wall carries one 16:9 image, all three the same height and meeting at the corners, so
+// the side walls are as long as the front wall is wide and the height follows from the width.
+export const SCREEN_ASPECT = 16 / 9;
 export const DEFAULT_ROOM = {
-  width: 6.0,   // front wall width (m)
-  depth: 6.0,   // side wall length (m)
-  height: 3.375, // projected image height (m)
+  width: 6.0,   // width of each wall's image (m)
+  depth: 6.0,   // side wall length (m): = width
+  height: 3.375, // projected image height (m): = width × 9/16
   bottom: 0.0,  // image bottom edge above the floor (m)
   eye: 1.6,     // viewer eye height (m)
   vx: 0.0,      // viewer offset from room centre, + = right (m)
   vz: 0.0,      // viewer offset from room centre, + = toward the back (m)
 };
+
+// keep the three images 16:9: the side walls and the height follow from the width
+export function fitRoom(r) {
+  r.depth = r.width;
+  r.height = r.width / SCREEN_ASPECT;
+  return r;
+}
 
 export function roomWalls(r) {
   const y0 = r.bottom - r.eye;
@@ -42,28 +52,37 @@ export function pinhole(yawDeg, pitchDeg, hfovDeg, aspect) {
   };
 }
 
+// the largest picture of the given shape that fits the canvas, centred: a window that is not
+// the screens' shape (not yet full screen, or a 16:10 display) gets black bars, not a stretch
+function fitRect(canvasW, canvasH, aspect) {
+  let w = canvasW, h = Math.round(canvasW / aspect);
+  if (h > canvasH) { h = canvasH; w = Math.round(canvasH * aspect); }
+  return [Math.floor((canvasW - w) / 2), Math.floor((canvasH - h) / 2), w, h];
+}
+
 // Build the list of views for a mode.
 // Each view: { name, geo:{pa,du,dv}, dst:[x,y,w,h] canvas px (GL origin bottom-left), src:[x,y,w,h] in unit render space }
 export function buildLayout(mode, opts, canvasW, canvasH) {
   const walls = roomWalls(opts.room);
   const order = opts.order || ['left', 'front', 'right'];
   const views = [];
+  const r = opts.room;
   if (mode === 'span') {
-    // one canvas across all projectors; per-wall pixel widths are equal unless overridden
-    const weights = order.map((n) => opts.wallPx?.[n] || 1);
-    const tot = weights.reduce((a, b) => a + b, 0);
+    // one canvas across all projectors, the three images side by side
+    const [fx, fy, fw, fh] = fitRect(canvasW, canvasH, (r.width + 2 * r.depth) / r.height);
     let x = 0;
     order.forEach((n, i) => {
-      const w = Math.round((canvasW * weights[i]) / tot);
-      views.push({ name: n, geo: walls[n], dst: [x, 0, w, canvasH], src: [x, 0, w, canvasH] });
+      const w = i < order.length - 1 ? Math.round((fw * (n === 'front' ? r.width : r.depth)) / (r.width + 2 * r.depth)) : fw - x;
+      views.push({ name: n, geo: walls[n], dst: [fx + x, fy, w, fh], src: [x, 0, w, fh] });
       x += w;
     });
-    return { views, srcW: canvasW, srcH: canvasH, gaps: false };
+    return { views, srcW: fw, srcH: fh, gaps: fw < canvasW || fh < canvasH };
   }
   if (mode === 'wall') {
     const n = opts.wall || 'front';
-    views.push({ name: n, geo: walls[n], dst: [0, 0, canvasW, canvasH], src: [0, 0, canvasW, canvasH] });
-    return { views, srcW: canvasW, srcH: canvasH, gaps: false };
+    const [fx, fy, fw, fh] = fitRect(canvasW, canvasH, (n === 'front' ? r.width : r.depth) / r.height);
+    views.push({ name: n, geo: walls[n], dst: [fx, fy, fw, fh], src: [0, 0, fw, fh] });
+    return { views, srcW: fw, srcH: fh, gaps: fw < canvasW || fh < canvasH };
   }
   if (mode === 'single') {
     const g = pinhole(opts.yaw || 0, opts.pitch || 0, opts.fov || 100, canvasW / canvasH);
@@ -71,7 +90,6 @@ export function buildLayout(mode, opts, canvasW, canvasH) {
     return { views, srcW: canvasW, srcH: canvasH, gaps: false };
   }
   // preview: three walls unfolded, true proportions, centred with thin gaps
-  const r = opts.room;
   const widths = order.map((n) => (n === 'front' ? r.width : r.depth));
   const totalM = widths.reduce((a, b) => a + b, 0);
   const gap = Math.max(2, Math.round(canvasW * 0.004));

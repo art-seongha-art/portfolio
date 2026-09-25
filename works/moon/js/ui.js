@@ -1,5 +1,7 @@
 // Moon — overlay, HUD and operator panel.
 
+import { DEFAULT_ROOM, fitRoom } from './cave.js';
+
 const $ = (s) => document.querySelector(s);
 const fmt = (t) => `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
 
@@ -106,14 +108,26 @@ export function initUI(ctx) {
   $('#p-quality').onchange = (e) => setQuality(e.target.value);
   $('#p-grid').onchange = (e) => { cfg.grid = e.target.checked; broadcast({ type: 'grid', on: cfg.grid }); };
   $('#p-order').onchange = (e) => { cfg.order = e.target.value.split(','); markLayoutDirty(); saveConfig(); broadcast({ type: 'config', order: cfg.order }); };
-  const roomKeys = ['width', 'depth', 'height', 'bottom', 'eye', 'vx', 'vz'];
+  // the images are 16:9 on every wall, so only their width is entered; the height and the
+  // side walls follow
+  const roomKeys = ['width', 'bottom', 'eye', 'vx', 'vz'];
+  const showHeight = () => ($('#r-height').textContent = `${+cfg.room.height.toFixed(3)} m`);
   roomKeys.forEach((k) => {
     const el = $(`#r-${k}`);
     el.addEventListener('change', () => {
-      cfg.room[k] = parseFloat(el.value);
+      const v = parseFloat(el.value);
+      if (!Number.isFinite(v) || (k === 'width' && v < 1)) { el.value = cfg.room[k]; return; }
+      cfg.room[k] = v;
+      fitRoom(cfg.room);
+      showHeight();
       markLayoutDirty(); saveConfig(); broadcast({ type: 'config', room: cfg.room });
     });
   });
+  $('#r-reset').onclick = () => {
+    Object.assign(cfg.room, DEFAULT_ROOM);
+    syncPanel();
+    markLayoutDirty(); saveConfig(); broadcast({ type: 'config', room: cfg.room });
+  };
   ['left', 'front', 'right'].forEach((w) => {
     ['gain', 'gamma', 'lift'].forEach((k) => {
       const el = $(`#g-${w}-${k}`);
@@ -163,6 +177,7 @@ export function initUI(ctx) {
     $('#p-grid').checked = cfg.grid;
     $('#p-order').value = cfg.order.join(',');
     roomKeys.forEach((k) => ($(`#r-${k}`).value = cfg.room[k]));
+    showHeight();
     ['left', 'front', 'right'].forEach((w) => ['gain', 'gamma', 'lift'].forEach((k) => {
       const g = cfg.grade[w] || {};
       $(`#g-${w}-${k}`).value = g[k] ?? (k === 'lift' ? 0 : 1);
