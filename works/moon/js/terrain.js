@@ -13,6 +13,45 @@ uniform vec2  uTerTex;        // texels across near, far
 uniform vec2  uCamEN;         // viewer position in the DEM frame (east, north metres)
 const float REFF = 7310000.0; // Earth radius stretched for standard refraction (k = 0.13)
 
+// cubic B-spline filtered heights from 4 bilinear taps per mip (Sigg & Hadwiger):
+// bilinear leaves a crease along every texel edge, which low light turns into
+// crumpled facets; the B-spline surface is smooth
+float bsTap(sampler2D tex, vec2 uv, float n, float L) {
+  float ts = n * exp2(-L);
+  vec2 st = uv * ts - 0.5;
+  vec2 i = floor(st), f = st - i;
+  vec2 f2 = f * f, f3 = f2 * f;
+  vec2 w0 = (1.0 - 3.0 * f + 3.0 * f2 - f3) * (1.0 / 6.0);
+  vec2 w1 = (4.0 - 6.0 * f2 + 3.0 * f3) * (1.0 / 6.0);
+  vec2 w3 = f3 * (1.0 / 6.0);
+  vec2 w2 = 1.0 - w0 - w1 - w3;
+  vec2 g0 = w0 + w1, g1 = w2 + w3;
+  vec2 h0 = (i - 0.5 + w1 / g0) / ts;
+  vec2 h1 = (i + 1.5 + w3 / g1) / ts;
+  return g0.y * (g0.x * textureLod(tex, h0, L).r + g1.x * textureLod(tex, vec2(h1.x, h0.y), L).r)
+       + g1.y * (g0.x * textureLod(tex, vec2(h0.x, h1.y), L).r + g1.x * textureLod(tex, h1, L).r);
+}
+float bspline(sampler2D tex, vec2 uv, float n, float lod) {
+  float L0 = floor(lod), fr = lod - L0;
+  float a = bsTap(tex, uv, n, L0);
+  return fr < 0.01 ? a : mix(a, bsTap(tex, uv, n, L0 + 1.0), fr);
+}
+float demHs(vec2 en, float fp) {
+  vec2 uvF = vec2((en.x - uFarB.x) / (uFarB.y - uFarB.x), (uFarB.w - en.y) / (uFarB.w - uFarB.z));
+  float texF = (uFarB.y - uFarB.x) / uTerTex.y;
+  float h = bspline(tTerFar, uvF, uTerTex.y, log2(max(fp / texF, 1.0)));
+  vec2 ef = min(uvF, 1.0 - uvF);
+  h *= smoothstep(0.0, 0.04, min(ef.x, ef.y));
+  vec2 uvN = vec2((en.x - uNearB.x) / (uNearB.y - uNearB.x), (uNearB.w - en.y) / (uNearB.w - uNearB.z));
+  vec2 e = min(uvN, 1.0 - uvN);
+  float w = smoothstep(0.0, 0.06, min(e.x, e.y));
+  if (w > 0.0) {
+    float texN = (uNearB.y - uNearB.x) / uTerTex.x;
+    h = mix(h, bspline(tTerNear, uvN, uTerTex.x, log2(max(fp / texN, 1.0))), w);
+  }
+  return h;
+}
+// bilinear version: cheaper, for marching and shadow tests
 float demH(vec2 en, float fp) {
   vec2 uvF = vec2((en.x - uFarB.x) / (uFarB.y - uFarB.x), (uFarB.w - en.y) / (uFarB.w - uFarB.z));
   float texF = (uFarB.y - uFarB.x) / uTerTex.y;
@@ -62,7 +101,9 @@ float canopy(vec2 en, float h, float fp) {
   float fm = forestMask(en, h);
   if (fm <= 0.0) return 0.0;
   float avg = 11.0 * fm;
-  float w = smoothstep(4.5, 1.8, fp);
+  // single crowns only where a pixel is well under a crown; further out they would
+  // alias into speckle, so the forest reads as a smooth dark canopy
+  float w = smoothstep(1.6, 0.6, fp) * 0.6;
   if (w <= 0.0) return avg;
   const float C = 6.5;
   vec2 q = en / C;
@@ -82,36 +123,22 @@ float canopy(vec2 en, float h, float fp) {
   }
   return mix(avg, top * fm, w);
 }
-// the rocky summit round the viewer: outcrops, boulders and tussocks, only where they
-// are resolved (near field) and only above the trees
+// the rocky summit round the viewer: broad granite outcrops, only near and only
+// above the trees (no small-scale bumps: in moonlight they read as crumpled noise)
 float rocks(vec2 en, float h, float fp) {
   float dist = length(en - uCamEN);
-  float w = smoothstep(460.0, 160.0, dist) * smoothstep(2.5, 0.7, fp) * smoothstep(1500.0, 1650.0, h);
+  float w = smoothstep(460.0, 160.0, dist) * smoothstep(3.0, 1.0, fp) * smoothstep(1500.0, 1650.0, h);
   if (w <= 0.0) return 0.0;
-  float o = 1.0 - abs(vn2(en / 23.0 + 5.3) * 2.0 - 1.0);
-  o = o * o * o * 3.2 + (vn2(en / 9.0 + 1.7) - 0.5) * 1.2;
-  const float C = 7.0;
-  vec2 q = en / C;
-  ivec2 b = ivec2(floor(q));
-  float bo = 0.0;
-  for (int j = -1; j <= 1; j++)
-  for (int i = -1; i <= 1; i++) {
-    ivec2 c = b + ivec2(i, j) + ivec2(4096);
-    vec3 r = thash3(c);
-    if (r.z < 0.8) continue;
-    vec2 ctr = vec2(b + ivec2(i, j)) + 0.2 + 0.6 * r.xy;
-    vec2 dv = (q - ctr) * C;
-    // irregular, half-buried blocks rather than domes
-    float a = atan(dv.y, dv.x);
-    float rad = (1.2 + 2.2 * r.x) * (0.78 + 0.22 * sin(a * 3.0 + r.y * 6.28) + 0.1 * sin(a * 5.0 + r.z * 9.0));
-    float hh = (1.2 + 2.2 * r.x) * (0.25 + 0.3 * r.y);
-    float e = clamp(1.0 - dot(dv, dv) / (rad * rad), 0.0, 1.0);
-    bo = max(bo, hh * min(sqrt(e) * 1.6, 1.0));
-  }
-  float g = (vn2(en / 1.6) - 0.5) * 0.3;
-  return w * (max(o, 0.0) + bo + g);
+  float o = 1.0 - abs(vn2(en / 26.0 + 5.3) * 2.0 - 1.0);
+  return w * o * o * o * 2.4;
 }
+// surface used for the hit refinement and the normals (smooth) ...
 float terrainH(vec2 en, float fp) {
+  float h = demHs(en, fp);
+  return h + canopy(en, h, fp) + rocks(en, h, fp);
+}
+// ... and a cheaper one for stepping along the ray
+float terrainHf(vec2 en, float fp) {
   float h = demH(en, fp);
   return h + canopy(en, h, fp) + rocks(en, h, fp);
 }
@@ -122,6 +149,7 @@ float terrainShadowE(vec2 en, float alt, vec3 L, float fp0) {
   if (tanE > 1.2) return 1.0;
   float occ = -1.0;
   float s = max(fp0 * 2.0, 30.0);
+  alt += 3.0;   // the lit surface is the smooth one, the test uses the bilinear DEM
   for (int i = 0; i < 18; i++) {
     vec2 q = en + hd * s;
     float hq = demH(q, s * 0.06);
@@ -156,7 +184,7 @@ float march(vec3 d, float angPix, out vec2 enHit) {
     float alt = length(p - C) - REFF;
     vec2 en = uCamEN + vec2(-p.x, p.z);
     float fp = max(t * angPix, 0.05);
-    float dz = alt - terrainH(en, fp);
+    float dz = alt - terrainHf(en, fp);
     if (dz < 0.0) {
       float a = tPrev, b = t;
       for (int k = 0; k < 8; k++) {
@@ -198,7 +226,7 @@ void main() {
       tSum += t;
       float fp = max(t * angPix, 0.05);
       float dl = t < 600.0 ? max(fp, 0.3) : max(fp, 3.0);
-      float h0 = demH(en, fp);
+      float h0 = demHs(en, fp);
       float hx = terrainH(en + vec2(dl, 0.0), fp) - terrainH(en - vec2(dl, 0.0), fp);
       float hy = terrainH(en + vec2(0.0, dl), fp) - terrainH(en - vec2(0.0, dl), fp);
       nSum += normalize(vec3(hx / (2.0 * dl), 1.0, -hy / (2.0 * dl)));
@@ -206,7 +234,7 @@ void main() {
       forest += fm;
       float slope = length(vec2(hx, hy)) / (2.0 * dl);
       float rh = rocks(en, h0, fp);
-      rock += (1.0 - fm) * max(smoothstep(0.35, 0.9, slope), smoothstep(0.25, 0.9, rh));
+      rock += (1.0 - fm) * max(smoothstep(0.35, 0.9, slope), smoothstep(0.4, 1.4, rh));
       water += step(h0, 1.0);
     }
   }

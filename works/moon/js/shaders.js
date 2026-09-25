@@ -551,15 +551,15 @@ vec3 shadeTerrain(vec3 d, vec4 ca, vec4 cb, float angPix) {
   float alt = r - Rg;
   vec2 en = uCamEN + vec2(-p.x, p.z);
   float forest = cb.y, rock = cb.z, water = cb.w;
-  vec3 aForest = vec3(0.030, 0.042, 0.030);
-  vec3 aMeadow = vec3(0.115, 0.108, 0.080);
-  vec3 aRock = vec3(0.13, 0.128, 0.122);
+  // night-dark materials: fir and oak canopy, bamboo grass and heath, weathered granite
+  vec3 aForest = vec3(0.020, 0.028, 0.021);
+  vec3 aMeadow = vec3(0.062, 0.060, 0.047);
+  vec3 aRock = vec3(0.085, 0.084, 0.080);
   vec3 alb = aForest * forest + aRock * rock + aMeadow * max(1.0 - forest - rock, 0.0);
-  alb *= 0.78 + 0.44 * vnoise2(en / 85.0);
+  alb *= 0.8 + 0.4 * vnoise2(en / 85.0);
   if (t < 1500.0) {
-    // near the summit: patches of grass, bamboo grass, lichen and bare soil
-    float nn = vnoise2(en / 11.0) * 0.6 + vnoise2(en / 3.1) * 0.4;
-    alb *= mix(1.0, 0.6 + 0.8 * nn, smoothstep(1500.0, 300.0, t));
+    // near the summit: broad patches of grass, bamboo grass and bare ground
+    alb *= mix(1.0, 0.7 + 0.6 * vnoise2(en / 17.0), smoothstep(1500.0, 300.0, t));
   }
   alb = mix(alb, vec3(0.015, 0.022, 0.03), water);
   vec3 Em = uMoonE * transmittance(tTrans, r, dot(up, uMoonDirW));
@@ -573,23 +573,11 @@ vec3 shadeTerrain(vec3 d, vec4 ca, vec4 cb, float angPix) {
     if (uKeyMoon > 0.5) Em *= csh; else Es *= csh;
   }
   float fp = t * angPix;
-  float nm = max(dot(N, uMoonDirW), 0.0), ns = max(dot(N, uSunDirW), 0.0);
+  // direct light uses a gentler normal: the ranges read as soft masses, not as relief maps
+  vec3 Nl = normalize(mix(N, up, 0.35));
+  float nm = max(dot(Nl, uMoonDirW), 0.0), ns = max(dot(Nl, uSunDirW), 0.0);
   float shm = (nm > 0.0 && dot(Em, vec3(1.0)) > 1e-9) ? terrainShadowE(en, alt, uMoonDirW, fp) : 0.0;
   float shs = (ns > 0.0 && dot(Es, vec3(1.0)) > 1e-9) ? terrainShadowE(en, alt, uSunDirW, fp) : 0.0;
-  if (t < 700.0 && (shm > 0.0 || shs > 0.0)) {
-    // boulders and outcrops shadow each other (the DEM test above cannot see them)
-    vec3 Lk = uKeyMoon > 0.5 ? uMoonDirW : uSunDirW;
-    vec2 hd = normalize(vec2(-Lk.x, Lk.z) + vec2(1e-6));
-    float tanE = Lk.y / max(length(Lk.xz), 1e-4);
-    float occ = -1.0, s = 0.35;
-    for (int i = 0; i < 10; i++) {
-      float hq = terrainH(en + hd * s, max(fp, s * 0.03));
-      occ = max(occ, (hq - (alt + 0.12 + s * tanE)) / s);
-      s *= 1.6;
-    }
-    float ms = smoothstep(0.03, -0.03, occ);
-    if (uKeyMoon > 0.5) shm *= ms; else shs *= ms;
-  }
   vec3 ambUp = textureLod(tSkyView, vec2(0.5, 0.97), 6.0).rgb;
   vec3 ambH = textureLod(tSkyView, vec2(0.5, 0.56), 6.0).rgb;
   vec3 amb = mix(ambH, ambUp, 0.5 + 0.5 * N.y);
@@ -601,7 +589,7 @@ vec3 shadeTerrain(vec3 d, vec4 ca, vec4 cb, float angPix) {
   // aerial perspective: the far ranges fade into the colour of the horizon sky
   float hA = 0.5 * (uCamAlt + alt);
   // plus the moist valley haze of a Korean summer night, thickest low down
-  float valleyHaze = 5.5e-5 * uMie * exp(-max(min(alt, uCamAlt) - 350.0, 0.0) / 750.0);
+  float valleyHaze = 8.0e-5 * uMie * exp(-max(min(alt, uCamAlt) - 350.0, 0.0) / 750.0);
   vec3 sig = BR * exp(-hA / HR) + vec3(BM_E * uMie * exp(-hA / HM) + valleyHaze);
   vec3 Ta = exp(-sig * t);
   vec3 skyH = texture(tSkyView, skyUV(normalize(vec3(d.x, min(d.y, -0.003), d.z)))).rgb;
@@ -614,7 +602,7 @@ vec3 mesopic(vec3 c) {
   if (uAbsScale <= 0.0) return c;
   float Y = dot(c, LUMA);
   float lcd = max(Y * uAbsScale, 1e-7);
-  float s = smoothstep(0.3, -2.3, log(lcd) / 2.302585) * 0.6;
+  float s = smoothstep(0.3, -2.3, log(lcd) / 2.302585) * 0.7;
   float V = dot(c, vec3(0.033, 0.765, 0.2));
   return mix(c, V * vec3(0.74, 0.9, 1.24), s);
 }
