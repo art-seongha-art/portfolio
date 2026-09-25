@@ -7,6 +7,7 @@
 import { ATMO_COMMON } from './atmo.js';
 import { TERRAIN_COMMON } from './terrain.js';
 import { SH_HALF, SH_REF } from './clouds.js';
+import { RABBIT_GLSL } from './surface.js';
 
 // Random rotations that decorrelate the crater grids of each octave.
 function octaveRotations(n, seed) {
@@ -138,6 +139,11 @@ uniform vec4  uGhost[9];
 uniform mat3  uGhostM[9];
 uniform vec3  uGhostSun[9];
 uniform float uGhostES[9];
+// standing on the moon (the ground comes from the cache, bound to tCacheA/B)
+uniform float uSurface;
+uniform vec3  uSurfSun;
+uniform float uEarthGain;
+${RABBIT_GLSL}
 
 // ---------------- focus
 uniform float uFocus;        // focus distance (lunar radii), 0 = infinity
@@ -760,6 +766,22 @@ void main() {
       starVis *= v.a;
     }
     col = mesopic(col) + moonC;
+  } else if (uSurface > 0.5) {
+    // ---------------- standing on the moon: black sky, the Earth, the ground, the rabbits
+    vec4 e = earthShade(d, angPix);
+    col = e.rgb * uEarthGain;
+    vec2 cuv = (uCacheRect.xy + f * uCacheRect.zw) / uCacheSize;
+    ivec2 cp = ivec2(cuv * uCacheSize);
+    vec4 GA = texelFetch(tCacheA, cp, 0);
+    vec4 GB = texelFetch(tCacheB, cp, 0);
+    float tG = GA.a > 0.0 ? GA.a : 1e9;
+    if (GB.a > 0.0) {
+      vec3 g = GA.rgb * (GA.a > 0.0 ? rabbitShadow(d * tG) : 1.0) + GB.rgb;
+      col = mix(col, g, GB.a);
+    }
+    vec4 rb = rabbits(d, angPix, tG);
+    col = col * (1.0 - rb.a) + rb.rgb;
+    starVis = 0.0;
   } else {
     // ---------------- in space
     col += milkyWay(d) * uMWGain;

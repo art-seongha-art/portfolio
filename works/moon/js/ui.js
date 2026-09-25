@@ -160,7 +160,7 @@ export function initUI(ctx) {
     else if (k === 'f' || k === 'F') {
       if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen().catch(() => {});
     } else if (k === 'h' || k === 'H') body.classList.toggle('clean');
-    else if (/^[1-7]$/.test(k)) clock.seek(SCENES[+k - 1].t + 0.01);
+    else if (/^[1-9]$/.test(k) && SCENES[+k - 1]) clock.seek(SCENES[+k - 1].t + 0.01);
     else if (k === ']') clock.setSpeed(Math.min(32, clock.speed * 2));
     else if (k === '[') clock.setSpeed(Math.max(0.25, clock.speed / 2));
     else if (k === '0') clock.setSpeed(1);

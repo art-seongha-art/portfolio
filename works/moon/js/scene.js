@@ -1,6 +1,7 @@
 // Moon — turns a timeline state into shader uniforms (all the geometry lives here).
 
 import { ORBIT } from './timeline.js';
+import { SURF_SUN, SURF_EARTH } from './surface.js';
 
 const D2R = Math.PI / 180;
 export const SITE_LAT = 35.337 * D2R;  // Cheonwangbong, Jirisan; the front wall faces south
@@ -482,6 +483,16 @@ export function deriveUniforms(S, stateAtFn) {
     U.uAbsScale = 0;
     U.uMWGain = MW_SPACE * U.exposure;
     U.starGain = STAR_SPACE * U.exposure;
+    if (S.surfaceMode) {
+      // standing on the moon: the sun low behind the right shoulder, the Earth over the rim
+      // ahead (a black sky: the ground is exposed for sunlight, so no stars show)
+      U.surfSun = dirAzEl(SURF_SUN.az, SURF_SUN.el);
+      U.uSunW = U.surfSun;
+      U.uEarthDirW = dirAzEl(SURF_EARTH.az, S.earthEl);
+      U.uEarthRot = bodyMatrix(U.uEarthDirW, 0, sph(SURF_EARTH.lat, SURF_EARTH.lon));
+      U.uMWGain = 0;
+      U.starGain = 0;
+    }
     U.keyLight = dir;
     U.eclFrac = 1;
   }
@@ -490,8 +501,9 @@ export function deriveUniforms(S, stateAtFn) {
   if (orbit) {
     for (const [az, tLeave] of ORBIT.stops) {
       let a = ORBIT.afterimage * Math.min(1, Math.max(0, (S.t - tLeave) / 5)) ** 2;
-      // the first one merges back into the moon when it comes round again
+      // the first one merges back into the moon when it comes round again; then all fade
       if (az === 0) a *= Math.min(1, Math.max(0, (646 - S.t) / 8));
+      a *= Math.min(1, Math.max(0, (ORBIT.fadeOut[1] - S.t) / (ORBIT.fadeOut[1] - ORBIT.fadeOut[0])));
       if (a <= 0 || G.n >= 9) continue;
       const g = orbitPose(az, fb);
       G.dir.set([...g.dir, a], G.n * 4);
