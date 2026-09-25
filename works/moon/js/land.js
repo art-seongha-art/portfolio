@@ -1,136 +1,125 @@
-// Moon — before dawn, above a valley full of fog, in the manner of an ink landscape. The
-// viewer stands at the end of a spur; past its edge the land falls to the valley floor, the
-// fog lies in the valley, and ranges rise out of it layer on layer, each paler with distance,
-// their feet lost in the fog.
+// Moon — before dawn, the ranges of Jirisan over valleys full of fog, as in an ink landscape.
+// The viewer stands on the spur below Samsinbong with the main ridge (Banyabong to
+// Cheonwangbong) across the view; ridge after ridge rises out of the fog, paler with distance.
 //
-// The ranges are silhouettes at fixed distances round the viewer (exact from the sweet spot,
-// the same on every wall and continuous across the corners). The fog is dense below its top
-// and thins softly above it; along a straight ray its optical depth comes in closed form. A
-// thin mist in the air scatters the moonlight into a halo round the moon.
+// The skylines are real: tools/build_ridges.py finds, round the horizon, the highest point of
+// the terrain in each band of distance (assets/mist_ridges.bin, rows 0-5 of the data texture:
+// its elevation angle and distance). Each band is drawn as a silhouette at that distance,
+// nearest first: exact from the sweet spot, the same on every wall, continuous across the
+// corners. The valley fog is dense below its top and thins softly above it; along a straight
+// ray its optical depth comes in closed form. A thin haze over the fog scatters the moonlight
+// into a halo round the moon.
 
 export const LAND_GLSL = `
-uniform float uLand;          // 1 = above the misty valley
-uniform float uLandEye;       // eye height over the ground (m)
-uniform float uMist;          // thin mist in the air (1/m at the ground); it thins with height
+uniform float uLand;          // 1 = above the misty valleys before dawn
+uniform vec4  uRidge;         // the ranges: x the eye's height above sea level (m), y the azimuth of the
+                              // room's front from north (rad), z azimuths round the horizon, w bands
+uniform float uMist;          // thin haze over the fog (1/m at its top); it thins with height
 uniform float uMistH;         // its scale height (m)
-uniform float uRidge;         // height of the ranges
-uniform float uRidgeD;        // how far off the nearest range stands (m)
-uniform vec2  uCliff;         // x: where the ground ends straight ahead (m), y: how far the land
-                              // falls from there to the valley floor (m)
-uniform vec4  uVFog;          // fog lying in the valley: x its top over the valley floor (m),
-                              // y how softly it thins there (m), z density (1/m), w from how far out (m)
+uniform vec4  uVFog;          // the valley fog: x its top (m above sea level), y how softly it thins
+                              // there (m), z density (1/m), w from how far out (m)
 
 // Henyey-Greenstein, normalised to 1 at g = 0
 float hgPhase(float c, float g) { return (1.0 - g * g) / pow(1.0 + g * g - 2.0 * g * c, 1.5); }
 
-// optical depth of the mist from the eye along d to distance t (inf allowed when d.y > 0)
+// optical depth of the haze from the eye along d to distance t (inf allowed when d.y > 0)
 float mistTau(vec3 d, float t) {
   if (uMist <= 0.0) return 0.0;
-  float e0 = exp(-uLandEye / uMistH);
+  float e0 = exp(-max(uRidge.x - uVFog.x, 0.0) / uMistH);
   float k = d.y / uMistH;
   if (abs(k) < 1e-5) return uMist * e0 * t;
   float tt = min(t, 1e6);
   return uMist * e0 * (1.0 - exp(-k * tt)) / k;
 }
-
-// the edge of the ground the viewer stands on: its distance along azimuth az. Nearest straight
-// ahead, curving back toward the sides like the end of a spur; beyond it the land falls away
-float edgeR(float az) {
-  float c = cos(az);
-  if (c < 0.05) return 1e9;
-  float n = fbm2(vec2(az * 3.0 + 11.0, 2.5), 3);
-  return uCliff.x * (0.8 + 0.5 * n) / c * (1.0 + 2.5 * pow(1.0 - c, 1.5));
-}
 float softplus(float x) { return x > 15.0 ? x : log(1.0 + exp(x)); }
-// the fog in the valley: dense below its top F over the valley floor, thinning over a height
-// uVFog.y above it (a logistic profile), from uVFog.w out. Along a straight ray the height
-// changes linearly, so the optical depth from t0 to t1 comes in closed form (a softplus).
+// the fog in the valleys: dense below its top F, thinning over a height uVFog.y above it (a
+// logistic profile), from uVFog.w out. Along a straight ray the height changes linearly, so
+// the optical depth from t0 to t1 comes in closed form (a softplus). (The Earth's curve is left
+// out here: over the few kilometres where a ray is near the fog it is a few metres.)
 float vfogTau(vec3 d, float t0, float t1, float F) {
   if (uVFog.z <= 0.0) return 0.0;
   t0 = max(t0, uVFog.w / max(length(d.xz), 1e-4));
   t1 = min(t1, 2e5);
   if (t1 <= t0) return 0.0;
-  float h0 = uLandEye + uCliff.y, s = uVFog.y;
+  float h0 = uRidge.x, s = uVFog.y;
   if (abs(d.y) < 1e-5) return uVFog.z * (t1 - t0) / (1.0 + exp((h0 - F) / s));
   float ha = h0 + d.y * t0, hb = h0 + d.y * t1;
   return max(uVFog.z * s * (softplus((F - ha) / s) - softplus((F - hb) / s)) / d.y, 0.0);
 }
-// the fog's top rises and falls in slow billows that drift: its height at p, and how
-// much brighter it is there (the tops catch more of the moon)
-float vfogTop(vec3 p, float fp, int oct, out float lift) {
-  float b = fbm2l(p.xz / 240.0 + uTime * vec2(0.0035, 0.0012), oct, fp / 240.0);
+// the fog's top rises and falls in slow billows that drift: its height at p (m above sea
+// level), and how much brighter it is there (the tops catch more of the moon)
+float vfogTop(vec3 p, float fp, out float lift) {
+  float b = fbm2l(p.xz / 380.0 + uTime * vec2(0.0024, 0.0009), 3, fp / 380.0);
   lift = b;
-  return uVFog.x * (0.75 + 0.6 * b);
+  return uVFog.x + 110.0 * (b - 0.5);
 }
 
-// the ranges, layer on layer (0 the nearest), rising from the valley floor: the elevation
-// (rad) of the crest at azimuth az, its distance D and its height H over the floor. The near
-// ranges are lower and broad; the far ones bigger, with more summits to the degree.
-float ridgeEl(int k, float az, float angPix, out float D, out float H) {
-  float fk = float(k);
-  D = uRidgeD * pow(2.15, fk);
-  float u = az * D / (700.0 * pow(1.6, fk)) + fk * 17.3;
-  u += 0.45 * vnoise2(vec2(u * 0.33, fk * 5.1 + 2.0));              // summits unevenly spaced
-  float m = clamp((fbm2(vec2(u * 0.55, fk * 3.7 + 0.5), 5) - 0.2) / 0.55, 0.0, 1.0);
-  float r = 1.0 - abs(2.0 * vnoise2(vec2(u * 1.2, fk * 2.3 + 7.0)) - 1.0);
-  H = uRidge * 55.0 * pow(2.05, fk) * (0.15 + 0.85 * m + 0.35 * r * r * m);
-  // the forest along the nearer crests roughens them a little (gone once finer than a pixel)
-  if (k < 2) H += uRidge * 3.0 * vnoise2(vec2(az * D / 7.0, fk * 3.0 + 0.5)) * clamp(1.5 - angPix * D / 7.0 * 2.5, 0.0, 1.0);
-  return atan((H - uLandEye - uCliff.y) / D) - D / (2.0 * 6371000.0);
+// band k of the ranges at u (0..1 round the horizon from north): the crest's elevation angle
+// (rad) and its distance (m), between the stored azimuths
+vec2 ridgeAt(int k, float u) {
+  int n = int(uRidge.z);
+  float x = u * uRidge.z - 0.5;
+  float fx = floor(x);
+  int i0 = (int(fx) + n) % n, i1 = (int(fx) + 1) % n;
+  return mix(texelFetch(tData, ivec2(i0, k), 0).rg, texelFetch(tData, ivec2(i1, k), 0).rg, x - fx);
+}
+// the forest along a crest, seen against the sky: rounded crowns (x in crown widths), 0..1
+float treeline(float x) {
+  float i = floor(x), h = 0.0;
+  for (int j = -1; j <= 1; j++) {
+    float c = i + float(j);
+    float r = h12(vec2(c, 7.7));
+    float q = (x - (c + 0.5 + (r - 0.5) * 0.6)) / (0.55 + 0.35 * h12(vec2(c, 3.1)));
+    h = max(h, (0.55 + 0.45 * r) * sqrt(max(1.0 - q * q, 0.0)));
+  }
+  return h;
 }
 
-// ---------------- the ground, the ranges and the fog along d, in front of the sky
+// ---------------- the ranges and the fog along d, in front of the sky
 // returns premultiplied colour and coverage; vis = what still shows of the sky behind,
 // nearD = the distance of what the pixel shows, occT = what shows past everything that
-// stands up into the moonlight (the ranges; not the ground or the fog lying below it), for
-// the light shafts
+// stands up into the moonlight (the ranges; not the fog lying below them), for the light shafts
 vec4 landShade(vec3 d, float angPix, vec3 moonLight, out float vis, out float nearD, out float occT) {
   vec3 ambUp = textureLod(tSkyView, vec2(0.5, 0.97), 6.0).rgb;
   vec3 ambH = textureLod(tSkyView, vec2(0.5, 0.56), 6.0).rgb;
   vec3 amb = mix(ambH, ambUp, 0.4) * 1.3;
-  // mist and fog: sky light and moonlight scattered forward round the moon
+  // haze and fog: sky light and moonlight scattered forward round the moon
   vec3 mistC = ambH * 1.15 + moonLight * (0.05 + 0.12 * hgPhase(dot(d, uMoonDirW), 0.72));
+  vec3 hazeC = mix(ambH, mistC, 0.4);
+  float hazeD = 5000.0 / (1.0 + 400.0 * uMist);
   float hl = max(length(d.xz), 1e-4);
   float az = atan(d.x, -d.z);
-  occT = 1.0;
-
-  // the ground the viewer stands on, dark, as far as its edge
-  float tg = d.y < -1e-5 ? uLandEye / -d.y : 1e9;
-  if (d.y < -1e-5 && tg * hl < edgeR(az)) {
-    vec3 gp = d * tg;
-    float n = fbm2l(gp.xz * 0.35, 4, angPix * tg * 0.35);
-    vec3 alb = mix(vec3(0.03, 0.034, 0.026), vec3(0.05, 0.05, 0.04), n);
-    vec3 c = alb * (moonLight * max(uMoonDirW.y, 0.0) + amb);
-    float Tm = exp(-mistTau(d, tg));
-    vis = 0.0;
-    nearD = tg;
-    return vec4(c * Tm + mistC * (1.0 - Tm), 1.0);
-  }
-
-  // past the edge: the ranges, nearest first, each paler in the haze, their feet lost in the
-  // fog; then the fog itself down to the valley floor, or the sky
-  vec3 acc = vec3(0.0);
-  float T = 1.0;
-  nearD = 1e9;
-  float lift;
+  float u = fract((az + uRidge.y) / 6.2831853 + 1.0);
   float el = asin(clamp(d.y, -1.0, 1.0));
-  float h0 = uLandEye + uCliff.y;
-  float Dv = d.y < -1e-5 ? h0 / -d.y * hl : 1e9;       // where the ray meets the valley floor
-  vec3 hazeC = mix(ambH, mistC, 0.4);
-  float hazeD = 4200.0 / (1.0 + 400.0 * uMist);
-  for (int k = 0; k < 5; k++) {
-    float Dk, Hk;
-    float e = ridgeEl(k, az, angPix, Dk, Hk);
-    if (Dk > Dv) break;
-    float a = clamp((e - el) / angPix + 0.5, 0.0, 1.0);
+  float h0 = uRidge.x;
+  // where the ray would come down to the fog's top
+  float tc = d.y < -1e-5 ? max(h0 - uVFog.x, 0.0) / -d.y : 1e9;
+  vec3 acc = vec3(0.0);
+  float T = 1.0, lift;
+  nearD = 1e9;
+  occT = 1.0;
+  int nb = int(uRidge.w);
+  for (int k = 0; k < 8; k++) {
+    if (k >= nb) break;
+    vec2 R = ridgeAt(k, u);
+    if (k == 0) {
+      // grass and low scrub along the brow of the ground close by: a fine, uneven edge
+      float x = az * R.y;
+      R.x += (0.45 * fbm2l(vec2(x / 0.9, 3.1), 4, angPix * R.y / 0.9) - 0.1) / R.y;
+    } else if (k <= 2) {
+      // the forest along the crest: crowns some 7 m across, gone once smaller than a pixel
+      float w = clamp(4.0 - R.y * angPix * 0.8, 0.0, 1.0);
+      if (w > 0.0) R.x += w * treeline(az * R.y / 7.0 + float(k) * 37.0) * 9.0 / R.y;
+    }
+    float a = clamp((R.x - el) / angPix + 0.5, 0.0, 1.0);
     if (a <= 0.0) continue;
-    float tk = Dk / hl;
+    float tk = R.y / hl;
+    // forested slopes, dark against the moon; paler with distance
     vec3 c = vec3(0.012, 0.016, 0.016) * (amb + moonLight * 0.15);
-    c = mix(c, hazeC, 1.0 - exp(-Dk / hazeD));
-    // the fog's top along the foot of the range: it varies only along the range, so keep it
-    // to broad swells (a fixed number to the degree, near or far), or the faces stripe
-    lift = fbm2(vec2(az * 5.0 + uTime * 0.004, float(k) * 3.1 + 1.7), 3);
-    float F = uVFog.x * (0.75 + 0.6 * lift);
+    c = mix(c, hazeC, 1.0 - exp(-R.y / hazeD));
+    // the fog's top where the ray comes down to it, or at the slope if it never does
+    float ts = min(tc, tk);
+    float F = vfogTop(d * ts, angPix * ts / max(abs(d.y), 0.05), lift);
     float Tm = exp(-mistTau(d, tk) - vfogTau(d, 0.0, tk, F));
     acc += T * a * (c * Tm + mistC * (0.85 + 0.3 * lift) * (1.0 - Tm));
     if (nearD > 1e8 && a > 0.5) nearD = tk;
@@ -138,18 +127,19 @@ vec4 landShade(vec3 d, float angPix, vec3 moonLight, out float vis, out float ne
     occT *= 1.0 - a;
     if (T < 0.01) break;
   }
-  float t1 = Dv < 1e8 ? Dv / hl : 1e6;
-  float tc = d.y < -1e-5 ? max(h0 - uVFog.x, 0.0) / -d.y : t1;   // where it reaches the fog's top
-  float F = vfogTop(d * min(tc, t1), angPix * min(tc, t1) / max(abs(d.y), 0.02), 4, lift);
+  if (T <= 0.0) { vis = 0.0; return vec4(acc, 1.0); }
+  // past every range: the fog below (down to the sea), or the sky
+  float t1 = d.y < -1e-5 ? h0 / -d.y : 1e6;
+  float F = vfogTop(d * min(tc, t1), angPix * min(tc, t1) / max(abs(d.y), 0.05), lift);
   float Tm = exp(-mistTau(d, t1) - vfogTau(d, 0.0, t1, F));
   acc += T * mistC * (0.85 + 0.3 * lift) * (1.0 - Tm);
-  if (Dv < 1e8) {
-    // the valley floor, dark, under it all
-    acc += T * Tm * vec3(0.02, 0.024, 0.02) * (amb + moonLight * 0.1);
+  if (d.y < -1e-5) {
+    acc += T * Tm * vec3(0.012, 0.016, 0.016) * amb;
     if (nearD > 1e8) nearD = min(tc, t1);
-    T = 0.0;
     vis = 0.0;
-  } else vis = T * Tm;
+    return vec4(acc, 1.0);
+  }
+  vis = T * Tm;
   return vec4(acc, 1.0 - T);
 }
 `;

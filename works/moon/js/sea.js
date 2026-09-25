@@ -35,11 +35,11 @@ const D2R = Math.PI / 180;
 // long. Some were let go before the scene begins, the rest from the breakwater over its
 // first minutes; each drifts out toward the moon, rocked by the same waves as the water
 // (the ones longer than the boat), its light flickering a little. Worked out from the clock
-// alone, like everything else, so every window shows the same boats. Two rows of a small
-// float texture: position (eye frame, m) and light; heading, water slope, size.
+// alone, like everything else, so every window shows the same boats. Written into two rows
+// of buf (rowW floats each): position (eye frame, m) and light; heading, water slope, size.
+// They go to rows BOAT_ROW and BOAT_ROW + 1 of the shared data texture (main.js).
 export const BOAT_MAX = 36;
-export const BOAT_ROW = 0;
-export const BOAT_TEX_W = BOAT_MAX, BOAT_TEX_H = 2;
+export const BOAT_ROW = 6;
 export function boatsAt(t, ts, buf, rowW, eye) {
   let n = 0;
   for (let i = 0; i < BOAT_MAX; i++) {
@@ -67,8 +67,8 @@ export function boatsAt(t, ts, buf, rowW, eye) {
     // the light: lit as it is let go, flickering a little like a candle
     const lit = Math.min(1, age / 3) * (0.8 + 0.4 * r(6)) * (1 + 0.05 * Math.sin(11.3 * t + 9 * r(7)) + 0.035 * Math.sin(23.1 * t + 5 * r(8)));
     const yaw = 6.283 * r(9) + 0.06 * Math.sin(age * 0.05 + r(10) * 6);
-    buf.set([x, h - eye, z, lit], BOAT_ROW * rowW + n * 4);
-    buf.set([yaw, gx, gz, 1.5 + 0.4 * r(11)], (BOAT_ROW + 1) * rowW + n * 4);
+    buf.set([x, h - eye, z, lit], n * 4);
+    buf.set([yaw, gx, gz, 1.5 + 0.4 * r(11)], rowW + n * 4);
     n++;
   }
   return n;
@@ -78,7 +78,7 @@ export const SEA_GLSL = `
 uniform float uSea;          // 1 = by the sea
 uniform float uSeaH;         // eye height over the water (m)
 uniform float uSeaGain;      // brightness of the moon's path (1 = a mirror image of the disc as shown)
-uniform int   uBoatN;        // paper boats on the water (their data: tBoats)
+uniform int   uBoatN;        // paper boats on the water (their data: rows ${BOAT_ROW}-${BOAT_ROW + 1} of tData)
 uniform float uBoatGain;     // how bright their lights are
 const float SEA_RE = 6371000.0;
 const int SEA_NW = ${NW};
@@ -182,8 +182,8 @@ vec4 boatsShade(vec3 d, float angPix, vec3 moonLight) {
   vec4 acc = vec4(0.0);
   for (int i = 0; i < ${BOAT_MAX}; i++) {
     if (i >= uBoatN) break;
-    vec4 P = texelFetch(tBoats, ivec2(i, ${BOAT_ROW}), 0);
-    vec4 O = texelFetch(tBoats, ivec2(i, ${BOAT_ROW + 1}), 0);
+    vec4 P = texelFetch(tData, ivec2(i, ${BOAT_ROW}), 0);
+    vec4 O = texelFetch(tData, ivec2(i, ${BOAT_ROW + 1}), 0);
     float dist = length(P.xyz);
     if (dot(d, P.xyz / dist) < cos(0.34 * O.w / dist + angPix * 2.0)) continue;
     mat3 F = boatFrame(O);
@@ -212,7 +212,7 @@ vec3 boatGlints(vec3 pw, vec3 N, vec3 V, float nv, float m2) {
   vec3 acc = vec3(0.0);
   for (int i = 0; i < ${BOAT_MAX}; i++) {
     if (i >= uBoatN) break;
-    vec4 P = texelFetch(tBoats, ivec2(i, ${BOAT_ROW}), 0);
+    vec4 P = texelFetch(tData, ivec2(i, ${BOAT_ROW}), 0);
     if (P.w <= 0.0) continue;
     vec3 lp = P.xyz + vec3(0.0, 0.08, 0.0);
     vec3 l = lp - pw;

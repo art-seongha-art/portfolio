@@ -127,7 +127,7 @@ uniform float uRefr;
 uniform float uShimmer;
 uniform float uStars;
 uniform float uAureole;        // a wide glow round the moon in hazy air
-uniform sampler2D tBoats;      // the paper boats (sea.js)
+uniform sampler2D tData;       // the ranges before dawn (rows 0-5, land.js), the paper boats (rows 6-7, sea.js)
 
 // ---------------- space extras
 uniform float uEarthVis;

@@ -5,7 +5,7 @@ import { NOISE3D_FS, WEATHER_FS, CLOUDSHADOW_FS, SH_N, cloudsFS } from './clouds
 import { terrainCacheFS } from './terrain.js';
 import { surfCacheFS, surfaceState, surfH, SURF_EARTH, SURF_LIGHT } from './surface.js';
 import { meteorsAt } from './meteors.js';
-import { boatsAt, BOAT_TEX_W, BOAT_TEX_H } from './sea.js';
+import { boatsAt, BOAT_MAX, BOAT_ROW } from './sea.js';
 import { LOOP, SCENES, stateAt, sceneAt, EYE_ALT, CAM_EN, SURF_T0, SEA_EYE, SEA_T0 } from './timeline.js';
 import { deriveUniforms, SITE_LAT, setMS, warmAtmosphere, dirAzEl } from './scene.js';
 import { DEFAULT_ROOM, SCREEN_ASPECT, fitRoom, buildLayout } from './cave.js';
@@ -321,14 +321,25 @@ async function loadAssets() {
   status.total = 13;
   status.msg = '달 표면과 지리산 지형 데이터를 불러오는 중…';
   const terDecode = (v) => v * 0.0625;
-  const [c2, h2, tm, tn, tf, mw] = await Promise.all([
+  // the ranges before dawn: skylines from the same terrain (tools/build_ridges.py)
+  const ridgeJob = Promise.all([
+    fetch(A + 'mist_ridges.json').then((r) => r.json()),
+    fetch(A + 'mist_ridges.bin').then((r) => r.arrayBuffer()),
+  ]).then(([m, buf]) => {
+    const bands = m.bands.length - 1;
+    if (bands > BOAT_ROW) throw new Error('too many bands of ranges');
+    return { eye: m.eye, naz: m.naz, bands, elRange: m.elRange, raw: new Uint16Array(buf) };
+  }).catch((e) => { console.warn('ranges before dawn not loaded:', e); return null; });
+  const [c2, h2, tm, tn, tf, mw, rg] = await Promise.all([
     step(loadImage(A + 'moon_color_2k.jpg')),
     step(heightTexture(A + 'moon_height_2k.webp', gl.REPEAT)),
     fetch(A + 'terrain.json').then((r) => r.json()),
     step(heightTexture(A + 'terrain_near.webp', gl.CLAMP_TO_EDGE, terDecode)),
     step(heightTexture(A + 'terrain_far.webp', gl.CLAMP_TO_EDGE, terDecode)),
     step(loadImage(A + 'milkyway_4k.jpg')),
+    ridgeJob,
   ]);
+  ridges = rg;
   T.color = colorTexture(c2);
   T.height = h2.tex; T.heightSize = [h2.w, h2.h];
   T.terNear = tn.tex; T.terFar = tf.tex;
@@ -446,19 +457,35 @@ function lookAt(x) {
   const mix = (a, b) => a.map((v, k) => v + (b[k] - v) * f);
   return { lo: mix(LOOKS[i].lo, LOOKS[j].lo), hi: mix(LOOKS[i].hi, LOOKS[j].hi), con: LOOKS[i].con + (LOOKS[j].con - LOOKS[i].con) * f };
 }
-// the paper boats, rewritten every frame they show
-const boatBuf = new Float32Array(BOAT_TEX_W * BOAT_TEX_H * 4);
-let boatTexObj = null;
-function boatTex() {
-  if (!boatTexObj) {
-    boatTexObj = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, boatTexObj);
-    gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA32F, BOAT_TEX_W, BOAT_TEX_H);
+// one small float texture for data the shader reads by texel (the fragment stage has only 16
+// units to spare): rows 0-5 the ranges before dawn (land.js, loaded once), rows 6-7 the paper
+// boats (sea.js, rewritten every frame they show)
+const DATA_H = BOAT_ROW + 2;
+let dataW = 64, dataTexObj = null, ridges = null;
+const boatBuf = new Float32Array(BOAT_MAX * 2 * 4);
+function dataTex() {
+  if (!dataTexObj) {
+    dataW = Math.max(BOAT_MAX, ridges ? ridges.naz : 64);
+    const buf = new Float32Array(dataW * DATA_H * 4);
+    if (ridges) {
+      // per band and azimuth: the crest's elevation angle (rad) and its distance (m)
+      const { naz, bands, elRange, raw } = ridges;
+      for (let k = 0; k < bands; k++) {
+        for (let i = 0; i < naz; i++) {
+          const j = (k * naz + i) * 2, o = (k * dataW + i) * 4;
+          buf[o] = (raw[j] / 65535) * 2 * elRange - elRange;
+          buf[o + 1] = raw[j + 1];
+        }
+      }
+    }
+    dataTexObj = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, dataTexObj);
+    gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA32F, dataW, DATA_H);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, BOAT_TEX_W, BOAT_TEX_H, gl.RGBA, gl.FLOAT, boatBuf);
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, dataW, DATA_H, gl.RGBA, gl.FLOAT, buf);
   }
-  return boatTexObj;
+  return dataTexObj;
 }
 
 // terrain cache: per-wall G-buffer at the layout's native resolution, filled in bands
@@ -796,7 +823,7 @@ function drawFrame(now) {
     ['tColor', T.color], ['tHeight', T.height], ['tPatchH', patch ? patch.h : T.flatH], ['tPatchC', T.patchC || T.gray],
     ['tEarthDay', T.earthDay || T.gray], ['tEarthCN', T.earthCN || T.black], ['tTrans', T.trans.tex], ['tSkyView', T.sky.tex],
     ['tMW', T.mw || T.black], ['tCacheA', onMoon ? surf.a : cache.a], ['tCacheB', onMoon ? surf.b : cache.b], ['tVol', volTex], ['tCloudSh', T.csh.tex],
-    ['tBoats', boatTex()],
+    ['tData', dataTex()],
   ];
   texUnits.forEach(([n, tex], i) => { gl.activeTexture(gl.TEXTURE0 + i); gl.bindTexture(gl.TEXTURE_2D, tex); setI(P, n, i); });
   bindTerrain(P, texUnits.length);
@@ -825,21 +852,20 @@ function drawFrame(now) {
   if (MET && MET.n > 0) { setUA(P, 'uMetH', 'v4', MET.H); setUA(P, 'uMetT', 'v4', MET.T); setUA(P, 'uMetC', 'v4', MET.C); }
   setU(P, 'uMetGain', S.fade);
   setU(P, 'uSea', earth && S.seaMode ? 1 : 0);
-  // above the misty valley before dawn: the ranges, the valley fog, a thin mist
-  const onLand = earth && S.land > 0.5;
+  // above the misty valleys before dawn: the real ranges, the valley fog, a thin haze
+  const onLand = earth && S.land > 0.5 && ridges;
   setU(P, 'uLand', onLand ? 1 : 0);
-  setU(P, 'uLandEye', S.landEye);
+  if (ridges) setU(P, 'uRidge', [ridges.eye, (S.ridgeHead * Math.PI) / 180, ridges.naz, ridges.bands]);
   setU(P, 'uMist', S.mist); setU(P, 'uMistH', S.mistH);
-  setU(P, 'uRidge', S.ridge); setU(P, 'uRidgeD', S.ridgeD); setU(P, 'uCliff', [S.cliff, S.drop]);
   setU(P, 'uVFog', [S.vfTop, S.vfSoft, S.vfDens, S.vfStart]);
   setU(P, 'uAureole', S.aureole);
   // the paper boats come from the clock
   let nBoats = 0;
   if (earth && S.seaMode) {
     boatBuf.fill(0);
-    nBoats = boatsAt(t, t - SEA_T0, boatBuf, BOAT_TEX_W * 4, SEA_EYE);
-    gl.bindTexture(gl.TEXTURE_2D, boatTex());
-    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, BOAT_TEX_W, BOAT_TEX_H, gl.RGBA, gl.FLOAT, boatBuf);
+    nBoats = boatsAt(t, t - SEA_T0, boatBuf, BOAT_MAX * 4, SEA_EYE);
+    gl.bindTexture(gl.TEXTURE_2D, dataTex());
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, BOAT_ROW, BOAT_MAX, 2, gl.RGBA, gl.FLOAT, boatBuf);
   }
   setI(P, 'uBoatN', nBoats);
   setU(P, 'uBoatGain', ART.boatGain);

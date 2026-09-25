@@ -36,7 +36,7 @@ export const LOOP = TD + 161; // 40:00: on the wall clock it starts every 40 min
 export const SURF_T0 = TU;    // the rabbits' clock starts here
 export const SEA_T0 = TW;     // the paper boats' clock starts here
 export const SEA_EYE = 6;     // eye height over the water at the sea (m): the end of a breakwater
-export const LAND_ALT = 250;  // above the misty valley (m)
+export const LAND_ALT = 1336; // the spur below Samsinbong before dawn: eye height above sea level (m)
 
 export const SCENES = [
   { id: 'dusk',     t: 0,       ko: '황혼 · 월출',           en: 'Dusk · Moonrise' },
@@ -81,25 +81,19 @@ const TRACKS = {
   surface: [[0, 0], [TU, 0], [TU + 0.5, 1], [TW - 2.5, 1], [TW - 2, 0], [LOOP, 0]],
   // 1 = by the sea
   sea: [[0, 0], [TW - 2, 0], [TW - 1.5, 1], [TK - 2, 1], [TK - 1.5, 0], [LOOP, 0]],
-  // 1 = at the end of a spur above the misty valley before dawn
+  // 1 = on the spur below Samsinbong before dawn, the main ridge of Jirisan across the view
   land: [[0, 0], [TK - 2, 0], [TK - 1.5, 1], [TD - 2, 1], [TD - 1.5, 0], [LOOP, 0]],
-  // there (only read while it shows): the eye over the ground (m); the ground ends this far
-  // ahead (m) and falls this far to the valley floor (m)
-  landEye: [[0, 1.6], [LOOP, 1.6]],
-  cliff: [[0, 5], [LOOP, 5]],
-  drop: [[0, 150], [LOOP, 150]],
-  // the fog lying in the valley: its top over the floor (m), how softly it thins (m), its
+  // there (only read while it shows): where the room's front looks (deg from north)
+  ridgeHead: [[0, -15], [LOOP, -15]],
+  // the fog lying in the valleys: its top (m above sea level), how softly it thins (m), its
   // density (1/m), from how far out (m)
-  vfTop: [[0, 75], [LOOP, 75]],
-  vfSoft: [[0, 22], [LOOP, 22]],
-  vfDens: [[0, 0.03], [LOOP, 0.03]],
+  vfTop: [[0, 780], [LOOP, 780]],
+  vfSoft: [[0, 45], [LOOP, 45]],
+  vfDens: [[0, 0.012], [LOOP, 0.012]],
   vfStart: [[0, 0], [LOOP, 0]],
-  // a thin mist in the air (1/m at the ground) and how fast it thins with height (m)
-  mist: [[0, 0.0003], [LOOP, 0.0003]],
-  mistH: [[0, 60], [LOOP, 60]],
-  // the ranges: their height and the distance of the nearest (m)
-  ridge: [[0, 2.6], [LOOP, 2.6]],
-  ridgeD: [[0, 900], [LOOP, 900]],
+  // a thin haze over the fog (1/m at its top) and how fast it thins with height (m)
+  mist: [[0, 0.00025], [LOOP, 0.00025]],
+  mistH: [[0, 450], [LOOP, 450]],
   // the moon's colour over what the air does to it: golden over the sea, blue-white in the
   // mist
   mtR: [[0, 1], [TW - 2, 1], [TW - 1.5, 1.0], [TK - 2, 1.0], [TK - 1.5, 0.9], [TD - 2, 0.9], [TD - 1.5, 1], [LOOP, 1]],
