@@ -3,10 +3,10 @@ import { FULLSCREEN_VS, mainFS, STAR_VS, STAR_FS, COMPOSITE_FS } from './shaders
 import { TRANSMITTANCE_FS, MULTISCAT_FS, SKYVIEW_FS, TRANS_W, TRANS_H, MS_N } from './atmo.js';
 import { NOISE3D_FS, WEATHER_FS, CLOUDSHADOW_FS, SH_N, cloudsFS } from './clouds.js';
 import { terrainCacheFS } from './terrain.js';
-import { surfCacheFS, surfaceState, SURF_EARTH, SURF_LIGHT } from './surface.js';
+import { surfCacheFS, surfaceState, surfH, SURF_EARTH, SURF_LIGHT } from './surface.js';
 import { meteorsAt } from './meteors.js';
 import { LOOP, SCENES, stateAt, sceneAt, EYE_ALT, CAM_EN, SURF_T0, SEA_EYE } from './timeline.js';
-import { deriveUniforms, SITE_LAT, setMS, warmAtmosphere } from './scene.js';
+import { deriveUniforms, SITE_LAT, setMS, warmAtmosphere, dirAzEl } from './scene.js';
 import { DEFAULT_ROOM, buildLayout } from './cave.js';
 import { initUI } from './ui.js';
 
@@ -465,11 +465,11 @@ function makeSurfCache() {
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   surf = { fb, a, b, row: 0, done: false, eye: null };
 }
-function stepSurfCache(SS) {
+function stepSurfCache(SS, thin) {
   if (!surf || !cache) return;
   if (surf.eye !== cfg.room.eye) { surf.row = 0; surf.done = false; surf.eye = cfg.room.eye; }
   if (surf.done) return;
-  const band = params.has('band') ? parseInt(params.get('band'), 10) : 40;
+  const band = thin || (params.has('band') ? parseInt(params.get('band'), 10) : 40);
   gl.bindFramebuffer(gl.FRAMEBUFFER, surf.fb);
   gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
   gl.disable(gl.BLEND);
@@ -494,9 +494,9 @@ function stepSurfCache(SS) {
   surf.row += band;
   if (surf.row >= maxH) surf.done = true;
 }
-function stepCache(S) {
+function stepCache(S, thin) {
   if (!cache || cache.done || !terrainMeta || !T.terNear) return;
-  const band = params.has('band') ? parseInt(params.get('band'), 10) : 40;
+  const band = thin || (params.has('band') ? parseInt(params.get('band'), 10) : 40);
   gl.bindFramebuffer(gl.FRAMEBUFFER, cache.fb);
   gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
   gl.disable(gl.BLEND);
@@ -663,6 +663,12 @@ function drawFrame(now) {
   wantSurf = onMoon;
   const SS = onMoon ? { ...surfaceState(S.t - SURF_T0, cfg.room.eye, S.earthEl), light: U.surfLight } : null;
   if (onMoon) stepSurfCache(SS);
+  // both ground caches depend only on the room, not on the moment: finish them ahead, a thin
+  // band a frame, while in space, so no scene waits for them in the dark
+  if (!earth) {
+    if (!onMoon && surf && !surf.done) stepSurfCache({ light: dirAzEl(SURF_EARTH.az, 5), base: surfH(0, 0) + cfg.room.eye }, 16);
+    if (cache && !cache.done) stepCache(S, 16);
+  }
 
   // ---- volumetric fog and clouds (half resolution, accumulated over frames)
   const volOn = earth && (S.fogDens > 1e-5 || S.cloudCov > 0.01) && !params.has('nocloud');

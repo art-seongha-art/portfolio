@@ -738,6 +738,6 @@ export function surfaceState(ts, eye, earthEl) {
     n++;
   });
   // light thrown back by the ground grows as more of it is lit
-  const amb = 0.004 + 0.008 * smooth((earthEl + 2) / 12);
+  const amb = 0.0065 + 0.0075 * smooth((earthEl + 2) / 12);
   return { n, P, Q, R, base, amb };
 }
