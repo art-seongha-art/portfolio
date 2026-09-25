@@ -1,9 +1,11 @@
 // Moon — turns a timeline state into shader uniforms (all the geometry lives here).
 
+import { ORBIT } from './timeline.js';
+
 const D2R = Math.PI / 180;
 export const SITE_LAT = 35.337 * D2R;  // Cheonwangbong, Jirisan; the front wall faces south
-export const MOON_RA = 322.5 * D2R;    // an August full moon in Capricornus/Aquarius:
-export const MOON_DEC = -12 * D2R;     // the galactic centre then stands in the south
+export const MOON_RA = 8 * D2R;        // an autumn full moon in Pisces, near the equator: it
+export const MOON_DEC = 3 * D2R;       // rises and sets close to due east and west
 
 const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
 const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
@@ -69,6 +71,13 @@ function toWorld(m, v) {
     m[0] * v[0] + m[1] * v[1] + m[2] * v[2],
     m[3] * v[0] + m[4] * v[1] + m[5] * v[2],
     m[6] * v[0] + m[7] * v[1] + m[8] * v[2],
+  ];
+}
+function toBody(m, v) {
+  return [
+    m[0] * v[0] + m[3] * v[1] + m[6] * v[2],
+    m[1] * v[0] + m[4] * v[1] + m[7] * v[2],
+    m[2] * v[0] + m[5] * v[1] + m[8] * v[2],
   ];
 }
 
@@ -290,6 +299,7 @@ const MOON_TEX_TO_PHYS = 0.065; // shader moon radiance units -> physical radian
 const AIRGLOW = mul([0.87, 1.0, 1.33], 1.0e-9); // natural night sky at the zenith (airglow + starlight)
 const MW_K = 6.0e-8;         // Milky Way surface brightness
 const STAR_K = 4.0e-8;       // point stars
+const MW_SPACE = 0.02, STAR_SPACE = 0.35; // the same in space, per unit of exposure
 const KEY = 0.032;           // where the metered scene average lands (kept low: it is a night piece)
 
 function earthLights(S, moonDir, ecl) {
@@ -350,18 +360,30 @@ function meterLogAt(t, stateAtFn) {
   return at(i0) * (1 - f) + at(i0 + 1) * f;
 }
 
+// The month round the room: where the moon is at a given unwrapped azimuth, how the fixed
+// sun lights it from there, and how much light the Earth (the viewer) throws back on it.
+const ORBIT_SUN = dirAzEl(ORBIT.sunAz, ORBIT.sunEl);
+const ES_MAX = 0.02; // earthshine at full Earth (new moon)
+function orbitPose(azDeg, fb) {
+  const dir = dirAzEl(azDeg, ORBIT.el(azDeg));
+  const M = bodyMatrix(dir, 0, fb);
+  const cosE = dot(dir, ORBIT_SUN);
+  return { dir, M, sunB: norm(toBody(M, ORBIT_SUN)), es: ES_MAX * (1 + cosE) / 2 };
+}
+
 export function deriveUniforms(S, stateAtFn) {
   const Hr = S.H * D2R;
   const skyDir = hadecToWorld(Hr, MOON_DEC, SITE_LAT);
+  const fb = sph(S.faceLat, S.faceLon);
+  const orbit = S.orbitMode ? orbitPose(S.tgtAz, fb) : null;
   const tgt = dirAzEl(S.tgtAz, S.tgtEl);
-  const dir = slerp(skyDir, tgt, S.pathMix);
+  const dir = orbit ? orbit.dir : slerp(skyDir, tgt, S.pathMix);
   const q = parallactic(Hr, MOON_DEC, SITE_LAT);
   const roll = S.roll * D2R + (1 - S.pathMix) * (-q);
   const D = 1 + Math.exp(S.logAlt);
-  const fb = sph(S.faceLat, S.faceLon);
-  const M = bodyMatrix(dir, roll, fb);
-  const sunB = sph(S.sunLat, S.sunLon);
-  const earthB = sph(S.earthLat, S.earthLon);
+  const M = orbit ? orbit.M : bodyMatrix(dir, roll, fb);
+  const sunB = orbit ? orbit.sunB : sph(S.sunLat, S.sunLon);
+  const earthB = orbit ? fb : sph(S.earthLat, S.earthLon);
   const angR = Math.asin(1 / D);
 
   // Earth's shadow on the moon: path across the disc, east tangent at the sub-viewer point
@@ -386,7 +408,7 @@ export function deriveUniforms(S, stateAtFn) {
     uCamB: mul(fb, D),
     uSunB: sunB,
     uEarthB: earthB,
-    uEarthshine: S.earthshine,
+    uEarthshine: orbit ? orbit.es : S.earthshine,
     uRelief: S.relief,
     uLimbSoft: S.limbSoft * D2R,
     uLodBias: S.lodBias,
@@ -458,10 +480,27 @@ export function deriveUniforms(S, stateAtFn) {
     U.uMoonScale = 1;
     U.aurMax = 0.1;
     U.uAbsScale = 0;
-    U.uMWGain = 0;
-    U.starGain = 0;
+    U.uMWGain = MW_SPACE * U.exposure;
+    U.starGain = STAR_SPACE * U.exposure;
     U.keyLight = dir;
     U.eclFrac = 1;
   }
+  // afterimages left at each stop of the month (same size and face as the moon)
+  const G = { n: 0, dir: new Float32Array(36), M: new Float32Array(81), sun: new Float32Array(27), es: new Float32Array(9) };
+  if (orbit) {
+    for (const [az, tLeave] of ORBIT.stops) {
+      let a = ORBIT.afterimage * Math.min(1, Math.max(0, (S.t - tLeave) / 5)) ** 2;
+      // the first one merges back into the moon when it comes round again
+      if (az === 0) a *= Math.min(1, Math.max(0, (646 - S.t) / 8));
+      if (a <= 0 || G.n >= 9) continue;
+      const g = orbitPose(az, fb);
+      G.dir.set([...g.dir, a], G.n * 4);
+      G.M.set(g.M, G.n * 9);
+      G.sun.set(g.sunB, G.n * 3);
+      G.es[G.n] = g.es;
+      G.n++;
+    }
+  }
+  U.ghosts = G;
   return U;
 }

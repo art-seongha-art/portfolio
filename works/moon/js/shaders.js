@@ -63,6 +63,9 @@ uniform vec3  uCamB;
 uniform vec3  uSunB;
 uniform vec3  uEarthB;
 uniform float uEarthshine;
+// light on the moon being shaded (the live moon, or one of the afterimages)
+vec3 SUNB, EARTHB;
+float ESHINE;
 uniform vec4  uAlb;          // gamma, saturation, gain, fresh-crater brightening
 uniform float uRelief;
 uniform float uBump;
@@ -128,6 +131,13 @@ uniform vec3  uSunW;
 uniform float uSunVis;
 uniform sampler2D tEarthDay;
 uniform sampler2D tEarthCN;
+// afterimages of the moon during the month round the room: xyz direction, w strength;
+// world-to-body matrix, sun in the body frame and earthshine for each
+uniform int   uGhostN;
+uniform vec4  uGhost[9];
+uniform mat3  uGhostM[9];
+uniform vec3  uGhostSun[9];
+uniform float uGhostES[9];
 
 // ---------------- focus
 uniform float uFocus;        // focus distance (lunar radii), 0 = infinity
@@ -364,7 +374,7 @@ void craterField(vec3 n0, vec3 Nm, vec3 L, float fp, float lum,
 // (only sunlight bent through Earth's atmosphere: red, with a turquoise rim where
 // it grazed the ozone layer). Radii in lunar radii at the moon's distance.
 vec3 eclipseLight(vec3 p) {
-  vec3 q = p - uSunB * dot(p, uSunB) - uEclC;
+  vec3 q = p - SUNB * dot(p, SUNB) - uEclC;
   float r = length(q);
   const float RU = 2.65, RP = 4.65;
   float f = clamp((r - RU) / (RP - RU), 0.0, 1.0);
@@ -471,7 +481,7 @@ vec3 shadeMoon(MoonHit mh, vec3 ro, vec3 rd, vec3 rdx, vec3 rdy, float angPix) {
   vec3 alb = albedoAt(n0, dpx, dpy, pw, puv);
   float lum = dot(alb, LUMA) / max(uAlb.z, 1e-3);
 
-  vec3 L = uSunB;
+  vec3 L = SUNB;
   vec3 gCr = vec3(0.0);
   float albMul = 1.0, crSh = 1.0, unres = 0.0;
   if (uCrater > 0.0) craterField(n0, Nm, L, fpB, lum, gCr, albMul, crSh, unres);
@@ -501,8 +511,8 @@ vec3 shadeMoon(MoonHit mh, vec3 ro, vec3 rd, vec3 rdx, vec3 rdy, float angPix) {
   float sinEm = dot(Nm, L);
   rad += alb * uSunI * 0.02 * smoothstep(-0.02, 0.25, sinEm) * (1.0 - sh * min(lit, 1.0)) * ecl;
   // earthshine: diffuse light from the Earth (blue-white)
-  float es = max(dot(N, uEarthB), 0.0);
-  rad += alb * es * uEarthshine * vec3(0.78, 0.86, 1.0);
+  float es = max(dot(N, EARTHB), 0.0);
+  rad += alb * es * ESHINE * vec3(0.78, 0.86, 1.0);
   return rad;
 }
 
@@ -690,6 +700,7 @@ void main() {
   float starVis = 1.0;
   float depth = 1e9;
   float expo = uExposure;
+  SUNB = uSunB; EARTHB = uEarthB; ESHINE = uEarthshine;
 
   if (uEarth > 0.5) {
     // ---------------- on the Earth: everything below is already exposed
@@ -751,6 +762,7 @@ void main() {
     col = mesopic(col) + moonC;
   } else {
     // ---------------- in space
+    col += milkyWay(d) * uMWGain;
     if (uEarthVis > 0.001) {
       vec4 e = earthShade(d, angPix);
       col = col * (1.0 - e.a * uEarthVis) + e.rgb * uEarthVis;
@@ -769,6 +781,26 @@ void main() {
       col = mix(col, mc, mh.cov);
       starVis *= 1.0 - mh.cov;
       if (mh.cov > 0.5) depth = mh.t;
+    }
+    // afterimages: the same moon where it stopped earlier in the month, added on top like
+    // a multiple exposure (at most one covers a pixel)
+    if (uGhostN > 0) {
+      float cosR = cos(uMoonAngR * 1.03 + angPix);
+      for (int i = 0; i < 9; i++) {
+        if (i >= uGhostN) break;
+        if (dot(d, uGhost[i].xyz) < cosR) continue;
+        vec3 rdG = uGhostM[i] * d;
+        MoonHit gh = traceMoon(ro, rdG, angPix);
+        if (gh.cov > 0.0) {
+          SUNB = uGhostSun[i]; ESHINE = uGhostES[i];
+          vec3 gc = shadeMoon(gh, ro, rdG, uGhostM[i] * ddx, uGhostM[i] * ddy, angPix);
+          SUNB = uSunB; ESHINE = uEarthshine;
+          float a = gh.cov * uGhost[i].w;
+          col += gc * a;
+          starVis *= 1.0 - a;
+        }
+        break;
+      }
     }
     if (uSunVis > 0.001) {
       float gs = acos(clamp(dot(d, uSunW), -1.0, 1.0));
@@ -833,7 +865,8 @@ void main() {
   float dn = dot(d, n), pn = dot(uPA, n);
   // flux in display units: magnitude scale times the scene exposure
   float I0 = pow(10.0, -0.4 * aStar.z) * uGain;
-  if (dn * pn <= 0.0 || I0 < 0.0015 || d.y < -0.02) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }
+  // (in space, uExt = 0: no horizon, no extinction, no twinkling)
+  if (dn * pn <= 0.0 || I0 < 0.0015 || (uExt > 0.0 && d.y < -0.02)) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }
   vec3 P = d * (pn / dn);
   vec3 q = P - uPA;
   float u = dot(q, uDU) / dot(uDU, uDU);
@@ -843,7 +876,7 @@ void main() {
   float X = 1.0 / (sin(max(el, 0.0)) + 0.50572 * pow(degrees(max(el, 0.0)) + 6.07995, -1.6364));
   vec3 T = exp(-vec3(0.075, 0.135, 0.27) * uExt * X);
   // slow, subtle scintillation near the horizon
-  float tw = 1.0 + 0.35 * exp(-el / 0.25) * sin(uTime * (2.0 + fract(aStar.x * 7.1) * 3.0) + aStar.y * 11.0);
+  float tw = 1.0 + 0.35 * min(uExt, 1.0) * exp(-el / 0.25) * sin(uTime * (2.0 + fract(aStar.x * 7.1) * 3.0) + aStar.y * 11.0);
   vCol = bvColor(aStar.w) * T;
   float I = min(I0, 40.0) * tw;
   vR = uPx * (0.9 + 0.22 * log(1.0 + min(I0 * 8.0, 40.0)));

@@ -150,6 +150,15 @@ function setU(prog, name, v) {
   else if (v.length === 4) gl.uniform4fv(l, v);
 }
 function setI(prog, name, v) { const l = prog.loc[name]; if (l != null) gl.uniform1i(l, v); }
+// uniform arrays: kind = 'f', 'v3', 'v4' or 'm3'
+function setUA(prog, name, kind, v) {
+  const l = prog.loc[name];
+  if (l == null) return;
+  if (kind === 'f') gl.uniform1fv(l, v);
+  else if (kind === 'v3') gl.uniform3fv(l, v);
+  else if (kind === 'v4') gl.uniform4fv(l, v);
+  else gl.uniformMatrix3fv(l, false, v);
+}
 
 let progMain, progStar, progComp, progTrans, progMS, progSky, progNoise, progWeather, progCache, progClouds, progCSh;
 const emptyVAO = gl && gl.createVertexArray();
@@ -684,6 +693,14 @@ function drawFrame(now) {
   setU(P, 'uSunI', ART.sunI);
   setU(P, 'uExtMix', ART.extMix);
   setU(P, 'uEarthAngR', (ART.earthAngR * Math.PI) / 180);
+  const G = U.ghosts;
+  setI(P, 'uGhostN', earth ? 0 : G.n);
+  if (!earth && G.n > 0) {
+    setUA(P, 'uGhost', 'v4', G.dir);
+    setUA(P, 'uGhostM', 'm3', G.M);
+    setUA(P, 'uGhostSun', 'v3', G.sun);
+    setUA(P, 'uGhostES', 'f', G.es);
+  }
   setU(P, 'uFocus', 0);
   setU(P, 'uDof', 0);
   layout.views.forEach((v, i) => {
@@ -699,7 +716,7 @@ function drawFrame(now) {
   if (volOn) vol.i = 1 - vol.i;
 
   // ---- stars (real catalogue, additive, masked by the sky visibility in alpha)
-  if (stars && earth && U.starGain > 0) {
+  if (stars && U.starGain > 0) {
     gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.NONE]);
     gl.enable(gl.BLEND);
     gl.blendEquation(gl.FUNC_ADD);
@@ -711,7 +728,7 @@ function drawFrame(now) {
     setU(SP, 'uLST', U.lst);
     setU(SP, 'uGain', U.starGain);
     setU(SP, 'uTime', t);
-    setU(SP, 'uExt', S.mie);
+    setU(SP, 'uExt', earth ? S.mie : 0);
     layout.views.forEach((v, i) => {
       const r = rects[i];
       gl.viewport(r[0], r[1], r[2], r[3]);
