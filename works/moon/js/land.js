@@ -235,7 +235,9 @@ vec3 plantShade(vec3 alb, float trans, float edge, vec3 d, LandLight L) {
   float front = 0.25 + 0.35 * max(-c, 0.0);                // the moon behind the viewer lights it
   float through = trans * hgPhase(c, 0.6) * 0.18;          // light through it, toward the viewer
   float rim = edge * pow(max(c, 0.0), 6.0) * 0.9;           // edges that catch a moon behind
-  return alb * (L.moon * (front + through + rim) + L.amb);
+  // in thick mist the glowing mist itself lights the plants from all sides
+  vec3 fogLit = L.mist * clamp(uMist * 30.0, 0.0, 1.0) * 0.5;
+  return alb * (L.moon * (front + through + rim) + L.amb + fogLit);
 }
 
 // ---------------- silver grass: clumps of five stems with plumes, bent by the wind.
@@ -363,61 +365,70 @@ void foliage(float r, float y, float xa, vec3 d, float fp, float top, inout vec3
   T *= 1.0 - a;
 }
 
-// ---------------- trees in the mist. Pines: an S-curved trunk, bare limbs, and clusters of
-// needles spread into a broad umbrella crown, ragged and gappy at the edges. Willows: a
-// rounded crown whose twigs hang down in long curtains that sway.
+// ---------------- trees in the mist. The crown is one soft mass: blobs of foliage summed
+// and cut at a level, so they merge like clouds, with a ragged edge of needles or leaves
+// and a few gaps. Three kinds: pines (an S-curved trunk, a broad umbrella crown and a lower
+// tier, as in old ink paintings), round broadleaf trees, and willows whose twigs hang in
+// long curtains that sway.
 void pineTree(vec2 id, float xl, float y, vec3 d, float fp, inout vec3 acc, inout float T, LandLight L) {
   float ha = hashL(id, 21.5), hb = hashL(id, 22.5), hc = hashL(id, 23.5), ht = hashL(id, 24.5);
-  bool willow = ht < 0.3;
-  float H = willow ? 7.0 + 4.0 * ha : 9.0 + 7.0 * ha;
-  if (y < 0.0 || y > H * 1.1) return;
-  float lean = (hc - 0.5) * (willow ? 0.15 : 0.3);
-  float bend = (hb - 0.5) * (willow ? 1.0 : 2.6);
+  int kind = ht < 0.42 ? 0 : ht < 0.75 ? 1 : 2;       // pine, broadleaf, willow
+  float H = kind == 0 ? 10.0 + 6.0 * ha : kind == 1 ? 8.0 + 6.0 * ha : 7.0 + 4.0 * ha;
+  if (y < 0.0 || y > H * 1.15) return;
+  float lean = (hc - 0.5) * (kind == 0 ? 0.35 : 0.12);
+  float bend = (hb - 0.5) * (kind == 0 ? 2.6 : 0.8);
   float yt = clamp(y / H, 0.0, 1.0);
   float tx = lean * y + bend * sin(yt * 3.0 + ha * 6.0) * yt;
+  float crownW = kind == 0 ? H * (0.3 + 0.18 * hb) : kind == 1 ? H * (0.36 + 0.14 * hb) : H * 0.42;
+  if (abs(xl - tx) > crownW * 1.8 + 2.0) return;
   float cov = 0.0;
-  float trunkTop = willow ? 0.55 : 0.8;
-  if (yt < trunkTop) cov = lineCov(xl - tx, mix(willow ? 0.28 : 0.2, 0.07, yt / trunkTop), fp);
-  if (willow) {
-    // crown: a lumpy dome; below it the hanging twigs, longer toward the middle
-    float cx = lean * H * 0.7 + bend * sin(2.1 + ha * 6.0) * 0.7;
-    float cw = H * 0.42, cy = H * 0.72;
-    vec2 q = vec2((xl - cx) / cw, (y - cy) / (H * 0.3));
-    float nC = fbm2l(vec2(xl, y) * 0.9 + id * 4.1, 3, fp * 0.9);
-    float dome = length(vec2(q.x, max(q.y, 0.0))) - 1.0 + (nC - 0.5) * 0.7;
-    float crown = fillCov(dome * min(cw, H * 0.3), fp) * step(-0.35, q.y);
-    // curtains: fine vertical strands hanging from the crown's edge, swaying together
+  float trunkTop = kind == 0 ? 0.8 : 0.55;
+  if (yt < trunkTop) cov = lineCov(xl - tx, mix(kind == 0 ? 0.26 : 0.3, 0.09, yt / trunkTop), fp);
+  // the crown: summed blobs, packed so they merge
+  float D = 0.0;
+  for (int i = 0; i < 10; i++) {
+    float hi = hashL(id, 30.5 + float(i)), hj = hashL(id, 40.5 + float(i)), hk = hashL(id, 50.5 + float(i));
+    float cyt, dx, ca, cb;
+    if (kind == 0) {
+      if (i < 7) { cyt = 0.74 + 0.22 * hi; dx = (hj - 0.5) * 1.5 * crownW; ca = 1.4 + 1.2 * hk; cb = 0.9 + 0.6 * hi; }
+      else { cyt = 0.52 + 0.14 * hi; dx = (hj < 0.5 ? -1.0 : 1.0) * crownW * (0.45 + 0.35 * hk); ca = 1.1 + 0.8 * hk; cb = 0.6 + 0.4 * hi; }
+    } else if (kind == 1) {
+      float a = hj * 6.2832, r = sqrt(hi);
+      cyt = 0.68 + 0.2 * r * sin(a); dx = crownW * 0.75 * r * cos(a); ca = 1.5 + 1.3 * hk; cb = 1.4 + 1.1 * hk;
+    } else {
+      float a = hj * 6.2832, r = sqrt(hi);
+      cyt = 0.72 + 0.16 * r * sin(a); dx = crownW * 0.8 * r * cos(a); ca = 1.5 + 1.2 * hk; cb = 1.2 + 0.8 * hk;
+    }
+    float cy = H * cyt;
+    float ctx = lean * cy + bend * sin(cyt * 3.0 + ha * 6.0) * cyt;
+    float cx = ctx + dx;
+    // a short limb out to the lower tiers of a pine
+    if (kind == 0 && i >= 7) cov = max(cov, segCov(vec2(xl, y), vec2(ctx, cy - cb * 0.5), vec2(cx - sign(dx) * ca * 0.5, cy - cb * 0.3), 0.06 + 0.03 * hk, fp));
+    vec2 q = vec2((xl - cx) / ca, (y - cy) / cb);
+    if (q.y < 0.0) q.y *= kind == 0 ? 1.35 : 1.1;
+    D += exp(-dot(q, q) * 1.4);
+  }
+  // cut the mass at a level; a ragged edge of needles (pine) or leaves, and a few gaps
+  float nC = fbm2l(vec2(xl, y) * 0.6 + id * 5.3, 3, fp * 0.6);
+  float nF = fbm2l(vec2(xl * 3.2, y * (kind == 0 ? 5.5 : kind == 1 ? 3.5 : 2.0)) + id * 9.7, 4, fp * 5.0);
+  float lvl = D - 0.36 - (nC - 0.5) * 0.4 - (nF - 0.5) * 0.28;
+  float crown = clamp(lvl / max(fp * 0.5, 0.015) + 0.5, 0.0, 1.0);
+  float gap = smoothstep(0.24, 0.38, fbm2l(vec2(xl * 1.6, y * 2.2) + id * 3.3, 3, fp * 2.2));
+  crown *= mix(gap, 1.0, smoothstep(0.15, 0.6, lvl));
+  cov = max(cov, crown);
+  if (kind == 2) {
+    // curtains: fine strands hanging from the crown, longer toward the middle, swaying
+    float cx = lean * H * 0.72 + bend * sin(2.16 + ha * 6.0) * 0.72;
+    float cy = H * 0.7;
     float sway = uWindS * 6.0 * sin(0.7 * uTime + ha * 9.0) * max(cy - y, 0.0) * 0.08;
     float xs = xl - cx - sway;
-    float span = abs(xs) / cw;
+    float span = abs(xs) / (crownW * 1.15);
     float hang = (1.0 - span * span) * H * (0.45 + 0.25 * vnoise2(vec2(xs * 3.0, 1.0) + id));
-    float strands = vnoise2(vec2(xs * 26.0 + id.x * 7.0, y * 0.4));
-    float cur = span < 1.0 && y < cy && y > cy - hang ? smoothstep(0.35, 0.65, strands) * smoothstep(cy - hang, cy - hang + 0.8, y) : 0.0;
-    float fpS = fp * 26.0;
-    cur = mix(cur, 0.5 * step(span, 1.0) * step(cy - hang, y) * step(y, cy), clamp(fpS - 0.5, 0.0, 1.0));
-    cov = max(cov, max(crown, cur * 0.85));
-  } else {
-    float crownW = H * (0.28 + 0.22 * hb);
-    for (int i = 0; i < 10; i++) {
-      float hi = hashL(id, 30.5 + float(i)), hj = hashL(id, 40.5 + float(i)), hk = hashL(id, 50.5 + float(i));
-      float cyt = 0.5 + 0.47 * (float(i) + hi) / 10.0;
-      float cy = H * cyt;
-      float ctx = lean * cy + bend * sin(cyt * 3.0 + ha * 6.0) * cyt;
-      float spread = (1.2 - cyt) * 1.7;
-      float cx = ctx + (hj - 0.5) * 2.0 * crownW * spread;
-      float ca = (0.7 + 1.3 * hk) * (1.25 - 0.55 * cyt), cb = 0.4 + 0.35 * hi;
-      if (abs(xl - cx) > ca * 1.8 + 1.0 && abs(xl - ctx) > 1.0) continue;
-      cov = max(cov, segCov(vec2(xl, y), vec2(ctx, cy - cb * 0.9), vec2(cx, cy - cb * 0.2), 0.04 + 0.02 * hk, fp));
-      vec2 q = vec2(xl - cx, y - cy);
-      q.x /= ca;
-      q.y /= q.y < 0.0 ? cb * 0.55 : cb;
-      float nC = fbm2l(vec2(xl, y) * 0.9 + id * 5.3 + float(i) * 3.1, 3, fp * 0.9);
-      float nF = fbm2l(vec2(xl * 3.5, y * 6.5) + id * 9.7 + float(i), 4, fp * 6.5);
-      float sd = (length(q) - 1.0 + (nC - 0.5) * 1.25 + (nF - 0.5) * 0.8) * min(ca, cb);
-      // small gaps where the sky shows through the needles
-      float gap = smoothstep(0.28, 0.42, fbm2l(vec2(xl * 1.7, y * 2.6) + id * 3.3, 3, fp * 2.6));
-      cov = max(cov, fillCov(sd, fp) * mix(1.0, gap, 0.8 * smoothstep(-0.6, -0.1, sd / min(ca, cb)) + 0.2));
-    }
+    float strands = vnoise2(vec2(xs * 24.0 + id.x * 7.0, y * 0.35));
+    float fpS = fp * 24.0;
+    float inside = step(span, 1.0) * step(cy - hang, y) * step(y, cy);
+    float cur = inside * mix(smoothstep(0.3, 0.6, strands), 0.55, clamp(fpS - 0.5, 0.0, 1.0)) * smoothstep(cy - hang, cy - hang + 1.0, y);
+    cov = max(cov, cur * 0.85);
   }
   if (cov <= 0.0) return;
   acc += T * cov * plantShade(vec3(0.02, 0.026, 0.022), 0.15, 0.3, d, L);
@@ -629,7 +640,7 @@ vec4 landShade(vec3 d, float angPix, vec3 moonLight, out float vis, out float ne
       }
     }
     if (uVeg.w > 0.0 && r0 > 12.0) {
-      float cw = 9.0 / r0;
+      float cw = 11.0 / r0;
       float ci = floor(az / cw);
       for (int m = -1; m <= 1; m++) {
         vec2 id = vec2(ci + float(m), float(k) + 100.0);
@@ -638,10 +649,10 @@ vec4 landShade(vec3 d, float angPix, vec3 moonLight, out float vis, out float ne
         float grove = smoothstep(0.35, 0.75, vnoise2(vec2(taz * 2.2 + 5.0, 0.5)));
         float mAz = atan(uMoonDirW.x, -uMoonDirW.z);
         float open = smoothstep(0.1, 0.45, abs(mod(taz - mAz + 3.14159, 6.28318) - 3.14159));
-        if (hashL(id, 80.5) > uVeg.w * grove * open * 0.9) continue;
+        if (hashL(id, 80.5) > uVeg.w * (0.15 + 0.85 * grove) * open) continue;
         float r = mix(r0, r1, hashL(id, 81.5));
         float y = uLandEye + d.y * r / hl;
-        float xl = (az - (ci + float(m) + hashL(id, 82.5)) * cw) * r;
+        float xl = (az - (ci + float(m) + 0.2 + 0.6 * hashL(id, 82.5)) * cw) * r;
         vec3 before = acc;
         float Tb = T;
         pineTree(id, xl, y, d, fpr * r / rm, acc, T, L);
