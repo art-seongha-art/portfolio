@@ -773,7 +773,7 @@ function drawFrame(now) {
   // shooting stars (worked out from the clock, so every window has the same ones)
   const MET = earth ? meteorsAt(t, metRates) : null;
   setI(P, 'uMetN', MET ? MET.n : 0);
-  if (MET && MET.n > 0) { setUA(P, 'uMetH', 'v4', MET.H); setUA(P, 'uMetT', 'v4', MET.T); }
+  if (MET && MET.n > 0) { setUA(P, 'uMetH', 'v4', MET.H); setUA(P, 'uMetT', 'v4', MET.T); setUA(P, 'uMetC', 'v4', MET.C); }
   setU(P, 'uMetGain', S.fade);
   setU(P, 'uSea', earth && S.seaMode ? 1 : 0);
   setU(P, 'uSeaH', SEA_EYE);
