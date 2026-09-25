@@ -3,9 +3,10 @@ import { FULLSCREEN_VS, mainFS, STAR_VS, STAR_FS, COMPOSITE_FS } from './shaders
 import { TRANSMITTANCE_FS, MULTISCAT_FS, SKYVIEW_FS, TRANS_W, TRANS_H, MS_N } from './atmo.js';
 import { NOISE3D_FS, WEATHER_FS, CLOUDSHADOW_FS, SH_N, cloudsFS } from './clouds.js';
 import { terrainCacheFS } from './terrain.js';
-import { surfCacheFS, surfaceState, SURF_EARTH, SURF_LIGHT } from './surface.js';
-import { LOOP, SCENES, stateAt, sceneAt, EYE_ALT, CAM_EN, SURF_T0 } from './timeline.js';
-import { deriveUniforms, SITE_LAT, setMS, warmAtmosphere } from './scene.js';
+import { surfCacheFS, surfaceState, surfH, SURF_EARTH, SURF_LIGHT } from './surface.js';
+import { meteorsAt } from './meteors.js';
+import { LOOP, SCENES, stateAt, sceneAt, EYE_ALT, CAM_EN, SURF_T0, SEA_EYE } from './timeline.js';
+import { deriveUniforms, SITE_LAT, setMS, warmAtmosphere, dirAzEl } from './scene.js';
 import { DEFAULT_ROOM, buildLayout } from './cave.js';
 import { initUI } from './ui.js';
 
@@ -19,9 +20,12 @@ function loadSaved() {
 }
 const saved = loadSaved();
 const num = (k, d) => (params.has(k) ? parseFloat(params.get(k)) : d);
+// the screen this window was set to show in the operator panel (kept per window, not shared)
+const screen = (() => { try { return sessionStorage.getItem('moon.screen'); } catch { return null; } })();
 export const cfg = {
-  mode: params.get('mode') || (params.has('cave') ? 'span' : saved.mode || (/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent) || innerWidth < innerHeight * 1.3 ? 'single' : 'preview')),
-  wall: params.get('wall') || 'front',
+  mode: params.get('mode') || (screen ? (screen === 'all' ? 'span' : 'wall')
+    : params.has('cave') ? 'span' : saved.mode || (/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent) || innerWidth < innerHeight * 1.3 ? 'single' : 'preview')),
+  wall: params.get('wall') || (screen && screen !== 'all' ? screen : 'front'),
   quality: params.get('q') || saved.quality || 'auto',
   room: { ...DEFAULT_ROOM, ...(saved.room || {}) },
   order: saved.order || ['left', 'front', 'right'],
@@ -461,11 +465,11 @@ function makeSurfCache() {
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   surf = { fb, a, b, row: 0, done: false, eye: null };
 }
-function stepSurfCache(SS) {
+function stepSurfCache(SS, thin) {
   if (!surf || !cache) return;
   if (surf.eye !== cfg.room.eye) { surf.row = 0; surf.done = false; surf.eye = cfg.room.eye; }
   if (surf.done) return;
-  const band = params.has('band') ? parseInt(params.get('band'), 10) : 40;
+  const band = thin || (params.has('band') ? parseInt(params.get('band'), 10) : 40);
   gl.bindFramebuffer(gl.FRAMEBUFFER, surf.fb);
   gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
   gl.disable(gl.BLEND);
@@ -490,9 +494,9 @@ function stepSurfCache(SS) {
   surf.row += band;
   if (surf.row >= maxH) surf.done = true;
 }
-function stepCache(S) {
+function stepCache(S, thin) {
   if (!cache || cache.done || !terrainMeta || !T.terNear) return;
-  const band = params.has('band') ? parseInt(params.get('band'), 10) : 40;
+  const band = thin || (params.has('band') ? parseInt(params.get('band'), 10) : 40);
   gl.bindFramebuffer(gl.FRAMEBUFFER, cache.fb);
   gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
   gl.disable(gl.BLEND);
@@ -568,6 +572,7 @@ export const ART = {
   cloudTop: 3900,
   earthGain: 0.59,   // the Earth seen from the moon, on the walls (independent of exposure)
   earthLight: 1.0,   // the light it throws on the ground there
+  seaGain: 5.0,      // the moon's path on the sea (1 = a mirror image of the disc as shown; more reads as a photograph exposed for the water)
 };
 
 // tuning hook: ?a.bump=1.3&a.alb=1.4,1.1,1,1
@@ -586,6 +591,18 @@ const perf = { fps: 0, scale: 1, ms: 0 };
 export function getPerf() { return perf; }
 
 const lockScale = params.has('scale');
+// chance of a shooting star starting in second k: [sporadic, shower] (cached per second)
+const metCache = new Map();
+function metRates(k) {
+  let v = metCache.get(k);
+  if (!v) {
+    const Sk = stateAt(k);
+    v = [Sk.meteors, Sk.shower];
+    metCache.set(k, v);
+    if (metCache.size > 64) metCache.delete(metCache.keys().next().value);
+  }
+  return v;
+}
 const stopAfter = params.has('frames') ? parseInt(params.get('frames'), 10) : 0;
 let hiresFrames = 0, wantTerrain = true, wantSurf = false;
 function drawFrame(now) {
@@ -646,6 +663,12 @@ function drawFrame(now) {
   wantSurf = onMoon;
   const SS = onMoon ? { ...surfaceState(S.t - SURF_T0, cfg.room.eye, S.earthEl), light: U.surfLight } : null;
   if (onMoon) stepSurfCache(SS);
+  // both ground caches depend only on the room, not on the moment: finish them ahead, a thin
+  // band a frame, while in space, so no scene waits for them in the dark
+  if (!earth) {
+    if (!onMoon && surf && !surf.done) stepSurfCache({ light: dirAzEl(SURF_EARTH.az, 5), base: surfH(0, 0) + cfg.room.eye }, 16);
+    if (cache && !cache.done) stepCache(S, 16);
+  }
 
   // ---- volumetric fog and clouds (half resolution, accumulated over frames)
   const volOn = earth && (S.fogDens > 1e-5 || S.cloudCov > 0.01) && !params.has('nocloud');
@@ -747,6 +770,14 @@ function drawFrame(now) {
   setU(P, 'uTerrain', terrainReady ? 1 : 0);
   setU(P, 'uCacheSize', [cache.w, cache.h]);
   setU(P, 'uSurface', onMoon ? 1 : 0);
+  // shooting stars (worked out from the clock, so every window has the same ones)
+  const MET = earth ? meteorsAt(t, metRates) : null;
+  setI(P, 'uMetN', MET ? MET.n : 0);
+  if (MET && MET.n > 0) { setUA(P, 'uMetH', 'v4', MET.H); setUA(P, 'uMetT', 'v4', MET.T); }
+  setU(P, 'uMetGain', S.fade);
+  setU(P, 'uSea', earth && S.seaMode ? 1 : 0);
+  setU(P, 'uSeaH', SEA_EYE);
+  setU(P, 'uSeaGain', ART.seaGain);
   setU(P, 'uEarthGain', onMoon ? ART.earthGain / Math.pow(2, S.ev) : 1);
   if (onMoon) {
     setU(P, 'uSurfLight', SS.light);
@@ -804,6 +835,7 @@ function drawFrame(now) {
     setU(SP, 'uGain', U.starGain);
     setU(SP, 'uTime', t);
     setU(SP, 'uExt', earth ? S.mie : 0);
+    setU(SP, 'uTwinkle', earth ? S.twinkle : 0);
     layout.views.forEach((v, i) => {
       const r = rects[i];
       gl.viewport(r[0], r[1], r[2], r[3]);

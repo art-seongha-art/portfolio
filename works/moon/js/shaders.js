@@ -8,6 +8,8 @@ import { ATMO_COMMON } from './atmo.js';
 import { TERRAIN_COMMON } from './terrain.js';
 import { SH_HALF, SH_REF } from './clouds.js';
 import { SURF_GLSL } from './surface.js';
+import { SEA_GLSL } from './sea.js';
+import { METEOR_GLSL } from './meteors.js';
 
 // Random rotations that decorrelate the crater grids of each octave.
 function octaveRotations(n, seed) {
@@ -143,6 +145,7 @@ uniform float uGhostES[9];
 uniform float uSurface;
 uniform float uEarthGain;
 ${SURF_GLSL}
+${METEOR_GLSL}
 
 // ---------------- focus
 uniform float uFocus;        // focus distance (lunar radii), 0 = infinity
@@ -524,6 +527,7 @@ vec3 shadeMoon(MoonHit mh, vec3 ro, vec3 rd, vec3 rdx, vec3 rdy, float angPix) {
 // ------------------------------------------------------------ earth: sky, stars, terrain
 ${ATMO_COMMON}
 ${TERRAIN_COMMON}
+${SEA_GLSL}
 
 // magnified atmospheric refraction: the low moon is flattened and shimmers
 vec3 atmoBend(vec3 d) {
@@ -712,8 +716,20 @@ void main() {
     expo = 1.0;
     col = texture(tSkyView, skyUV(d)).rgb;
     vec3 Tv = transmittance(tTrans, Rg + uCamAlt, d.y);
-    col += milkyWay(d) * uMWGain * Tv;
+    col += (milkyWay(d) * uMWGain + meteors(d, angPix)) * Tv;
     starVis *= dot(Tv, vec3(0.3, 0.5, 0.2)) * smoothstep(-0.01, 0.03, d.y);
+    if (uSea > 0.5) {
+      // by the sea: islands low on the horizon, the water, and the moon's path on it
+      vec3 Tmo = transmittance(tTrans, Rg + uCamAlt, uMoonDirW.y);
+      vec3 moonLight = uMoonE * Tmo;
+      vec3 moonDisp = uMoonTint * (uMoonLum * uMoonScale * 3.14159265 * uMoonAngR * uMoonAngR) * Tmo;
+      float di;
+      float ci = clamp((isleTop(atan(d.x, -d.z), di) - asin(clamp(d.y, -1.0, 1.0))) / angPix + 0.5, 0.0, 1.0);
+      if (ci > 0.0) { col = mix(col, isleColor(d, di, moonLight), ci); starVis *= 1.0 - ci; }
+      vec4 sw = seaShade(d, angPix, uMoonDirW, moonDisp, uMoonAngR, moonLight);
+      col = mix(col, sw.rgb, sw.a);
+      starVis *= 1.0 - sw.a;
+    }
 
     vec3 dm = normalize(mix(d, atmoBend(d), 1.0));
     vec3 ro = uCamB;
@@ -868,6 +884,7 @@ layout(location = 0) in vec4 aStar;   // ra(deg) dec(deg) mag bv
 uniform vec3  uPA, uDU, uDV;
 uniform float uLat, uLST;             // radians
 uniform float uGain, uTime, uPx, uExt;
+uniform float uTwinkle;               // how much the stars twinkle (0 = only low down)
 out vec3 vCol;
 out float vI;
 out float vR;
@@ -901,8 +918,11 @@ void main() {
   float el = asin(clamp(d.y, -1.0, 1.0));
   float X = 1.0 / (sin(max(el, 0.0)) + 0.50572 * pow(degrees(max(el, 0.0)) + 6.07995, -1.6364));
   vec3 T = exp(-vec3(0.075, 0.135, 0.27) * uExt * X);
-  // slow, subtle scintillation near the horizon
-  float tw = 1.0 + 0.35 * min(uExt, 1.0) * exp(-el / 0.25) * sin(uTime * (2.0 + fract(aStar.x * 7.1) * 3.0) + aStar.y * 11.0);
+  // twinkling: stronger through more air (low down), and where the timeline asks for it
+  float ph = aStar.y * 11.0 + aStar.x * 3.7;
+  float f1 = 5.0 + fract(aStar.x * 7.1) * 6.0, f2 = 13.0 + fract(aStar.y * 3.3) * 9.0;
+  float tw = max(0.0, 1.0 + min(uExt, 1.0) * (0.35 * exp(-el / 0.25) + uTwinkle * (0.25 + 0.5 * exp(-el / 0.35)))
+                   * (0.6 * sin(uTime * f1 + ph) + 0.4 * sin(uTime * f2 + 2.0 * ph)));
   vCol = bvColor(aStar.w) * T;
   float I = min(I0, 40.0) * tw;
   vR = uPx * (0.9 + 0.22 * log(1.0 + min(I0 * 8.0, 40.0)));

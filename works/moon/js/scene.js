@@ -38,6 +38,9 @@ export function parallactic(H, dec, lat) {
   return Math.atan2(Math.sin(H), Math.tan(lat) * Math.cos(dec) - Math.sin(dec) * Math.cos(H));
 }
 function slerp(a, b, t) {
+  // exact at the ends: a mix that should be 1 comes out of the keyframe curves as 1 ± 1e-16
+  if (t >= 1 - 1e-9) return norm(b);
+  if (t <= 1e-9) return norm(a);
   const c = Math.min(1, Math.max(-1, dot(a, b)));
   const w = Math.acos(c);
   if (w < 1e-5) return norm(add(mul(a, 1 - t), mul(b, t)));
@@ -48,10 +51,12 @@ function slerp(a, b, t) {
 // Rotation (column-major mat3) taking world vectors into a body frame so that
 // world direction `wf` maps to body point `fb` and the rolled world `up` maps to
 // the local north tangent at `fb`.
-function bodyMatrix(dirToBody, rollRad, fb) {
+function bodyMatrix(dirToBody, rollRad, fb, azHint = 0) {
   const wf = mul(dirToBody, -1);
   const el = Math.asin(Math.max(-1, Math.min(1, dirToBody[1])));
-  const az = Math.atan2(dirToBody[0], -dirToBody[2]);
+  // straight up or down the azimuth is undefined, and rounding noise would pick it afresh
+  // every frame (the moon below the camera at the slant flipped round): use the hint
+  const az = Math.hypot(dirToBody[0], dirToBody[2]) > 1e-7 ? Math.atan2(dirToBody[0], -dirToBody[2]) : azHint;
   const up0 = [-Math.sin(el) * Math.sin(az), Math.cos(el), Math.sin(el) * Math.cos(az)];
   const up = norm(add(mul(up0, Math.cos(rollRad)), mul(cross(wf, up0), Math.sin(rollRad))));
   const right = cross(up, wf);
@@ -382,7 +387,7 @@ export function deriveUniforms(S, stateAtFn) {
   const q = parallactic(Hr, MOON_DEC, SITE_LAT);
   const roll = S.roll * D2R + (1 - S.pathMix) * (-q);
   const D = 1 + Math.exp(S.logAlt);
-  const M = orbit ? orbit.M : bodyMatrix(dir, roll, fb);
+  const M = orbit ? orbit.M : bodyMatrix(dir, roll, fb, S.tgtAz * D2R);
   const sunB = orbit ? orbit.sunB : sph(S.sunLat, S.sunLon);
   const earthB = orbit ? fb : sph(S.earthLat, S.earthLon);
   const angR = Math.asin(1 / D);

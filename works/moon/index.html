@@ -70,6 +70,9 @@
   #panel button { font: inherit; font-size: 12px; background: #22262d; color: var(--ink); border: 1px solid rgba(255,255,255,.12); border-radius: 6px; padding: 4px 8px; cursor: pointer; }
   #panel button:hover { background: #2c313a; }
   #p-scenes { display: flex; flex-wrap: wrap; gap: 5px; }
+  #p-screen { gap: 5px; }
+  #p-screen button { flex: 1; padding: 6px 4px; }
+  #p-screen button.on { background: #3a4150; border-color: rgba(255,255,255,.35); }
   #pf { color: var(--dim); font-size: 11px; font-variant-numeric: tabular-nums; }
   .hint { color: #6d7480; font-size: 11px; line-height: 1.6; margin: 6px 0 0; word-break: keep-all; }
   kbd { background: #22262d; border: 1px solid rgba(255,255,255,.12); border-radius: 4px; padding: 0 4px; font-size: 10.5px; }
@@ -82,7 +85,7 @@
 <div id="overlay">
   <div class="card">
     <h1>MOON</h1>
-    <p class="meta">3면 CAVE용 실시간 미디어아트 · 20분 반복<br>
+    <p class="meta">3면 CAVE용 실시간 미디어아트 · 30분 반복<br>
        지리산 천왕봉 · NASA LRO 달 데이터 · 박성하, 2026</p>
     <div class="btns">
       <button id="btn-start" class="primary">감상하기</button>
@@ -111,6 +114,9 @@
   <div class="row"><label>벽 순서 (화면 왼쪽→오른쪽)</label><select id="p-order">
     <option value="left,front,right">좌 · 정면 · 우</option><option value="right,front,left">우 · 정면 · 좌</option>
     <option value="front,left,right">정면 · 좌 · 우</option><option value="left,right,front">좌 · 우 · 정면</option></select></div>
+  <div class="row"><label>이 창의 화면</label></div>
+  <div class="row" id="p-screen"><button data-w="left">1 · 왼쪽</button><button data-w="front">2 · 정면</button><button data-w="right">3 · 오른쪽</button><button data-w="all">3면</button></div>
+  <p class="hint">모니터(프로젝터)마다 창을 하나씩 띄우고, 그 창에서 화면 번호를 누르면 그 벽이 창에 꽉 차게 전체화면으로 바뀝니다. 창마다 따로 기억하고, 세 창은 같은 시각을 보여줍니다.</p>
   <div class="row"><button id="p-open-walls">벽별 창 3개 열기</button></div>
   <div class="row"><label>품질</label><select id="p-quality"><option value="auto">자동</option><option value="high">높음 (8K)</option><option value="med">중간</option><option value="low">낮음</option></select></div>
   <div class="row"><label>보정 격자 <kbd>G</kbd></label><input id="p-grid" type="checkbox"></div>
@@ -134,7 +140,7 @@
   <div class="row"><label>우 감마</label><input id="g-right-gamma" type="range" min="0.7" max="1.4" step="0.01"></div>
   <div class="row"><label>우 블랙</label><input id="g-right-lift" type="range" min="0" max="0.06" step="0.001"></div>
   <h3>단축키</h3>
-  <p class="hint"><kbd>Space</kbd> 일시정지 · <kbd>←</kbd><kbd>→</kbd> 10초 이동 · <kbd>1</kbd>–<kbd>8</kbd> 장면 · <kbd>[</kbd><kbd>]</kbd> 속도 · <kbd>F</kbd> 전체화면 · <kbd>G</kbd> 격자 · <kbd>H</kbd> 화면 정리 · <kbd>P</kbd> 패널</p>
+  <p class="hint"><kbd>Space</kbd> 일시정지 · <kbd>←</kbd><kbd>→</kbd> 10초 이동 · <kbd>1</kbd>–<kbd>9</kbd> <kbd>0</kbd> <kbd>-</kbd> 장면 · <kbd>[</kbd><kbd>]</kbd> <kbd>=</kbd> 속도 · <kbd>F</kbd> 전체화면 · <kbd>G</kbd> 격자 · <kbd>H</kbd> 화면 정리 · <kbd>P</kbd> 패널</p>
   <p class="hint">설정은 이 컴퓨터 브라우저에 저장됩니다. CAVE 모드는 고정 기준 시각으로 장면을 정하므로 창·PC가 여러 대여도 같은 장면을 보여줍니다.</p>
 </div>
 
