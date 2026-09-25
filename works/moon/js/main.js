@@ -5,8 +5,7 @@ import { NOISE3D_FS, WEATHER_FS, CLOUDSHADOW_FS, SH_N, cloudsFS } from './clouds
 import { terrainCacheFS } from './terrain.js';
 import { surfCacheFS, surfaceState, surfH, SURF_EARTH, SURF_LIGHT } from './surface.js';
 import { meteorsAt } from './meteors.js';
-import { landData, DATA_W, DATA_H } from './land.js';
-import { boatsAt } from './sea.js';
+import { boatsAt, BOAT_TEX_W, BOAT_TEX_H } from './sea.js';
 import { LOOP, SCENES, stateAt, sceneAt, EYE_ALT, CAM_EN, SURF_T0, SEA_EYE, SEA_T0 } from './timeline.js';
 import { deriveUniforms, SITE_LAT, setMS, warmAtmosphere, dirAzEl } from './scene.js';
 import { DEFAULT_ROOM, SCREEN_ASPECT, fitRoom, buildLayout } from './cave.js';
@@ -403,9 +402,11 @@ function makeTargets(w, h) {
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAX_LEVEL, levels - 1);
   const aux = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, aux);
-  gl.texStorage2D(gl.TEXTURE_2D, 1, extCBF ? gl.R16F : gl.RGBA8, w, h);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  // aux: blur size (r), what lets the light of the sky and moon through (g) and how much air
+  // lies in front (b), with mips for the light shafts
+  gl.texStorage2D(gl.TEXTURE_2D, levels, extCBF ? gl.RGBA16F : gl.RGBA8, w, h);
+  texParams(gl.TEXTURE_2D, gl.LINEAR_MIPMAP_LINEAR, gl.CLAMP_TO_EDGE, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAX_LEVEL, levels - 1);
   const fb = gl.createFramebuffer();
   gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
   gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, col, 0);
@@ -420,19 +421,44 @@ function makeTargets(w, h) {
   vol = { t: [target2D(vw, vh, extCBF ? gl.RGBA16F : gl.RGBA8), target2D(vw, vh, extCBF ? gl.RGBA16F : gl.RGBA8)], i: 0, w: vw, h: vh, fresh: true };
 }
 let vol = null;
-// data for the landscapes (fireflies, the plum branch), rewritten every frame they show
-const landBuf = new Float32Array(DATA_W * DATA_H * 4);
-let landTexObj = null;
-function landTex() {
-  if (!landTexObj) {
-    landTexObj = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, landTexObj);
-    gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA32F, DATA_W, DATA_H);
+// the point where direction m meets a wall's plane, in wall units (0..1 across the image), or
+// null when m does not point toward that side
+function wallPoint(geo, m) {
+  const { pa, du, dv } = geo;
+  const n = [du[1] * dv[2] - du[2] * dv[1], du[2] * dv[0] - du[0] * dv[2], du[0] * dv[1] - du[1] * dv[0]];
+  const c = [pa[0] + 0.5 * (du[0] + dv[0]), pa[1] + 0.5 * (du[1] + dv[1]), pa[2] + 0.5 * (du[2] + dv[2])];
+  const s = Math.sign(n[0] * c[0] + n[1] * c[1] + n[2] * c[2]);
+  const nm = n[0] * m[0] + n[1] * m[1] + n[2] * m[2];
+  if (nm * s < 0.15 * Math.hypot(n[0], n[1], n[2])) return null;
+  const lam = (n[0] * pa[0] + n[1] * pa[1] + n[2] * pa[2]) / nm;
+  const q = [m[0] * lam - pa[0], m[1] * lam - pa[1], m[2] * lam - pa[2]];
+  return [(q[0] * du[0] + q[1] * du[1] + q[2] * du[2]) / (du[0] * du[0] + du[1] * du[1] + du[2] * du[2]),
+    (q[0] * dv[0] + q[1] * dv[1] + q[2] * dv[2]) / (dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2])];
+}
+// each scene's look (split toning colours, contrast); S.look picks one, blended in the cuts
+const LOOKS = [
+  { lo: [0.8, 1.0, 1.1], hi: [1.08, 1.0, 0.86], con: 0 },       // default: teal / warm
+  { lo: [0.74, 0.88, 1.22], hi: [1.16, 1.0, 0.72], con: 0.2 },   // the sea: navy and gold
+  { lo: [0.84, 0.95, 1.12], hi: [0.97, 1.0, 1.03], con: 0.05 },  // mist: blue-grey, soft
+];
+function lookAt(x) {
+  const i = Math.max(0, Math.min(LOOKS.length - 1, Math.floor(x))), j = Math.min(LOOKS.length - 1, i + 1), f = Math.max(0, Math.min(1, x - i));
+  const mix = (a, b) => a.map((v, k) => v + (b[k] - v) * f);
+  return { lo: mix(LOOKS[i].lo, LOOKS[j].lo), hi: mix(LOOKS[i].hi, LOOKS[j].hi), con: LOOKS[i].con + (LOOKS[j].con - LOOKS[i].con) * f };
+}
+// the paper boats, rewritten every frame they show
+const boatBuf = new Float32Array(BOAT_TEX_W * BOAT_TEX_H * 4);
+let boatTexObj = null;
+function boatTex() {
+  if (!boatTexObj) {
+    boatTexObj = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, boatTexObj);
+    gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA32F, BOAT_TEX_W, BOAT_TEX_H);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, DATA_W, DATA_H, gl.RGBA, gl.FLOAT, landBuf);
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, BOAT_TEX_W, BOAT_TEX_H, gl.RGBA, gl.FLOAT, boatBuf);
   }
-  return landTexObj;
+  return boatTexObj;
 }
 
 // terrain cache: per-wall G-buffer at the layout's native resolution, filled in bands
@@ -770,7 +796,7 @@ function drawFrame(now) {
     ['tColor', T.color], ['tHeight', T.height], ['tPatchH', patch ? patch.h : T.flatH], ['tPatchC', T.patchC || T.gray],
     ['tEarthDay', T.earthDay || T.gray], ['tEarthCN', T.earthCN || T.black], ['tTrans', T.trans.tex], ['tSkyView', T.sky.tex],
     ['tMW', T.mw || T.black], ['tCacheA', onMoon ? surf.a : cache.a], ['tCacheB', onMoon ? surf.b : cache.b], ['tVol', volTex], ['tCloudSh', T.csh.tex],
-    ['tLand', landTex()],
+    ['tBoats', boatTex()],
   ];
   texUnits.forEach(([n, tex], i) => { gl.activeTexture(gl.TEXTURE0 + i); gl.bindTexture(gl.TEXTURE_2D, tex); setI(P, n, i); });
   bindTerrain(P, texUnits.length);
@@ -799,28 +825,24 @@ function drawFrame(now) {
   if (MET && MET.n > 0) { setUA(P, 'uMetH', 'v4', MET.H); setUA(P, 'uMetT', 'v4', MET.T); setUA(P, 'uMetC', 'v4', MET.C); }
   setU(P, 'uMetGain', S.fade);
   setU(P, 'uSea', earth && S.seaMode ? 1 : 0);
-  // the landscapes: plants, mist, wind; the fireflies and the plum branch come from the clock
+  // above the misty valley before dawn: the ranges, the valley fog, a thin mist
   const onLand = earth && S.land > 0.5;
   setU(P, 'uLand', onLand ? 1 : 0);
-  let LC = { nf: 0, ns: 0, nb: 0 }, nBoats = 0;
-  const onSea = earth && S.seaMode;
-  if (onLand || onSea) {
-    landBuf.fill(0);
-    if (onLand) LC = landData(landBuf, t, S.landEye, S.windS, S.vegFlower > 0.01, S.vegBranch > 0.01);
-    if (onSea) nBoats = boatsAt(t, t - SEA_T0, landBuf, DATA_W * 4, SEA_EYE);
-    gl.bindTexture(gl.TEXTURE_2D, landTex());
-    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, DATA_W, DATA_H, gl.RGBA, gl.FLOAT, landBuf);
+  setU(P, 'uLandEye', S.landEye);
+  setU(P, 'uMist', S.mist); setU(P, 'uMistH', S.mistH);
+  setU(P, 'uRidge', S.ridge); setU(P, 'uRidgeD', S.ridgeD); setU(P, 'uCliff', [S.cliff, S.drop]);
+  setU(P, 'uVFog', [S.vfTop, S.vfSoft, S.vfDens, S.vfStart]);
+  setU(P, 'uAureole', S.aureole);
+  // the paper boats come from the clock
+  let nBoats = 0;
+  if (earth && S.seaMode) {
+    boatBuf.fill(0);
+    nBoats = boatsAt(t, t - SEA_T0, boatBuf, BOAT_TEX_W * 4, SEA_EYE);
+    gl.bindTexture(gl.TEXTURE_2D, boatTex());
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, BOAT_TEX_W, BOAT_TEX_H, gl.RGBA, gl.FLOAT, boatBuf);
   }
   setI(P, 'uBoatN', nBoats);
   setU(P, 'uBoatGain', ART.boatGain);
-  setI(P, 'uFlyN', LC.nf); setI(P, 'uBrN', LC.ns); setI(P, 'uBlN', LC.nb);
-  setU(P, 'uLandEye', S.landEye);
-  setU(P, 'uVeg', [S.vegGrass, S.vegFlower, S.vegBranch, S.vegPine]);
-  setU(P, 'uMist', S.mist); setU(P, 'uMistH', S.mistH);
-  setU(P, 'uWindS', S.windS); setU(P, 'uWindAz', Math.PI / 2);
-  setU(P, 'uFieldH', S.fieldH); setU(P, 'uNear', S.near); setU(P, 'uMotes', S.motes);
-  setU(P, 'uMesopic', S.mesopic);
-  setU(P, 'uDofL', onLand ? S.dofL : 0); setU(P, 'uFocusL', S.focusL);
   setU(P, 'uSeaH', SEA_EYE);
   setU(P, 'uSeaGain', ART.seaGain);
   setU(P, 'uEarthGain', onMoon ? ART.earthGain / Math.pow(2, S.ev) : 1);
@@ -895,6 +917,8 @@ function drawFrame(now) {
   // ---- lens: blur / bloom need mips of the HDR image
   gl.bindTexture(gl.TEXTURE_2D, fbo.col);
   gl.generateMipmap(gl.TEXTURE_2D);
+  gl.bindTexture(gl.TEXTURE_2D, fbo.aux);
+  gl.generateMipmap(gl.TEXTURE_2D);
 
   // ---- composite to screen
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -918,6 +942,9 @@ function drawFrame(now) {
   setU(CP, 'uFrame', frameNo % 65536);
   setU(CP, 'uFade', 1);
   setU(CP, 'uTone', S.tone);
+  // the scene's look: shadow and highlight colours, contrast
+  const lk = lookAt(S.look);
+  setU(CP, 'uToneLo', lk.lo); setU(CP, 'uToneHi', lk.hi); setU(CP, 'uContrast', lk.con * Math.min(1, S.tone * 2));
   layout.views.forEach((v, i) => {
     const r = rects[i];
     const d = v.dst;
@@ -927,6 +954,12 @@ function drawFrame(now) {
     setU(CP, 'uDstRect', d);
     setU(CP, 'uBlur', U.blur * (r[3] / 1080));
     setU(CP, 'uPA', v.geo.pa); setU(CP, 'uDU', v.geo.du); setU(CP, 'uDV', v.geo.dv);
+    // where the moon falls on this wall's plane, for the light shafts
+    const mp = earth ? wallPoint(v.geo, U.uMoonDirW) : null;
+    setU(CP, 'uRays', mp ? S.rays : 0);
+    setU(CP, 'uMoonUV', mp || [0.5, 0.5]);
+    setU(CP, 'uMoonDir', U.uMoonDirW); setU(CP, 'uMoonR', U.uMoonAngR);
+    setU(CP, 'uRayCol', [U.uMoonTint[0], U.uMoonTint[1] * 0.96, U.uMoonTint[2] * 0.88]);
     const g = cfg.grade[v.name] || {};
     setU(CP, 'uGain', [g.r ?? g.gain ?? 1, g.g ?? g.gain ?? 1, g.b ?? g.gain ?? 1]);
     setU(CP, 'uGamma', g.gamma ?? 1);

@@ -126,10 +126,8 @@ uniform float uGlow;
 uniform float uRefr;
 uniform float uShimmer;
 uniform float uStars;
-uniform float uMesopic;        // 1 = colour drains at night as it does for the eye
-uniform sampler2D tLand;       // fireflies, the plum branch, the paper boats (land.js, sea.js)
-uniform float uDofL;           // landscapes: blur of what is out of focus (px x m)
-uniform float uFocusL;         // landscapes: focus distance (m), 0 = infinity
+uniform float uAureole;        // a wide glow round the moon in hazy air
+uniform sampler2D tBoats;      // the paper boats (sea.js)
 
 // ---------------- space extras
 uniform float uEarthVis;
@@ -628,7 +626,7 @@ vec3 mesopic(vec3 c) {
   if (uAbsScale <= 0.0) return c;
   float Y = dot(c, LUMA);
   float lcd = max(Y * uAbsScale, 1e-7);
-  float s = smoothstep(0.3, -2.3, log(lcd) / 2.302585) * 0.7 * uMesopic;
+  float s = smoothstep(0.3, -2.3, log(lcd) / 2.302585) * 0.7;
   float V = dot(c, vec3(0.033, 0.765, 0.2));
   return mix(c, V * vec3(0.74, 0.9, 1.24), s);
 }
@@ -715,8 +713,9 @@ void main() {
   vec3 col = vec3(0.0);
   float starVis = 1.0;
   float depth = 1e9;
-  float landDepth = 1e9;
   float boatCov = 0.0;
+  float occ = 1.0;             // how much light from the sky and moon gets through (for the shafts)
+  float air = 1.0;             // how much hazy air lies in front of what this pixel shows
   float expo = uExposure;
   SUNB = uSunB; EARTHB = uEarthB; ESHINE = uEarthshine;
 
@@ -734,13 +733,16 @@ void main() {
       vec3 moonDisp = uMoonTint * (uMoonLum * uMoonScale * 3.14159265 * uMoonAngR * uMoonAngR) * Tmo;
       float di;
       float ci = clamp((isleTop(atan(d.x, -d.z), di) - asin(clamp(d.y, -1.0, 1.0))) / angPix + 0.5, 0.0, 1.0);
-      if (ci > 0.0) { col = mix(col, isleColor(d, di, moonLight), ci); starVis *= 1.0 - ci; }
+      if (ci > 0.0) { col = mix(col, isleColor(d, di, moonLight), ci); starVis *= 1.0 - ci; occ *= 1.0 - ci; }
       vec4 sw = seaShade(d, angPix, uMoonDirW, moonDisp, uMoonAngR, moonLight);
       col = mix(col, sw.rgb, sw.a);
       starVis *= 1.0 - sw.a;
+      // (the water lies below the moonlight's way: it casts no shaft)
+      air = mix(air, 1.0 - exp(-uSeaH / max(-d.y, 1e-4) / 30.0), sw.a);
       vec4 bt = boatsShade(d, angPix, moonLight);
       col = col * (1.0 - bt.a) + bt.rgb;
       starVis *= 1.0 - bt.a;
+      occ *= 1.0 - bt.a;
       boatCov = bt.a;
     }
 
@@ -761,7 +763,7 @@ void main() {
     if (uGlow > 0.001) {
       float gam = acos(clamp(dot(dm, uMoonDirW), -1.0, 1.0));
       float x = max(gam - uMoonAngR, 0.0) / max(uMoonAngR, 1e-4);
-      float g = 0.07 * exp(-x * 5.0) + 0.02 * exp(-x * 1.2);
+      float g = 0.07 * exp(-x * 5.0) + 0.02 * exp(-x * 1.2) + uAureole * 0.012 * exp(-x * 0.3);
       vec3 Tg = transmittance(tTrans, Rg + uCamAlt, uMoonDirW.y);
       moonC += uGlow * uMoonLum * uMoonScale * g * Tg * uMoonTint;
     }
@@ -784,6 +786,7 @@ void main() {
           col = mix(col, tc, cb.x);
           moonC *= 1.0 - cb.x;
           starVis *= 1.0 - cb.x;
+          occ *= 1.0 - cb.x;
         }
       }
     }
@@ -792,17 +795,19 @@ void main() {
       col = col * v.a + v.rgb;
       moonC *= v.a;
       starVis *= v.a;
+      occ *= v.a;
     }
     moonC *= 1.0 - boatCov;
     if (uLand > 0.5) {
       // standing in a landscape: plants, ground, hills and mist in front of the sky and moon
       vec3 Tmo = transmittance(tTrans, Rg + uCamAlt, uMoonDirW.y);
-      float lvis, lnear;
-      vec4 lc = landShade(d, angPix, uMoonE * Tmo, lvis, lnear);
+      float lvis, lnear, locc;
+      vec4 lc = landShade(d, angPix, uMoonE * Tmo, lvis, lnear, locc);
       col = col * lvis + lc.rgb;
       moonC *= lvis;
       starVis *= lvis;
-      landDepth = lnear;
+      occ *= locc;
+      air = mix(air, 1.0 - exp(-lnear / 30.0), 1.0 - lvis);
     }
     col = mesopic(col) + moonC;
   } else if (uSurface > 0.5) {
@@ -897,12 +902,8 @@ void main() {
     coc = uFocus > 0.0 ? uDof * abs(1.0 - uFocus / depth) : 0.0;
     coc = min(coc, 40.0);
   }
-  if (uLand > 0.5 && uDofL > 0.0) {
-    // a photograph's depth of field: what is nearer or farther than the focus goes soft
-    coc = min(uDofL * abs(1.0 / landDepth - (uFocusL > 0.0 ? 1.0 / uFocusL : 0.0)) * uView.w / 1080.0, 24.0);
-  }
   oCol = vec4(max(col, vec3(0.0)) * expo, clamp(starVis * uStars, 0.0, 1.0));
-  oAux = vec4(coc, 0.0, 0.0, 1.0);
+  oAux = vec4(coc, occ, air, 1.0);
 }`;
 }
 
@@ -987,7 +988,13 @@ uniform vec3  uVigDir;
 uniform float uVig;
 uniform vec3  uGain;
 uniform float uGamma, uLift, uGrain, uFrame, uFade, uHalation;
-uniform float uTone;          // split toning: teal shadows, warm highlights (0 = none)
+uniform float uTone;          // split toning (0 = none) toward these shadow and highlight colours
+uniform vec3  uToneLo, uToneHi;
+uniform float uContrast;      // a gentle S-curve (0 = none)
+uniform vec2  uMoonUV;        // the moon's point on this wall (wall units), for the light shafts
+uniform float uRays;          // light shafts toward the moon (0 = none)
+uniform vec3  uMoonDir, uRayCol;
+uniform float uMoonR;
 
 vec3 aces(vec3 x) {
   const float a = 2.51, b = 0.03, c = 2.43, d = 0.59, e = 0.14;
@@ -1005,7 +1012,8 @@ void main() {
   vec2 f = (gl_FragCoord.xy - uDstRect.xy) / uDstRect.zw;
   vec2 st = (uSrcRect.xy + f * uSrcRect.zw) / uSrcSize;
   vec2 px = 1.0 / uSrcSize;
-  float coc = max(uBlur, texture(tAux, st).r);
+  vec4 aux = textureLod(tAux, st, 0.0);
+  float coc = max(uBlur, aux.r);
   vec3 sharp = texture(tHDR, st).rgb;
   vec3 c = sharp;
   if (coc > 0.6) {
@@ -1023,6 +1031,38 @@ void main() {
       ws += w;
     }
     c = mix(sharp, acc / ws, smoothstep(0.6, 2.5, coc));
+  }
+  if (uRays > 0.0) {
+    // light shafts: along the way toward the moon, the glowing air round it seen through
+    // the gaps between the clouds; where they block it, a shadow streams outward
+    // (crepuscular rays). Stays on this wall: the walls meet at an angle.
+    vec2 toM = uMoonUV - f;
+    float acc = 0.0, acc0 = 0.0;
+    // interleaved gradient noise, shifted every frame: the steps along the way don't band
+    float jit = fract(52.9829189 * fract(dot(gl_FragCoord.xy + uFrame * vec2(5.588, 3.113), vec2(0.06711056, 0.00583715))));
+    vec2 lo = uSrcRect.xy / uSrcSize, hi = (uSrcRect.xy + uSrcRect.zw) / uSrcSize;
+    // the mask read about as coarsely as the steps are long
+    float lod = clamp(log2(max(length(toM * uSrcRect.zw) / 28.0, 1.0)) + 0.5, 0.0, 6.0);
+    float n = 0.0;
+    for (int i = 0; i < 28; i++) {
+      float u = (float(i) + jit) / 28.0;
+      vec2 fs = f + toM * u;
+      vec2 ss = (uSrcRect.xy + fs * uSrcRect.zw) / uSrcSize;
+      if (any(lessThan(ss, lo)) || any(greaterThan(ss, hi))) break;
+      float ok = textureLod(tAux, ss, lod).g;
+      vec3 ds = normalize(uPA + fs.x * uDU + fs.y * uDV);
+      float th = max(acos(clamp(dot(ds, uMoonDir), -1.0, 1.0)) - uMoonR, 0.0);
+      float glow = exp(-th / 0.07) + 0.3 * exp(-th / 0.3);
+      acc += ok * glow;
+      acc0 += glow;
+      n += 1.0;
+    }
+    // the shafts are light scattered in the air in front of whatever the pixel shows: over
+    // the sky and far away, hardly at all over something close. The glow of the air round
+    // the moon is already in the sky, so what the shafts add is mostly the shadow streaming
+    // from each thing that blocks it, and a little more light through the gaps.
+    float sh = (acc - 0.7 * acc0) / max(n, 1.0);
+    c = max(c + uRayCol * sh * uRays * 0.5 * mix(0.15, 1.0, aux.b), vec3(0.0));
   }
   if (uBloom > 0.0) {
     vec3 b1 = vec3(0.0), b2 = vec3(0.0);
@@ -1051,8 +1091,13 @@ void main() {
   // the look of a night photograph: shadows toward teal, the moon's light toward warm
   if (uTone > 0.0) {
     float tl = dot(c, vec3(0.2126, 0.7152, 0.0722));
-    vec3 tint = mix(vec3(0.8, 1.0, 1.1), vec3(1.08, 1.0, 0.86), smoothstep(0.02, 0.45, tl));
+    vec3 tint = mix(uToneLo, uToneHi, smoothstep(0.02, 0.45, tl));
     c = clamp(mix(c, c * tint, uTone), 0.0, 1.0);
+  }
+  if (uContrast > 0.0) {
+    // deeper shadows, fuller highlights, around the middle of the range
+    vec3 sc = c * c * (3.0 - 2.0 * c);
+    c = mix(c, sc, uContrast);
   }
   c = pow(c, vec3(uGamma)) * uGain;
   c = uLift + (1.0 - uLift) * c;
