@@ -16,7 +16,7 @@ export function initUI(ctx) {
   let lastSceneId = '';
 
   // ---------------------------------------------------------- title card
-  const installMode = cfg.mode === 'span' || cfg.mode === 'wall';
+  let installMode = cfg.mode === 'span' || cfg.mode === 'wall';
   if (installMode || !cfg.ui) overlay.hidden = true;
   else body.classList.add('titled');
   if (!cfg.ui) body.classList.add('clean');
@@ -124,6 +124,30 @@ export function initUI(ctx) {
       });
     });
   });
+  // which screen this window shows: 1 = left wall, 2 = front, 3 = right, each filling the
+  // window, or all three side by side. One window per monitor (projector): pick its number
+  // in that window. Kept per window (and in the address), shared clock.
+  $('#p-screen').querySelectorAll('button').forEach((b) => { b.onclick = () => showScreen(b.dataset.w); });
+  function showScreen(w) {
+    const url = new URL(location.href);
+    if (w === 'all') { cfg.mode = 'span'; url.searchParams.delete('wall'); }
+    else { cfg.mode = 'wall'; cfg.wall = w; url.searchParams.set('wall', w); }
+    url.searchParams.set('mode', cfg.mode);
+    ['t', 'pause'].forEach((k) => url.searchParams.delete(k));
+    history.replaceState(null, '', url);
+    try { sessionStorage.setItem('moon.screen', w); } catch {}
+    body.dataset.mode = cfg.mode;
+    installMode = true;
+    // installation windows run on the wall clock, so separate windows show the same moment
+    if (cfg.clock !== 'wall') { cfg.clock = 'wall'; clock.init(); }
+    overlay.hidden = true;
+    body.classList.remove('titled');
+    hud.classList.remove('show');
+    markLayoutDirty();
+    togglePanel(false);
+    const el = document.documentElement;
+    if (el.requestFullscreen && !document.fullscreenElement) el.requestFullscreen().catch(() => {});
+  }
   $('#p-open-walls').onclick = () => {
     const base = location.pathname;
     ['left', 'front', 'right'].forEach((w, i) => window.open(`${base}?mode=wall&wall=${w}`, `moon-${w}`, `popup,left=${i * 60},top=${i * 40},width=960,height=540`));
@@ -133,6 +157,8 @@ export function initUI(ctx) {
 
   function syncPanel() {
     $('#p-mode').value = cfg.mode;
+    $('#p-screen').querySelectorAll('button').forEach((b) => b.classList.toggle('on',
+      cfg.mode === 'wall' ? b.dataset.w === cfg.wall : cfg.mode === 'span' && b.dataset.w === 'all'));
     $('#p-quality').value = cfg.quality;
     $('#p-grid').checked = cfg.grid;
     $('#p-order').value = cfg.order.join(',');
@@ -160,10 +186,14 @@ export function initUI(ctx) {
     else if (k === 'f' || k === 'F') {
       if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen().catch(() => {});
     } else if (k === 'h' || k === 'H') body.classList.toggle('clean');
-    else if (/^[1-9]$/.test(k) && SCENES[+k - 1]) clock.seek(SCENES[+k - 1].t + 0.01);
+    else if (/^[0-9-]$/.test(k)) {
+      // scenes: 1-9, then 0 and - for the tenth and eleventh
+      const i = k === '0' ? 9 : k === '-' ? 10 : +k - 1;
+      if (SCENES[i]) clock.seek(SCENES[i].t + 0.01);
+    }
     else if (k === ']') clock.setSpeed(Math.min(32, clock.speed * 2));
     else if (k === '[') clock.setSpeed(Math.max(0.25, clock.speed / 2));
-    else if (k === '0') clock.setSpeed(1);
+    else if (k === '=') clock.setSpeed(1);
   });
   const wake = () => {
     body.classList.remove('idle');

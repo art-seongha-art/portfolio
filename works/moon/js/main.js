@@ -4,7 +4,7 @@ import { TRANSMITTANCE_FS, MULTISCAT_FS, SKYVIEW_FS, TRANS_W, TRANS_H, MS_N } fr
 import { NOISE3D_FS, WEATHER_FS, CLOUDSHADOW_FS, SH_N, cloudsFS } from './clouds.js';
 import { terrainCacheFS } from './terrain.js';
 import { surfCacheFS, surfaceState, SURF_EARTH, SURF_LIGHT } from './surface.js';
-import { LOOP, SCENES, stateAt, sceneAt, EYE_ALT, CAM_EN, SURF_T0 } from './timeline.js';
+import { LOOP, SCENES, stateAt, sceneAt, EYE_ALT, CAM_EN, SURF_T0, SEA_EYE } from './timeline.js';
 import { deriveUniforms, SITE_LAT, setMS, warmAtmosphere } from './scene.js';
 import { DEFAULT_ROOM, buildLayout } from './cave.js';
 import { initUI } from './ui.js';
@@ -19,9 +19,12 @@ function loadSaved() {
 }
 const saved = loadSaved();
 const num = (k, d) => (params.has(k) ? parseFloat(params.get(k)) : d);
+// the screen this window was set to show in the operator panel (kept per window, not shared)
+const screen = (() => { try { return sessionStorage.getItem('moon.screen'); } catch { return null; } })();
 export const cfg = {
-  mode: params.get('mode') || (params.has('cave') ? 'span' : saved.mode || (/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent) || innerWidth < innerHeight * 1.3 ? 'single' : 'preview')),
-  wall: params.get('wall') || 'front',
+  mode: params.get('mode') || (screen ? (screen === 'all' ? 'span' : 'wall')
+    : params.has('cave') ? 'span' : saved.mode || (/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent) || innerWidth < innerHeight * 1.3 ? 'single' : 'preview')),
+  wall: params.get('wall') || (screen && screen !== 'all' ? screen : 'front'),
   quality: params.get('q') || saved.quality || 'auto',
   room: { ...DEFAULT_ROOM, ...(saved.room || {}) },
   order: saved.order || ['left', 'front', 'right'],
@@ -568,6 +571,7 @@ export const ART = {
   cloudTop: 3900,
   earthGain: 0.59,   // the Earth seen from the moon, on the walls (independent of exposure)
   earthLight: 1.0,   // the light it throws on the ground there
+  seaGain: 5.0,      // the moon's path on the sea (1 = a mirror image of the disc as shown; more reads as a photograph exposed for the water)
 };
 
 // tuning hook: ?a.bump=1.3&a.alb=1.4,1.1,1,1
@@ -747,6 +751,9 @@ function drawFrame(now) {
   setU(P, 'uTerrain', terrainReady ? 1 : 0);
   setU(P, 'uCacheSize', [cache.w, cache.h]);
   setU(P, 'uSurface', onMoon ? 1 : 0);
+  setU(P, 'uSea', earth && S.seaMode ? 1 : 0);
+  setU(P, 'uSeaH', SEA_EYE);
+  setU(P, 'uSeaGain', ART.seaGain);
   setU(P, 'uEarthGain', onMoon ? ART.earthGain / Math.pow(2, S.ev) : 1);
   if (onMoon) {
     setU(P, 'uSurfLight', SS.light);

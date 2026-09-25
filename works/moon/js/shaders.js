@@ -8,6 +8,7 @@ import { ATMO_COMMON } from './atmo.js';
 import { TERRAIN_COMMON } from './terrain.js';
 import { SH_HALF, SH_REF } from './clouds.js';
 import { SURF_GLSL } from './surface.js';
+import { SEA_GLSL } from './sea.js';
 
 // Random rotations that decorrelate the crater grids of each octave.
 function octaveRotations(n, seed) {
@@ -524,6 +525,7 @@ vec3 shadeMoon(MoonHit mh, vec3 ro, vec3 rd, vec3 rdx, vec3 rdy, float angPix) {
 // ------------------------------------------------------------ earth: sky, stars, terrain
 ${ATMO_COMMON}
 ${TERRAIN_COMMON}
+${SEA_GLSL}
 
 // magnified atmospheric refraction: the low moon is flattened and shimmers
 vec3 atmoBend(vec3 d) {
@@ -714,6 +716,18 @@ void main() {
     vec3 Tv = transmittance(tTrans, Rg + uCamAlt, d.y);
     col += milkyWay(d) * uMWGain * Tv;
     starVis *= dot(Tv, vec3(0.3, 0.5, 0.2)) * smoothstep(-0.01, 0.03, d.y);
+    if (uSea > 0.5) {
+      // by the sea: islands low on the horizon, the water, and the moon's path on it
+      vec3 Tmo = transmittance(tTrans, Rg + uCamAlt, uMoonDirW.y);
+      vec3 moonLight = uMoonE * Tmo;
+      vec3 moonDisp = uMoonTint * (uMoonLum * uMoonScale * 3.14159265 * uMoonAngR * uMoonAngR) * Tmo;
+      float di;
+      float ci = clamp((isleTop(atan(d.x, -d.z), di) - asin(clamp(d.y, -1.0, 1.0))) / angPix + 0.5, 0.0, 1.0);
+      if (ci > 0.0) { col = mix(col, isleColor(d, di, moonLight), ci); starVis *= 1.0 - ci; }
+      vec4 sw = seaShade(d, angPix, uMoonDirW, moonDisp, uMoonAngR, moonLight);
+      col = mix(col, sw.rgb, sw.a);
+      starVis *= 1.0 - sw.a;
+    }
 
     vec3 dm = normalize(mix(d, atmoBend(d), 1.0));
     vec3 ro = uCamB;
