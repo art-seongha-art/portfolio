@@ -144,8 +144,8 @@ const TRACKS = {
 
   // shooting stars on the Earth nights (chance of one starting, per second), and a shower
   // while the eclipse is total (the sky is darkest); stars twinkle most by the sea
-  meteors: [[0, 0], [100, 0], [140, 0.045], [370, 0.045], [385, 0], [TW - 2, 0], [TW + 10, 0.04], [TD - 2, 0.04], [TD, 0.025], [TD + 45, 0], [LOOP, 0]],
-  shower: [[0, 0], [258, 0], [272, 1.5], [312, 1.5], [326, 0], [LOOP, 0]],
+  meteors: [[0, 0], [100, 0], [140, 0.03], [370, 0.03], [385, 0], [TW - 2, 0], [TW + 10, 0.03], [TD - 2, 0.03], [TD, 0.02], [TD + 45, 0], [LOOP, 0]],
+  shower: [[0, 0], [258, 0], [272, 1.2], [312, 1.2], [326, 0], [LOOP, 0]],
   twinkle: [[0, 0.3], [TW - 2, 0.3], [TW, 1.0], [TD - 2, 1.0], [TD, 0.3], [LOOP, 0.3]],
 
   // Earth's shadow across the moon (lunar radii along the eclipse path)
