@@ -290,7 +290,7 @@ const MOON_TEX_TO_PHYS = 0.065; // shader moon radiance units -> physical radian
 const AIRGLOW = mul([0.87, 1.0, 1.33], 1.0e-9); // natural night sky at the zenith (airglow + starlight)
 const MW_K = 6.0e-8;         // Milky Way surface brightness
 const STAR_K = 4.0e-8;       // point stars
-const KEY = 0.05;            // where the metered scene average lands
+const KEY = 0.032;           // where the metered scene average lands (kept low: it is a night piece)
 
 function earthLights(S, moonDir, ecl) {
   const sunDir = dirAzEl(S.sunAz, S.sunEl);
@@ -323,7 +323,7 @@ function meterKey(S, L) {
 const ABS = 1.2e5; // radiance unit -> cd/m2 (the sun gives ~120 klx)
 function nightKey(key) {
   const lcd = key * ABS;
-  return Math.min(1, Math.max(0.3, 0.3 + 0.7 * (Math.log10(lcd) + 4) / 5));
+  return Math.min(1, Math.max(0.22, 0.22 + 0.78 * (Math.log10(lcd) + 4) / 5.5));
 }
 const ECL_Y = 0.35;
 const NO_ECL = { disc: [1, 1, 1], env: [1, 1, 1] };
