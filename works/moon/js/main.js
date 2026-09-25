@@ -4,6 +4,7 @@ import { TRANSMITTANCE_FS, MULTISCAT_FS, SKYVIEW_FS, TRANS_W, TRANS_H, MS_N } fr
 import { NOISE3D_FS, WEATHER_FS, CLOUDSHADOW_FS, SH_N, cloudsFS } from './clouds.js';
 import { terrainCacheFS } from './terrain.js';
 import { surfCacheFS, surfaceState, SURF_EARTH, SURF_LIGHT } from './surface.js';
+import { meteorsAt } from './meteors.js';
 import { LOOP, SCENES, stateAt, sceneAt, EYE_ALT, CAM_EN, SURF_T0, SEA_EYE } from './timeline.js';
 import { deriveUniforms, SITE_LAT, setMS, warmAtmosphere } from './scene.js';
 import { DEFAULT_ROOM, buildLayout } from './cave.js';
@@ -590,6 +591,18 @@ const perf = { fps: 0, scale: 1, ms: 0 };
 export function getPerf() { return perf; }
 
 const lockScale = params.has('scale');
+// chance of a shooting star starting in second k: [sporadic, shower] (cached per second)
+const metCache = new Map();
+function metRates(k) {
+  let v = metCache.get(k);
+  if (!v) {
+    const Sk = stateAt(k);
+    v = [Sk.meteors, Sk.shower];
+    metCache.set(k, v);
+    if (metCache.size > 64) metCache.delete(metCache.keys().next().value);
+  }
+  return v;
+}
 const stopAfter = params.has('frames') ? parseInt(params.get('frames'), 10) : 0;
 let hiresFrames = 0, wantTerrain = true, wantSurf = false;
 function drawFrame(now) {
@@ -751,6 +764,11 @@ function drawFrame(now) {
   setU(P, 'uTerrain', terrainReady ? 1 : 0);
   setU(P, 'uCacheSize', [cache.w, cache.h]);
   setU(P, 'uSurface', onMoon ? 1 : 0);
+  // shooting stars (worked out from the clock, so every window has the same ones)
+  const MET = earth ? meteorsAt(t, metRates) : null;
+  setI(P, 'uMetN', MET ? MET.n : 0);
+  if (MET && MET.n > 0) { setUA(P, 'uMetH', 'v4', MET.H); setUA(P, 'uMetT', 'v4', MET.T); }
+  setU(P, 'uMetGain', S.fade);
   setU(P, 'uSea', earth && S.seaMode ? 1 : 0);
   setU(P, 'uSeaH', SEA_EYE);
   setU(P, 'uSeaGain', ART.seaGain);
@@ -811,6 +829,7 @@ function drawFrame(now) {
     setU(SP, 'uGain', U.starGain);
     setU(SP, 'uTime', t);
     setU(SP, 'uExt', earth ? S.mie : 0);
+    setU(SP, 'uTwinkle', earth ? S.twinkle : 0);
     layout.views.forEach((v, i) => {
       const r = rects[i];
       gl.viewport(r[0], r[1], r[2], r[3]);

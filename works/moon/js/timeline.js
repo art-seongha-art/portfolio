@@ -142,6 +142,12 @@ const TRACKS = {
   // the room as it climbs.
   earthEl: [[0, -1.4], [TU + 7, -1.4], [TU + 30, 0.6], [TU + 60, 3.4], [TU + 95, 6.6], [TU + 130, 9.6], [TU + 152, 11.2], [TU + 182, 13.0], [LOOP, 13.0]],
 
+  // shooting stars on the Earth nights (chance of one starting, per second), and a shower
+  // while the eclipse is total (the sky is darkest); stars twinkle most by the sea
+  meteors: [[0, 0], [100, 0], [140, 0.045], [370, 0.045], [385, 0], [TW - 2, 0], [TW + 10, 0.04], [TD - 2, 0.04], [TD, 0.025], [TD + 45, 0], [LOOP, 0]],
+  shower: [[0, 0], [258, 0], [272, 1.5], [312, 1.5], [326, 0], [LOOP, 0]],
+  twinkle: [[0, 0.3], [TW - 2, 0.3], [TW, 1.0], [TD - 2, 1.0], [TD, 0.3], [LOOP, 0.3]],
+
   // Earth's shadow across the moon (lunar radii along the eclipse path)
   eclX: [[0, -9], [222, -9], [240, -5.3], [255, -3.4], [270, -1.6], [318, 1.6], [333, 3.4], [348, 5.3], [365, 9], [LOOP, 9]],
 
