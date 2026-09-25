@@ -7,7 +7,7 @@ import { surfCacheFS, surfaceState, surfH, SURF_EARTH, SURF_LIGHT } from './surf
 import { meteorsAt } from './meteors.js';
 import { LOOP, SCENES, stateAt, sceneAt, EYE_ALT, CAM_EN, SURF_T0, SEA_EYE } from './timeline.js';
 import { deriveUniforms, SITE_LAT, setMS, warmAtmosphere, dirAzEl } from './scene.js';
-import { DEFAULT_ROOM, buildLayout } from './cave.js';
+import { DEFAULT_ROOM, SCREEN_ASPECT, fitRoom, buildLayout } from './cave.js';
 import { initUI } from './ui.js';
 
 const A = new URL('../assets/', import.meta.url).href;
@@ -37,9 +37,14 @@ export const cfg = {
   // installations run on the wall clock so every window/PC agrees on the moment
   clock: params.get('clock') || saved.clock || null,
 };
-for (const [k, key] of [['w', 'width'], ['d', 'depth'], ['h', 'height'], ['eye', 'eye'], ['bottom', 'bottom'], ['vx', 'vx'], ['vz', 'vz']]) {
+for (const [k, key] of [['w', 'width'], ['eye', 'eye'], ['bottom', 'bottom'], ['vx', 'vx'], ['vz', 'vz']]) {
   if (params.has(k)) cfg.room[key] = parseFloat(params.get(k));
 }
+if (params.has('h') && !params.has('w')) cfg.room.width = parseFloat(params.get('h')) * SCREEN_ASPECT;
+// the images are 16:9, so the height and the side walls follow from the width (also for sizes
+// saved before, from the old separate depth and height boxes)
+if (!(cfg.room.width >= 1)) cfg.room.width = DEFAULT_ROOM.width;
+fitRoom(cfg.room);
 if (!cfg.clock) cfg.clock = cfg.mode === 'span' || cfg.mode === 'wall' ? 'wall' : 'free';
 
 export function saveConfig() {
@@ -96,7 +101,7 @@ if (bc) {
   bc.onmessage = (e) => {
     const m = e.data || {};
     if (m.type === 'clock') Object.assign(clock, { offset: m.offset, paused: m.paused, pausedAt: m.pausedAt, speed: m.speed, origin: m.origin });
-    if (m.type === 'config') { Object.assign(cfg.room, m.room || {}); if (m.grade) cfg.grade = m.grade; if (m.order) cfg.order = m.order; layoutDirty = true; }
+    if (m.type === 'config') { fitRoom(Object.assign(cfg.room, m.room || {})); if (m.grade) cfg.grade = m.grade; if (m.order) cfg.order = m.order; layoutDirty = true; }
     if (m.type === 'grid') cfg.grid = m.on;
   };
 }
@@ -947,5 +952,5 @@ function setQuality(q) {
 }
 
 window.addEventListener('resize', () => { layoutDirty = true; });
-window.__moon = { status, clock, cfg, ART, frames: () => frameNo, cache: () => cache, surf: () => surf };
+window.__moon = { status, clock, cfg, ART, frames: () => frameNo, cache: () => cache, surf: () => surf, layout: () => layout };
 boot();
