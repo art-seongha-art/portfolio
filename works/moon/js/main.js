@@ -3,7 +3,7 @@ import { FULLSCREEN_VS, mainFS, STAR_VS, STAR_FS, COMPOSITE_FS } from './shaders
 import { TRANSMITTANCE_FS, MULTISCAT_FS, SKYVIEW_FS, TRANS_W, TRANS_H, MS_N } from './atmo.js';
 import { NOISE3D_FS, WEATHER_FS, CLOUDSHADOW_FS, SH_N, cloudsFS } from './clouds.js';
 import { terrainCacheFS } from './terrain.js';
-import { surfCacheFS, surfaceState, SURF_EARTH } from './surface.js';
+import { surfCacheFS, surfaceState, SURF_EARTH, SURF_LIGHT } from './surface.js';
 import { LOOP, SCENES, stateAt, sceneAt, EYE_ALT, CAM_EN, SURF_T0 } from './timeline.js';
 import { deriveUniforms, SITE_LAT, setMS, warmAtmosphere } from './scene.js';
 import { DEFAULT_ROOM, buildLayout } from './cave.js';
@@ -471,7 +471,7 @@ function stepSurfCache(SS) {
   gl.disable(gl.BLEND);
   gl.useProgram(progSurf.p);
   gl.bindVertexArray(emptyVAO);
-  setU(progSurf, 'uSurfSun', SS.sun);
+  setU(progSurf, 'uSurfLight', SS.light);
   setU(progSurf, 'uSurfBase', SS.base);
   let maxH = 0;
   layout.views.forEach((v, i) => {
@@ -566,7 +566,8 @@ export const ART = {
   fogVar: 260,
   cloudBase: 2600,
   cloudTop: 3900,
-  earthGain: 0.12,
+  earthGain: 0.59,   // the Earth seen from the moon, on the walls (independent of exposure)
+  earthLight: 1.0,   // the light it throws on the ground there
 };
 
 // tuning hook: ?a.bump=1.3&a.alb=1.4,1.1,1,1
@@ -639,10 +640,11 @@ function drawFrame(now) {
   }
   const terrainReady = earth && U.terrainValid && cache && cache.done && !params.has('noterrain');
   wantTerrain = earth && U.terrainValid;
-  // standing on the moon: the rabbits, and the ground (built once, while the screen is dark)
+  // standing on the moon: the rabbits, and the ground (built once, while the screen is dark,
+  // and lit every frame for the Earth's height)
   const onMoon = !earth && S.surfaceMode;
   wantSurf = onMoon;
-  const SS = onMoon ? { ...surfaceState(S.t - SURF_T0, cfg.room.eye), sun: U.surfSun } : null;
+  const SS = onMoon ? { ...surfaceState(S.t - SURF_T0, cfg.room.eye, S.earthEl), light: U.surfLight } : null;
   if (onMoon) stepSurfCache(SS);
 
   // ---- volumetric fog and clouds (half resolution, accumulated over frames)
@@ -745,9 +747,12 @@ function drawFrame(now) {
   setU(P, 'uTerrain', terrainReady ? 1 : 0);
   setU(P, 'uCacheSize', [cache.w, cache.h]);
   setU(P, 'uSurface', onMoon ? 1 : 0);
-  setU(P, 'uEarthGain', onMoon ? ART.earthGain : 1);
+  setU(P, 'uEarthGain', onMoon ? ART.earthGain / Math.pow(2, S.ev) : 1);
   if (onMoon) {
-    setU(P, 'uSurfSun', SS.sun);
+    setU(P, 'uSurfLight', SS.light);
+    setU(P, 'uSurfLightC', SURF_LIGHT.map((c) => c * ART.earthLight));
+    setU(P, 'uSurfLightR', (SURF_EARTH.radius * Math.PI) / 180);
+    setU(P, 'uSurfAmb', SS.amb);
     setI(P, 'uRabN', params.has('norabbits') ? 0 : SS.n);
     setUA(P, 'uRabP', 'v4', SS.P);
     setUA(P, 'uRabQ', 'v4', SS.Q);

@@ -12,17 +12,18 @@
 // the back), and it leaves an afterimage at each stop, like a multiple exposure. Then the
 // full moon comes close until it fills the walls, and the morning terminator reaches
 // Copernicus (low on the left, not in the middle); the same crater seen low and at a
-// slant; standing on the moon as the Earth comes up over the horizon; and back to the
-// summit at dawn as the moon sets in the west. The moon only stops near the middle of
-// a wall, where the image stays round for viewers away from the sweet spot.
+// slant; standing on the moon at night as the Earth comes up over the rim, the only
+// light there, lighting the ground from behind; and back to the summit at dawn as the
+// moon sets in the west. The moon only stops near the middle of a wall, where the image
+// stays round for viewers away from the sweet spot.
 
 // when each part begins (s)
 const TM = 470;   // the month (space)
 const TA = 660;   // approach and close-up
 const TS = 836;   // Copernicus at a slant
 const TU = 896;   // on the moon (Earthrise)
-const TD = 994;   // dawn, back on the summit
-export const LOOP = TD + 146; // 19:00
+const TD = 1054;  // dawn, back on the summit
+export const LOOP = TD + 146; // 20:00: on the wall clock it starts every hour at :00, :20 and :40
 export const SURF_T0 = TU;    // the rabbits' clock starts here
 
 export const SCENES = [
@@ -107,8 +108,10 @@ const TRACKS = {
   sunLon: [[0, 5], [TM, 5], [TA, 5], [TA + 65, 71.0], [TA + 80, 71.0], [TS - 6, 64.5], [TS, 64.5], [TS + 1, 66], [TU, 58], [TD - 1, 58], [TD, 5], [LOOP, 5]],
   earthLat: [[0, -4], [LOOP, -4]],
   earthLon: [[0, 5], [LOOP, 5]],
-  // standing on the moon: how high the Earth stands over the horizon (deg)
-  earthEl: [[0, -1.4], [TU + 7, -1.4], [TU + 34, 0.8], [TU + 59, 3.4], [TU + 89, 5.6], [LOOP, 5.6]],
+  // standing on the moon: how high the Earth's centre stands over the horizon (deg). It is
+  // the only light there: the rim ahead glows first, and the light reaches the ground by
+  // the room as it climbs.
+  earthEl: [[0, -1.4], [TU + 7, -1.4], [TU + 30, 0.6], [TU + 60, 3.4], [TU + 95, 6.6], [TU + 130, 9.6], [TU + 152, 11.2], [LOOP, 11.2]],
 
   // Earth's shadow across the moon (lunar radii along the eclipse path)
   eclX: [[0, -9], [222, -9], [240, -5.3], [255, -3.4], [270, -1.6], [318, 1.6], [333, 3.4], [348, 5.3], [365, 9], [LOOP, 9]],
@@ -130,7 +133,7 @@ const TRACKS = {
     [TD - 16, 1], [TD - 8, 0], [TD + 1, 0], [TD + 15, 1], [LOOP - 15, 1], [LOOP, 0]],
   // exposure: Earth scenes = automatic (sky model) + this bias, space scenes = absolute EV
   ev: [[0, -0.3], [110, -0.1], [160, 0.3], [200, 0.0], [300, 0.1], [380, 0.0], [386, 0.0], [390, 0.0], [396, -0.1], [404, -0.3], [416, -0.5], [TM, -0.5],
-    [475, 0.3], [TA, 0.3], [TA + 40, 0.4], [TA + 78, 0.7], [TA + 110, 1.2], [TS, 1.3], [TS + 1, 1.2], [TU - 1, 1.2], [TU, 2.3], [TD - 2, 2.3],
+    [475, 0.3], [TA, 0.3], [TA + 40, 0.4], [TA + 78, 0.7], [TA + 110, 1.2], [TS, 1.3], [TS + 1, 0.8], [TU - 1, 0.8], [TU, 4.8], [TU + 70, 4.8], [TU + 140, 3.8], [TD - 2, 3.8],
     [TD + 1, 0.1], [TD + 51, 0.2], [TD + 101, 0.1], [LOOP, 0.0]],
   vig: [[0, 0.72], [466, 0.72], [474, 0.55], [TD - 2, 0.55], [TD + 1, 0.72], [LOOP, 0.72]],
   bloom: [[0, 0.5], [TM, 0.5], [475, 0.2], [TS, 0.2], [TS + 1, 0.1], [TD - 2, 0.1], [TD + 1, 0.5], [LOOP, 0.5]],

@@ -484,14 +484,15 @@ export function deriveUniforms(S, stateAtFn) {
     U.uMWGain = MW_SPACE * U.exposure;
     U.starGain = STAR_SPACE * U.exposure;
     if (S.surfaceMode) {
-      // standing on the moon: the sun low behind the right shoulder, the Earth over the rim
-      // ahead (a black sky: the ground is exposed for sunlight, so no stars show)
-      U.surfSun = dirAzEl(SURF_SUN.az, SURF_SUN.el);
-      U.uSunW = U.surfSun;
+      // standing on the moon at night: the sun is below the horizon behind the viewer and
+      // the nearly full Earth, coming up over the rim ahead, is the only light. The stars
+      // and the Milky Way are kept as bright as during the month.
+      U.uSunW = dirAzEl(SURF_SUN.az, SURF_SUN.el);
       U.uEarthDirW = dirAzEl(SURF_EARTH.az, S.earthEl);
       U.uEarthRot = bodyMatrix(U.uEarthDirW, 0, sph(SURF_EARTH.lat, SURF_EARTH.lon));
-      U.uMWGain = 0;
-      U.starGain = 0;
+      U.surfLight = U.uEarthDirW;
+      U.uMWGain = (MW_SPACE * 1.5 * S.fade) / Math.pow(2, S.ev);
+      U.starGain = STAR_SPACE * 1.23 * S.fade;
     }
     U.keyLight = dir;
     U.eclFrac = 1;

@@ -1,22 +1,29 @@
-// Moon — standing on the moon near the south pole as the Earth comes up over the horizon.
+// Moon — standing on the moon at night, near the south pole, as the Earth comes up over
+// the rim ahead. The sun is below the horizon behind the viewer; the nearly full Earth is
+// the only light, so it lights the ground from behind: the edges of rocks, crater rims and
+// the rabbits catch it and the shadows run toward the room, and the light spreads down the
+// slope toward the viewer as the Earth rises.
 // Human scale: the ground at the foot of the walls continues the floor of the room. The
 // ground is procedural regolith (gentle swells, a crater rim ahead, small craters and
 // rocks) with the same height function in GLSL and JS, so the rabbits land on it. The
-// camera and the sun do not move here, so the lit ground is ray-marched once into a
-// per-wall cache; each frame adds only the rabbits and their shadows.
+// camera does not move and the Earth only moves up and down, so the ground is ray-marched
+// once into a per-wall cache (albedo, normal, distance, and how high the skyline stands
+// toward the Earth); each frame lights it for the Earth's height and adds the rabbits.
 //
-// An easter egg for Chuseok: a few moon rabbits hop about.
+// An easter egg for Chuseok: a few small moon rabbits hop about.
 
-export const SURF_SUN = { az: 150, el: 2.5 };
+export const SURF_SUN = { az: 196, el: -5 };   // below the horizon, behind: only for the Earth's phase
 export const SURF_EARTH = { az: 3, lat: 25, lon: 100, radius: 3.2 }; // East Asia on the sunlit side; drawn large
+export const SURF_LIGHT = [0.8, 0.88, 1.0];     // earthlight: sunlight off clouds and ocean
+export const RAB_MAX = 6;
 const R_MOON = 1737400;
 const D2R = Math.PI / 180;
-const SUN = [Math.sin(SURF_SUN.az * D2R) * Math.cos(SURF_SUN.el * D2R), Math.sin(SURF_SUN.el * D2R), -Math.cos(SURF_SUN.az * D2R) * Math.cos(SURF_SUN.el * D2R)];
+const EARTH_DIR = [Math.sin(SURF_EARTH.az * D2R), -Math.cos(SURF_EARTH.az * D2R)]; // toward the Earth (x, z)
 
 // ------------------------------------------------------------------ ground (GLSL and JS)
 // integer hash and value noise; the JS copies below give the same numbers
 export const SURF_COMMON = `
-uniform vec3  uSurfSun;       // unit vector toward the sun (world)
+uniform vec3  uSurfLight;     // unit vector toward the Earth (world): the only light
 uniform float uSurfBase;      // ground height at the viewer + eye height (m): world y = height - this
 const float R_MOON = 1737400.0;
 
@@ -87,6 +94,9 @@ float surfBase(vec2 p) {
   float x = clamp((v - 1.0) / (zc - 1.0), 0.0, 1.0);
   float u = v - zc;
   float rim = v <= zc ? hc * x * x * (3.0 - 2.0 * x) : hc - 0.25 * u - 0.05 * u * u;
+  // behind the viewer the outer flank keeps falling gently away from the rim
+  float w = max(1.0 - v, 0.0);
+  rim -= 0.09 * (sqrt(w * w + 16.0) - 4.0);
   return h + rim - dot(p, p) / (2.0 * R_MOON);
 }
 // + craters and rocks, with the small ones only where they can be seen
@@ -170,7 +180,9 @@ function surfBase(px, py) {
   const v = -py;
   const x = Math.min(1, Math.max(0, (v - 1) / (zc - 1)));
   const u = v - zc;
-  const rim = v <= zc ? hc * x * x * (3 - 2 * x) : hc - 0.25 * u - 0.05 * u * u;
+  let rim = v <= zc ? hc * x * x * (3 - 2 * x) : hc - 0.25 * u - 0.05 * u * u;
+  const w = Math.max(1 - v, 0);
+  rim -= 0.09 * (Math.sqrt(w * w + 16) - 4);
   return h + rim - (px * px + py * py) / (2 * R_MOON);
 }
 export function surfH(px, py) {
@@ -183,19 +195,24 @@ export function surfH(px, py) {
   if (r < 48) rk = Math.max(rk, sstep(48, 32, r) * rockF(px, py, 2.4, 31, 0.28, 0.04, 0.2));
   return h + rk;
 }
-// is the sun (a disc 0.53 degrees wide) above the ground seen from here? 0..1
-function sunVisible(x, y, z) {
-  let s = 0.05, res = 1;
-  for (let i = 0; i < 60; i++) {
-    const qx = x + SUN[0] * s, qy = y + SUN[1] * s, qz = z + SUN[2] * s;
-    const c0 = qy - surfBase(qx, qz);
-    const dh = c0 > 1.2 ? c0 - 1 : qy - surfH(qx, qz);
-    res = Math.min(res, dh / (s * 0.0047 + 0.002));
-    if (res < -1) break;
-    s += 0.03 + s * 0.12;
-    if (s > 500) break;
+// how high the skyline stands toward the Earth's azimuth, seen from (x, y, z): elevation
+// (rad). The Earth only moves up and down here, so this is all the shadows need.
+export function horizonEl(x, y, z) {
+  let s = 0.05, best = -1e3;
+  for (let i = 0; i < 90; i++) {
+    const qx = x + EARTH_DIR[0] * s, qz = z + EARTH_DIR[1] * s;
+    // craters and rocks stand at most ~1.6 m above the swells
+    if ((surfBase(qx, qz) + 1.6 - y) / s > best) best = Math.max(best, (surfH(qx, qz) - y) / s);
+    s += 0.04 + s * 0.09;
+    if (s > 400) break;
   }
-  return Math.min(1, Math.max(0, 0.5 + 0.5 * res));
+  return Math.atan(best);
+}
+// how much of a disc of angular radius r, its centre at elevation e, stands above a
+// skyline at elevation h (rad): 0..1
+export function discAbove(e, h, r) {
+  const x = Math.min(1, Math.max(-1, (e - h) / r));
+  return 0.5 + (x * Math.sqrt(1 - x * x) + Math.asin(x)) / Math.PI;
 }
 
 // ------------------------------------------------------------------ the cached ground
@@ -203,8 +220,8 @@ export function surfCacheFS() {
   return `#version 300 es
 precision highp float;
 precision highp int;
-layout(location = 0) out vec4 oA;   // direct sunlight (rgb), distance (m; < 0 = sky)
-layout(location = 1) out vec4 oB;   // light from the surroundings (rgb), coverage
+layout(location = 0) out vec4 oA;   // albedo, normal x and z, distance (m; < 0 = sky)
+layout(location = 1) out vec4 oB;   // skyline elevation toward the Earth (rad), openness, -, coverage
 uniform vec4  uView;
 uniform vec3  uPA, uDU, uDV;
 uniform vec2  uBand;
@@ -222,62 +239,57 @@ float fineH(vec2 p, float fp) {
   if (w3 > 0.0) h += w3 * 0.0025 * (vns(p / 0.028, 43u) - 0.5);
   return h;
 }
-float lunarL(float a) {
-  float d = degrees(a);
-  return clamp(1.0 - 0.019 * d + 0.000242 * d * d - 1.46e-6 * d * d * d, 0.0, 1.0);
-}
-float sunShadow(vec3 p) {
-  vec3 L = uSurfSun;
-  float s = 0.03, res = 1.0;
-  for (int i = 0; i < 72; i++) {
-    vec3 q = p + L * s;
-    float c0 = q.y - gYb(q.xz);
-    float dh = c0 > 1.2 ? c0 - 1.0 : q.y - gY(q.xz);
-    res = min(res, dh / (s * 0.0047 + 0.002));
-    if (res < -1.0) break;
-    s += 0.03 + s * 0.1;
-    if (s > 500.0) break;
+// the skyline toward the Earth's azimuth seen from p: tan of its elevation
+float horizonTan(vec3 p, vec2 dir) {
+  float s = 0.05, best = -1e3;
+  for (int i = 0; i < 96; i++) {
+    vec2 q = p.xz + dir * s;
+    // craters and rocks stand at most ~1.6 m above the swells
+    if ((gYb(q) + 1.6 - p.y) / s > best) best = max(best, (gY(q) - p.y) / s);
+    s += 0.03 + s * 0.08;
+    if (s > 400.0) break;
   }
-  return clamp(0.5 + 0.5 * res, 0.0, 1.0);
+  return best;
 }
-// the fine bumps shadow each other in the grazing light
-float microShadow(vec2 p, vec3 Nm, float fp) {
-  vec3 L = uSurfSun;
-  vec3 Lt = L - Nm * dot(L, Nm);
-  float lt = max(length(Lt), 1e-3);
-  float tanE = dot(L, Nm) / lt;
-  vec2 dir = normalize(Lt.xz + vec2(1e-6));
+// the same for the fine bumps beside p, on top of the slope of the ground along dir
+float microTan(vec2 p, vec2 dir, float fp, float slope) {
   float h0 = fineH(p, fp);
-  float occ = -1.0;
+  float occ = -1e3;
   float dl = max(fp, 0.004);
   for (int i = 0; i < 5; i++) {
-    occ = max(occ, (fineH(p + dir * dl, fp) - h0) / dl - tanE);
+    occ = max(occ, (fineH(p + dir * dl, fp) - h0) / dl);
     dl *= 2.3;
   }
-  return smoothstep(0.06, -0.03, occ);
+  return slope + occ;
 }
-vec3 shade(vec3 p, vec3 d, float t, float angPix, out vec3 amb) {
+// how open the ground is round p (1 = flat, less in hollows and crater bowls)
+float openness(vec3 p, float fp) {
+  float r = max(0.5, fp * 3.0), occ = 0.0;
+  for (int k = 0; k < 8; k++) {
+    vec2 u = vec2(cos(0.7854 * float(k)), sin(0.7854 * float(k)));
+    occ += max(gY(p.xz + u * r) - p.y, 0.0) / r + max(gY(p.xz + u * r * 3.5) - p.y, 0.0) / (r * 3.5);
+  }
+  return 1.0 / (1.0 + 0.35 * occ);
+}
+// what the ground is at p: albedo, normal (with the fine bumps), its skyline toward the
+// Earth and how open it is
+void gbuf(vec3 p, float t, float angPix, out vec4 A, out vec4 B) {
   float fp = t * angPix;
   float e = max(fp, 0.003);
   float hx = gY(p.xz + vec2(e, 0.0)) - gY(p.xz - vec2(e, 0.0));
   float hz = gY(p.xz + vec2(0.0, e)) - gY(p.xz - vec2(0.0, e));
   float fx = fineH(p.xz + vec2(e, 0.0), fp) - fineH(p.xz - vec2(e, 0.0), fp);
   float fz = fineH(p.xz + vec2(0.0, e), fp) - fineH(p.xz - vec2(0.0, e), fp);
-  vec3 Nm = normalize(vec3(-hx / (2.0 * e), 1.0, -hz / (2.0 * e)));
   vec3 N = normalize(vec3(-(hx + fx) / (2.0 * e), 1.0, -(hz + fz) / (2.0 * e)));
   float rock;
   surfH(p.xz, rock);
-  vec3 alb = vec3(0.155, 0.150, 0.142) * (0.84 + 0.32 * vns(p.xz / 4.0, 51u)) * (0.92 + 0.16 * vns(p.xz / 0.55, 52u));
-  alb = mix(alb, vec3(0.2, 0.195, 0.185) * (0.75 + 0.5 * vns(p.xz / 0.2, 53u)), rock);
-  vec3 L = uSurfSun, V = -d;
-  float mu0 = max(dot(N, L), 0.0), mu = max(dot(N, V), 0.0);
-  float alpha = acos(clamp(dot(L, V), -1.0, 1.0));
-  float Lw = lunarL(alpha);
-  float lit = 2.0 * Lw * mu0 / (mu0 + mu + 1e-3) + (1.0 - Lw) * mu0;
-  float phaseF = exp(-0.55 * alpha) * (1.0 + 0.2 * exp(-alpha / 0.05));
-  float sh = lit > 0.0 ? sunShadow(p + Nm * 0.01) * microShadow(p.xz, Nm, fp) : 0.0;
-  amb = alb * (0.012 + 0.012 * max(Nm.y, 0.0));
-  return alb * lit * phaseF * sh * vec3(1.0, 0.98, 0.95);
+  float alb = 0.155 * (0.84 + 0.32 * vns(p.xz / 4.0, 51u)) * (0.92 + 0.16 * vns(p.xz / 0.55, 52u));
+  alb = mix(alb, 0.2 * (0.75 + 0.5 * vns(p.xz / 0.2, 53u)), rock);
+  vec2 dir = normalize(uSurfLight.xz);
+  float slope = (hx * dir.x + hz * dir.y) / (2.0 * e);
+  float ht = max(horizonTan(p + vec3(0.0, 0.003, 0.0), dir), microTan(p.xz, dir, fp, slope));
+  A = vec4(alb, N.x, N.z, t);
+  B = vec4(atan(ht), openness(p, fp), 0.0, 1.0);
 }
 
 void main() {
@@ -310,19 +322,15 @@ void main() {
     t += max(clr * (c0 > 1.2 ? 1.2 : 0.45), 0.004 + t * 0.0015);
     if (t > 3000.0 || (d.y > 0.0 && p.y > 40.0)) break;
   }
-  vec3 amb;
   if (hit > 0.0) {
-    vec3 p = d * hit;
-    vec3 c = shade(p, d, hit, angPix, amb);
-    oA = vec4(c, hit);
-    oB = vec4(amb, 1.0);
+    gbuf(d * hit, hit, angPix, oA, oB);
   } else if (minClr < 1.0 && tMin > 0.0) {
     // a ray that just clears the skyline: part ground, for smooth edges
     vec3 p = d * tMin;
     p.y = gY(p.xz);
-    vec3 c = shade(p, d, tMin, angPix, amb);
-    oA = vec4(c, -1.0);
-    oB = vec4(amb, clamp(1.0 - minClr, 0.0, 1.0));
+    gbuf(p, tMin, angPix, oA, oB);
+    oA.w = -1.0;
+    oB.w = clamp(1.0 - minClr, 0.0, 1.0);
   } else {
     oA = vec4(0.0, 0.0, 0.0, -1.0);
     oB = vec4(0.0);
@@ -330,12 +338,53 @@ void main() {
 }`;
 }
 
+// ------------------------------------------------------------------ lighting the cached ground (GLSL)
+// with the rabbits below: both are drawn in the main pass
+const GROUND_LIGHT_GLSL = `
+uniform vec3  uSurfLight;    // unit vector toward the Earth
+uniform vec3  uSurfLightC;   // earthlight (rgb)
+uniform float uSurfLightR;   // the Earth's angular radius (rad)
+uniform float uSurfAmb;      // light thrown back by the lit ground, relative to the earthlight
+
+// how much of a disc of radius r, its centre at elevation e, stands above a skyline at h
+float discAbove(float e, float h, float r) {
+  float x = clamp((e - h) / r, -1.0, 1.0);
+  return 0.5 + (x * sqrt(1.0 - x * x) + asin(x)) / 3.14159265;
+}
+// the cached ground (GA: albedo, normal x and z, distance; GB: skyline elevation toward
+// the Earth, openness) lit by the Earth at its present height, seen along d: direct
+// light, and the light from the surroundings in amb
+vec3 groundLight(vec4 GA, vec4 GB, vec3 d, out vec3 amb) {
+  vec3 N = vec3(GA.y, sqrt(max(1.0 - GA.y * GA.y - GA.z * GA.z, 0.0)), GA.z);
+  vec3 L = uSurfLight, V = -d;
+  float vis = discAbove(asin(clamp(L.y, -1.0, 1.0)), GB.x, uSurfLightR);
+  // a wide light: a surface turned just past it still sees part of the disc
+  float sr = sin(uSurfLightR), nl = dot(N, L);
+  float mu0 = nl > sr ? nl : (nl > -sr ? (nl + sr) * (nl + sr) / (4.0 * sr) : 0.0);
+  float mu = max(dot(N, V), 0.0);
+  float alpha = acos(clamp(dot(L, V), -1.0, 1.0));
+  // Lambert, without regolith's pull back toward the light, so that the ground looking
+  // away from the Earth (at the back of the side walls) stays dim ...
+  float back = 0.3;
+  // ... and single scattering, forward, by the finest dust: seen against the light at a
+  // grazing angle the path through the top layer is long, so edges glow - the crest of
+  // the rim, the lips of craters, the tops of rocks
+  float fwd = 0.2 * exp((alpha - 3.14159265) / 0.35) / (mu0 + mu + 0.02);
+  vec3 alb = GA.x * vec3(1.0, 0.968, 0.916) * uSurfLightC;
+  // the surroundings: light off the lit ground ahead, less in hollows
+  vec3 Lh = normalize(vec3(L.x, 0.35, L.z));
+  amb = alb * uSurfAmb * GB.y * (0.6 + 0.4 * dot(N, Lh));
+  return alb * mu0 * (back + fwd) * vis;
+}
+`;
+
 // ------------------------------------------------------------------ rabbits (GLSL)
-export const RABBIT_GLSL = `
+export const SURF_GLSL = GROUND_LIGHT_GLSL + `
+const float RIM = 0.1;
 uniform int   uRabN;
-uniform vec4  uRabP[4];   // root on the ground between the hind feet (world, m), yaw (rad)
-uniform vec4  uRabQ[4];   // pose: stretch in a leap, sitting up, ears laid back (rad), head bowed (rad)
-uniform vec4  uRabR[4];   // pitch (rad), size, sunlit (0..1)
+uniform vec4  uRabP[${RAB_MAX}];   // root on the ground between the hind feet (world, m), yaw (rad)
+uniform vec4  uRabQ[${RAB_MAX}];   // pose: stretch in a leap, sitting up, ears laid back (rad), head bowed (rad)
+uniform vec4  uRabR[${RAB_MAX}];   // pitch (rad), size, lit by the Earth (0..1)
 
 float sdEll(vec3 p, vec3 r) {
   float k0 = length(p / r);
@@ -406,11 +455,12 @@ vec3 rabLocal(vec3 w, int i) {
 }
 float rabSD(vec3 w, int i, out float mat) { return sdRabbit(rabLocal(w, i), uRabQ[i], mat) * uRabR[i].y; }
 
-// shadows of the rabbits on the ground point pg (the sun is 2.5 degrees up: they are long)
+// shadows of the rabbits on the ground point pg (the Earth is low: they are long, and soft
+// because it is wide)
 float rabbitShadow(vec3 pg) {
   float res = 1.0, m;
-  vec3 L = uSurfSun;
-  for (int i = 0; i < 4; i++) {
+  vec3 L = uSurfLight;
+  for (int i = 0; i < ${RAB_MAX}; i++) {
     if (i >= uRabN) break;
     float sc = uRabR[i].y;
     vec3 c = uRabP[i].xyz + vec3(0.0, 0.2 * sc, 0.0);
@@ -423,7 +473,7 @@ float rabbitShadow(vec3 pg) {
     float s = max(sp - rr, 0.01);
     for (int k = 0; k < 20; k++) {
       float dd = rabSD(pg + L * s, i, m);
-      res = min(res, dd / (s * 0.0047 + 0.004));
+      res = min(res, dd / (s * 0.012 + 0.004));
       if (res < 0.0) break;
       s += max(dd, 0.008);
       if (s > sp + rr) break;
@@ -436,8 +486,8 @@ float rabbitShadow(vec3 pg) {
 vec4 rabbits(vec3 d, float angPix, float tMax) {
   vec4 outc = vec4(0.0);
   float best = tMax;
-  vec3 L = uSurfSun;
-  for (int i = 0; i < 4; i++) {
+  vec3 L = uSurfLight;
+  for (int i = 0; i < ${RAB_MAX}; i++) {
     if (i >= uRabN) break;
     float sc = uRabR[i].y;
     vec3 c = uRabP[i].xyz + vec3(0.0, 0.2 * sc, 0.0);
@@ -468,7 +518,7 @@ vec4 rabbits(vec3 d, float angPix, float tMax) {
     vec3 n = normalize(k2.xyy * rabSD(p + k2.xyy * e, i, m) + k2.yyx * rabSD(p + k2.yyx * e, i, m)
                      + k2.yxy * rabSD(p + k2.yxy * e, i, m) + k2.xxx * rabSD(p + k2.xxx * e, i, m));
     rabSD(p, i, m);
-    // self shadow toward the sun
+    // self shadow toward the Earth
     float self = 1.0, s = 0.02;
     for (int k = 0; k < 12; k++) {
       float dd = rabSD(p + L * s, i, m);
@@ -477,18 +527,18 @@ vec4 rabbits(vec3 d, float angPix, float tMax) {
       if (s > 0.6) break;
     }
     rabSD(p, i, m);
-    float sun = uRabR[i].z * clamp(self, 0.0, 1.0);
+    float lit = uRabR[i].z * clamp(self, 0.0, 1.0);
     vec3 v = -d;
     vec3 alb = m < 0.5 ? vec3(0.62, 0.6, 0.57) : (m < 1.5 ? vec3(0.02) : vec3(0.3, 0.16, 0.16));
     float wrap = max((dot(n, L) + 0.35) / 1.35, 0.0);
-    vec3 col = alb * wrap * sun;
-    // soft fur glows at the edge when the sun is behind it
-    float rim = pow(1.0 - max(dot(n, v), 0.0), 3.0) * (0.35 + 0.65 * max(dot(-v, L), 0.0)) * sun;
-    col += vec3(0.9, 0.88, 0.85) * rim * (m < 0.5 ? 0.5 : 0.1);
-    // light from the ground below
-    col += alb * 0.05 * (0.6 - 0.4 * n.y);
-    if (m > 0.5 && m < 1.5) col += vec3(1.0) * pow(max(dot(reflect(-L, n), v), 0.0), 60.0) * 2.0 * sun;
-    col *= 0.32;
+    vec3 col = alb * wrap * lit;
+    // soft fur glows at the edge when the light is behind it
+    float rim = pow(1.0 - max(dot(n, v), 0.0), 3.0) * (0.35 + 0.65 * max(dot(-v, L), 0.0)) * lit;
+    col += vec3(0.9, 0.88, 0.85) * rim * (m < 0.5 ? RIM : 0.1);
+    // light from the ground round about
+    col += alb * uSurfAmb * 1.6 * (0.6 - 0.4 * n.y);
+    if (m > 0.5 && m < 1.5) col += vec3(1.0) * pow(max(dot(reflect(-L, n), v), 0.0), 60.0) * 2.0 * lit;
+    col *= 0.32 * uSurfLightC;
     // premultiplied: nearer rabbits were drawn later only if in front (best)
     outc = vec4(outc.rgb * (1.0 - cov) + col * cov, outc.a + cov * (1.0 - outc.a));
     if (hit) best = t;
@@ -498,52 +548,92 @@ vec4 rabbits(vec3 d, float angPix, float tMax) {
 `;
 
 // ------------------------------------------------------------------ the rabbits' moves (JS)
-// Each rabbit sits, turns and hops; a hop is a parabola in lunar gravity, so a 2.4 s
-// leap goes about 1.2 m high. Times are seconds into the scene.
+// Each rabbit sits, turns and hops; a hop is a parabola in lunar gravity, so a 2 s leap
+// goes about 0.8 m high. Times are seconds into the scene; the Earth's centre clears the
+// rim at about 20 s, and the light reaches the ground near the room from about 80 s.
 const G = 1.62;
 const RABBITS = [
-  { // on the rim ahead: watches the Earth come up, then leaps across it and looks back at the room
-    size: 1.45, from: [-3.5, -18.0], yaw: 3, moves: [
-      ['sit', 56, { up: [19, 51] }],
-      ['hop', -0.8, -18.2, 2.2], ['wait', 0.6],
-      ['hop', 2.8, -18.3, 2.0], ['wait', 0.5],
-      ['hop', 6.4, -18.0, 2.4],
-      ['turn', 1.2, 200],
-      ['sit', 9, { up: [1.5, 6.5] }],
-      ['hop', 8.8, -23.5, 2.3],
+  { // on the rim, in front of the Earth as it comes up; leaps across it and back, comes
+    // down the slope into the light and goes back over the rim
+    size: 0.95, from: [1.3, -18.25], yaw: -90, moves: [
+      ['sit', 44, { up: [20, 37], groom: [39, 43] }],
+      ['hop', -0.8, -18.2, 1.9], ['wait', 0.5], ['hop', -2.9, -18.05, 1.9],
+      ['sit', 8, {}], ['turn', 1.0, 90], ['sit', 3, {}],
+      ['hop', -0.6, -18.2, 2.0], ['wait', 0.6], ['hop', 1.6, -18.3, 2.0], ['wait', 0.5], ['hop', 3.8, -18.1, 2.0],
+      ['sit', 12, { groom: [3, 8] }],
+      ['hop', 5.0, -16.0, 2.1], ['wait', 0.5], ['hop', 6.0, -13.6, 2.2],
+      ['sit', 22, { up: [4, 10], groom: [14, 19] }],
+      ['hop', 5.0, -16.2, 2.1], ['wait', 0.5], ['hop', 4.3, -18.05, 2.0],
+      ['sit', 10, { up: [2, 7] }], ['turn', 0.8, 10], ['hop', 3.9, -20.6, 2.2],
       ['gone'],
     ] },
-  { // the lively one, from the left wall round the front and back again
-    size: 1.3, from: [-11, 1.2], yaw: 25, moves: [
-      ['sit', 12, {}],
-      ['hop', -9.2, -2.6, 2.4], ['wait', 0.4], ['hop', -7.0, -6.3, 2.5], ['wait', 0.4],
-      ['hop', -4.6, -9.6, 2.5], ['wait', 0.5], ['hop', -1.4, -11.3, 2.4],
-      ['sit', 6, { groom: [1, 5] }],
-      ['hop', 1.6, -10.2, 2.3], ['wait', 0.4], ['hop', 3.2, -7.0, 2.4],
-      ['turn', 0.8, 205],
-      ['sit', 7, { up: [1.5, 5.5] }],
-      ['hop', 0.4, -4.9, 2.2],
-      ['sit', 4, {}],
-      ['hop', -3.2, -5.8, 2.4], ['wait', 0.4], ['hop', -6.8, -3.4, 2.5], ['wait', 0.4],
-      ['hop', -10.4, -0.6, 2.5], ['wait', 0.5], ['hop', -14.0, 2.8, 2.6],
-      ['sit', 60, { groom: [6, 14] }],
-    ] },
-  { // a smaller one that follows, then stays grooming by a small crater
-    size: 1.1, from: [-12.6, -1.0], yaw: 30, moves: [
-      ['sit', 15, {}],
-      ['hop', -10.4, -4.2, 2.3], ['wait', 0.5], ['hop', -8.2, -7.6, 2.4], ['wait', 0.5], ['hop', -6.2, -9.8, 2.3],
-      ['sit', 36, { groom: [3, 12], up: [20, 26] }],
-      ['hop', -9.5, -6.8, 2.4], ['wait', 0.5], ['hop', -12.5, -3.0, 2.5],
+  { // a pair along the rim from the left, down the slope and off toward the left wall
+    size: 0.8, from: [-15.0, -18.5], yaw: 85, moves: [
+      ['sit', 16, { groom: [4, 10] }],
+      ['hop', -13.0, -18.4, 1.9], ['wait', 0.4], ['hop', -11.0, -18.1, 1.9], ['wait', 0.5], ['hop', -9.0, -17.8, 1.9],
+      ['sit', 10, { groom: [2, 6] }],
+      ['hop', -7.2, -17.9, 1.8], ['wait', 0.4], ['hop', -5.4, -17.9, 1.9],
+      ['sit', 20, { up: [3, 8], groom: [12, 16] }],
+      ['hop', -6.5, -15.5, 2.1], ['wait', 0.5], ['hop', -7.8, -13.0, 2.2],
+      ['sit', 18, { groom: [5, 11] }],
+      ['hop', -9.4, -10.0, 2.3], ['wait', 0.4], ['hop', -11.0, -7.0, 2.3], ['wait', 0.4], ['hop', -12.6, -4.0, 2.3],
+      ['sit', 22, { up: [4, 9], groom: [13, 18] }],
+      ['hop', -15.0, -1.2, 2.4], ['wait', 0.5], ['hop', -17.8, 1.4, 2.4],
       ['sit', 60, {}],
     ] },
-  { // from behind on the right, stops to sit up, crosses the front and goes off to the right
-    size: 1.35, from: [10.5, 8.5], yaw: -160, moves: [
-      ['sit', 20, {}],
-      ['hop', 9.2, 4.6, 2.4], ['wait', 0.4], ['hop', 8.4, 0.4, 2.5], ['wait', 0.4], ['hop', 7.4, -3.6, 2.4],
-      ['sit', 9, { up: [1.5, 7.5] }],
-      ['hop', 5.6, -7.2, 2.4], ['wait', 0.4], ['hop', 3.8, -10.6, 2.4],
-      ['sit', 7, { groom: [1, 6] }],
-      ['hop', 6.5, -13.8, 2.5], ['wait', 0.4], ['hop', 10.4, -15.2, 2.5], ['wait', 0.4], ['hop', 14.5, -15.6, 2.6],
+  {
+    size: 0.72, from: [-16.8, -18.5], yaw: 80, moves: [
+      ['sit', 19, {}],
+      ['hop', -14.8, -18.5, 1.8], ['wait', 0.5], ['hop', -12.6, -18.3, 1.9], ['wait', 0.4], ['hop', -10.5, -17.9, 1.8],
+      ['sit', 11, {}],
+      ['hop', -8.4, -17.7, 1.8], ['wait', 0.5], ['hop', -6.8, -17.4, 1.8],
+      ['sit', 19, { groom: [4, 9] }],
+      ['hop', -7.9, -15.2, 2.0], ['wait', 0.5], ['hop', -9.0, -12.6, 2.1],
+      ['sit', 18, {}],
+      ['hop', -10.6, -9.6, 2.2], ['wait', 0.5], ['hop', -12.0, -6.6, 2.3], ['wait', 0.4], ['hop', -13.8, -3.4, 2.3],
+      ['sit', 20, { up: [5, 10] }],
+      ['hop', -16.2, -0.4, 2.4], ['wait', 0.5], ['hop', -19.2, 2.0, 2.4],
+      ['sit', 60, {}],
+    ] },
+  { // from the dark by the right wall, up the slope into the light, and back down
+    size: 0.85, from: [12.0, 2.0], yaw: -30, moves: [
+      ['sit', 34, {}],
+      ['hop', 10.5, -1.5, 2.3], ['wait', 0.5], ['hop', 9.0, -5.0, 2.3], ['wait', 0.6], ['hop', 8.0, -8.5, 2.3],
+      ['sit', 6, {}],
+      ['hop', 7.0, -11.5, 2.2], ['wait', 0.5], ['hop', 6.4, -14.4, 2.1],
+      ['sit', 16, { groom: [3, 9] }],
+      ['hop', 8.4, -15.6, 2.0], ['wait', 0.5], ['hop', 10.4, -16.6, 2.0],
+      ['sit', 20, { up: [4, 10] }],
+      ['hop', 9.6, -13.8, 2.2], ['wait', 0.5], ['hop', 8.8, -10.8, 2.2],
+      ['sit', 14, { groom: [4, 9] }],
+      ['hop', 10.6, -8.0, 2.2], ['wait', 0.5], ['hop', 12.4, -5.2, 2.3],
+      ['sit', 60, {}],
+    ] },
+  { // near the room on the left, in the dark: it catches the light at the top of each hop
+    size: 0.85, from: [-5.0, -7.0], yaw: 40, moves: [
+      ['sit', 52, { groom: [20, 30] }],
+      ['hop', -3.0, -8.6, 2.2], ['wait', 0.4], ['hop', -1.0, -10.2, 2.2],
+      ['sit', 8, {}],
+      ['hop', 1.4, -9.0, 2.2], ['wait', 0.5], ['hop', 2.2, -6.6, 2.2],
+      ['sit', 16, { up: [4, 9] }],
+      ['hop', 0.4, -5.4, 2.1],
+      ['sit', 14, { groom: [3, 8] }],
+      ['hop', -2.2, -6.0, 2.2], ['wait', 0.5], ['hop', -4.6, -4.8, 2.2],
+      ['sit', 16, {}],
+      ['hop', -7.2, -3.0, 2.3], ['wait', 0.5], ['hop', -9.8, -1.0, 2.3],
+      ['sit', 60, { groom: [6, 12] }],
+    ] },
+  { // far along the rim on the right: small
+    size: 0.72, from: [15.0, -17.1], yaw: -95, moves: [
+      ['sit', 30, {}],
+      ['hop', 13.0, -17.3, 1.8], ['wait', 0.5], ['hop', 11.4, -17.4, 1.8],
+      ['sit', 26, { up: [5, 12] }],
+      ['turn', 0.8, 95],
+      ['hop', 13.4, -17.2, 1.8], ['wait', 0.4], ['hop', 15.6, -17.0, 1.9], ['wait', 0.5], ['hop', 17.8, -16.6, 1.9],
+      ['sit', 20, { groom: [3, 8] }],
+      ['hop', 19.8, -16.8, 1.9], ['wait', 0.5], ['hop', 21.8, -17.0, 1.9],
+      ['sit', 16, {}], ['turn', 0.8, -95],
+      ['hop', 19.6, -16.9, 1.9], ['wait', 0.5], ['hop', 17.4, -16.9, 1.9],
       ['sit', 60, {}],
     ] },
 ];
@@ -577,27 +667,30 @@ const RABBIT_SEGS = RABBITS.map((r) => {
   return { size: r.size, segs, seed: segs.length * 7.31 };
 });
 
-// a small memo for the sun test: most of the time the rabbits sit still
-const sunMemo = new Map();
-function sunAt(x, y, z) {
-  const k = `${Math.round(x * 10)},${Math.round(y * 10)},${Math.round(z * 10)}`;
-  let v = sunMemo.get(k);
+// a small memo for the skyline test: most of the time the rabbits sit still
+const horMemo = new Map();
+function horizonAt(x, y, z) {
+  const k = `${Math.round(x * 20)},${Math.round(y * 20)},${Math.round(z * 20)}`;
+  let v = horMemo.get(k);
   if (v === undefined) {
-    v = sunVisible(x, y, z);
-    sunMemo.set(k, v);
-    if (sunMemo.size > 4000) sunMemo.delete(sunMemo.keys().next().value);
+    v = horizonEl(x, y, z);
+    horMemo.set(k, v);
+    if (horMemo.size > 6000) horMemo.delete(horMemo.keys().next().value);
   }
   return v;
 }
 
-// uniforms for the rabbits at time ts (seconds into the scene), for an eye `eye` metres up
-export function surfaceState(ts, eye) {
+// uniforms for the rabbits at time ts (seconds into the scene), for an eye `eye` metres
+// up, with the Earth's centre `earthEl` degrees over the horizon
+export function surfaceState(ts, eye, earthEl) {
   const base = surfH(0, 0) + eye;
-  const P = new Float32Array(16), Q = new Float32Array(16), R = new Float32Array(16);
+  const P = new Float32Array(4 * RAB_MAX), Q = new Float32Array(4 * RAB_MAX), R = new Float32Array(4 * RAB_MAX);
+  const e = earthEl * D2R, er = SURF_EARTH.radius * D2R;
   let n = 0;
   RABBIT_SEGS.forEach((rb, ri) => {
+    if (n >= RAB_MAX) return;
     const seg = rb.segs.find((s) => ts >= s.t0 && ts < s.t1) || rb.segs[rb.segs.length - 1];
-    if (seg.type === 'gone') return;
+    if (seg.type === 'gone' || seg.type === 'away') return;
     let x, z, y, yaw, pitch = 0, stretch = 0, up = 0, ears = 0.12, bow = 0;
     // ear twitches, now and then
     const tw = Math.max(0, Math.sin(ts * 2.1 + ri * 1.7)) ** 18;
@@ -626,11 +719,13 @@ export function surfaceState(ts, eye) {
       }
     }
     const sc = rb.size;
-    const sun = sunAt(x, y + 0.18 * sc, z);
+    const lit = discAbove(e, horizonAt(x, y + 0.18 * sc, z), er);
     P.set([x, y - base, z, yaw * D2R], n * 4);
     Q.set([stretch, up, ears, bow], n * 4);
-    R.set([pitch, sc, sun, 0], n * 4);
+    R.set([pitch, sc, lit, 0], n * 4);
     n++;
   });
-  return { n, P, Q, R, base };
+  // light thrown back by the ground grows as more of it is lit
+  const amb = 0.004 + 0.008 * smooth((earthEl + 2) / 12);
+  return { n, P, Q, R, base, amb };
 }
