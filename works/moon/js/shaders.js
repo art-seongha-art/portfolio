@@ -10,6 +10,7 @@ import { SH_HALF, SH_REF } from './clouds.js';
 import { SURF_GLSL } from './surface.js';
 import { SEA_GLSL } from './sea.js';
 import { METEOR_GLSL } from './meteors.js';
+import { LAND_GLSL } from './land.js';
 
 // Random rotations that decorrelate the crater grids of each octave.
 function octaveRotations(n, seed) {
@@ -70,6 +71,7 @@ uniform float uEarthshine;
 vec3 SUNB, EARTHB;
 float ESHINE;
 uniform vec4  uAlb;          // gamma, saturation, gain, fresh-crater brightening
+uniform float uMineral;      // the moon's own colours brought out (0 = as the eye sees them)
 uniform float uRelief;
 uniform float uBump;
 uniform float uCrater;
@@ -124,6 +126,10 @@ uniform float uGlow;
 uniform float uRefr;
 uniform float uShimmer;
 uniform float uStars;
+uniform float uMesopic;        // 1 = colour drains at night as it does for the eye
+uniform sampler2D tLand;       // fireflies, the plum branch, the paper boats (land.js, sea.js)
+uniform float uDofL;           // landscapes: blur of what is out of focus (px x m)
+uniform float uFocusL;         // landscapes: focus distance (m), 0 = infinity
 
 // ---------------- space extras
 uniform float uEarthVis;
@@ -277,7 +283,7 @@ vec3 albedoAt(vec3 n0, vec3 dpx, vec3 dpy, float pw, vec2 puv) {
   }
   a = pow(max(a, vec3(1e-4)), vec3(uAlb.x));
   float l = dot(a, LUMA);
-  a = max(mix(vec3(l), a, uAlb.y), vec3(0.0));
+  a = max(mix(vec3(l), a, uAlb.y * (1.0 + 7.0 * uMineral)), vec3(0.0));
   return a * uAlb.z;
 }
 
@@ -528,6 +534,7 @@ vec3 shadeMoon(MoonHit mh, vec3 ro, vec3 rd, vec3 rdx, vec3 rdy, float angPix) {
 ${ATMO_COMMON}
 ${TERRAIN_COMMON}
 ${SEA_GLSL}
+${LAND_GLSL}
 
 // magnified atmospheric refraction: the low moon is flattened and shimmers
 vec3 atmoBend(vec3 d) {
@@ -621,7 +628,7 @@ vec3 mesopic(vec3 c) {
   if (uAbsScale <= 0.0) return c;
   float Y = dot(c, LUMA);
   float lcd = max(Y * uAbsScale, 1e-7);
-  float s = smoothstep(0.3, -2.3, log(lcd) / 2.302585) * 0.7;
+  float s = smoothstep(0.3, -2.3, log(lcd) / 2.302585) * 0.7 * uMesopic;
   float V = dot(c, vec3(0.033, 0.765, 0.2));
   return mix(c, V * vec3(0.74, 0.9, 1.24), s);
 }
@@ -708,6 +715,8 @@ void main() {
   vec3 col = vec3(0.0);
   float starVis = 1.0;
   float depth = 1e9;
+  float landDepth = 1e9;
+  float boatCov = 0.0;
   float expo = uExposure;
   SUNB = uSunB; EARTHB = uEarthB; ESHINE = uEarthshine;
 
@@ -729,6 +738,10 @@ void main() {
       vec4 sw = seaShade(d, angPix, uMoonDirW, moonDisp, uMoonAngR, moonLight);
       col = mix(col, sw.rgb, sw.a);
       starVis *= 1.0 - sw.a;
+      vec4 bt = boatsShade(d, angPix, moonLight);
+      col = col * (1.0 - bt.a) + bt.rgb;
+      starVis *= 1.0 - bt.a;
+      boatCov = bt.a;
     }
 
     vec3 dm = normalize(mix(d, atmoBend(d), 1.0));
@@ -739,7 +752,7 @@ void main() {
     vec3 moonC = vec3(0.0);
     MoonHit mh = traceMoon(ro, rd, angPix);
     if (mh.cov > 0.0) {
-      vec3 mc = shadeMoon(mh, ro, rd, uM * ddx, uM * ddy, angPix) * uMoonScale;
+      vec3 mc = shadeMoon(mh, ro, rd, uM * ddx, uM * ddy, angPix) * uMoonScale * uMoonTint;
       float muM = mix(dm.y, uMoonDirW.y, uExtMix);
       vec3 Tm = transmittance(tTrans, Rg + uCamAlt, muM);
       moonC = mc * Tm * mh.cov;
@@ -750,7 +763,7 @@ void main() {
       float x = max(gam - uMoonAngR, 0.0) / max(uMoonAngR, 1e-4);
       float g = 0.07 * exp(-x * 5.0) + 0.02 * exp(-x * 1.2);
       vec3 Tg = transmittance(tTrans, Rg + uCamAlt, uMoonDirW.y);
-      moonC += uGlow * uMoonLum * uMoonScale * g * Tg;
+      moonC += uGlow * uMoonLum * uMoonScale * g * Tg * uMoonTint;
     }
     float myDepth = terrainDepth(f);
     if (uTerrain > 0.5) {
@@ -779,6 +792,17 @@ void main() {
       col = col * v.a + v.rgb;
       moonC *= v.a;
       starVis *= v.a;
+    }
+    moonC *= 1.0 - boatCov;
+    if (uLand > 0.5) {
+      // standing in a landscape: plants, ground, hills and mist in front of the sky and moon
+      vec3 Tmo = transmittance(tTrans, Rg + uCamAlt, uMoonDirW.y);
+      float lvis, lnear;
+      vec4 lc = landShade(d, angPix, uMoonE * Tmo, lvis, lnear);
+      col = col * lvis + lc.rgb;
+      moonC *= lvis;
+      starVis *= lvis;
+      landDepth = lnear;
     }
     col = mesopic(col) + moonC;
   } else if (uSurface > 0.5) {
@@ -873,6 +897,10 @@ void main() {
     coc = uFocus > 0.0 ? uDof * abs(1.0 - uFocus / depth) : 0.0;
     coc = min(coc, 40.0);
   }
+  if (uLand > 0.5 && uDofL > 0.0) {
+    // a photograph's depth of field: what is nearer or farther than the focus goes soft
+    coc = min(uDofL * abs(1.0 / landDepth - (uFocusL > 0.0 ? 1.0 / uFocusL : 0.0)) * uView.w / 1080.0, 24.0);
+  }
   oCol = vec4(max(col, vec3(0.0)) * expo, clamp(starVis * uStars, 0.0, 1.0));
   oAux = vec4(coc, 0.0, 0.0, 1.0);
 }`;
@@ -959,6 +987,7 @@ uniform vec3  uVigDir;
 uniform float uVig;
 uniform vec3  uGain;
 uniform float uGamma, uLift, uGrain, uFrame, uFade, uHalation;
+uniform float uTone;          // split toning: teal shadows, warm highlights (0 = none)
 
 vec3 aces(vec3 x) {
   const float a = 2.51, b = 0.03, c = 2.43, d = 0.59, e = 0.14;
@@ -1019,6 +1048,12 @@ void main() {
   float L = dot(c, vec3(0.2126, 0.7152, 0.0722));
   vec3 lp = c * (aces(vec3(L)).x / max(L, 1e-6));
   c = clamp(mix(aces(c), lp, 0.6), 0.0, 1.0);
+  // the look of a night photograph: shadows toward teal, the moon's light toward warm
+  if (uTone > 0.0) {
+    float tl = dot(c, vec3(0.2126, 0.7152, 0.0722));
+    vec3 tint = mix(vec3(0.8, 1.0, 1.1), vec3(1.08, 1.0, 0.86), smoothstep(0.02, 0.45, tl));
+    c = clamp(mix(c, c * tint, uTone), 0.0, 1.0);
+  }
   c = pow(c, vec3(uGamma)) * uGain;
   c = uLift + (1.0 - uLift) * c;
   c = toSRGB(clamp(c, 0.0, 1.0));
