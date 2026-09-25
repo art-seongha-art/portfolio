@@ -3,7 +3,8 @@ import { FULLSCREEN_VS, mainFS, STAR_VS, STAR_FS, COMPOSITE_FS } from './shaders
 import { TRANSMITTANCE_FS, MULTISCAT_FS, SKYVIEW_FS, TRANS_W, TRANS_H, MS_N } from './atmo.js';
 import { NOISE3D_FS, WEATHER_FS, CLOUDSHADOW_FS, SH_N, cloudsFS } from './clouds.js';
 import { terrainCacheFS } from './terrain.js';
-import { LOOP, SCENES, stateAt, sceneAt, EYE_ALT, CAM_EN } from './timeline.js';
+import { surfCacheFS, surfaceState, SURF_EARTH, SURF_LIGHT } from './surface.js';
+import { LOOP, SCENES, stateAt, sceneAt, EYE_ALT, CAM_EN, SURF_T0 } from './timeline.js';
 import { deriveUniforms, SITE_LAT, setMS, warmAtmosphere } from './scene.js';
 import { DEFAULT_ROOM, buildLayout } from './cave.js';
 import { initUI } from './ui.js';
@@ -150,8 +151,17 @@ function setU(prog, name, v) {
   else if (v.length === 4) gl.uniform4fv(l, v);
 }
 function setI(prog, name, v) { const l = prog.loc[name]; if (l != null) gl.uniform1i(l, v); }
+// uniform arrays: kind = 'f', 'v3', 'v4' or 'm3'
+function setUA(prog, name, kind, v) {
+  const l = prog.loc[name];
+  if (l == null) return;
+  if (kind === 'f') gl.uniform1fv(l, v);
+  else if (kind === 'v3') gl.uniform3fv(l, v);
+  else if (kind === 'v4') gl.uniform4fv(l, v);
+  else gl.uniformMatrix3fv(l, false, v);
+}
 
-let progMain, progStar, progComp, progTrans, progMS, progSky, progNoise, progWeather, progCache, progClouds, progCSh;
+let progMain, progStar, progComp, progTrans, progMS, progSky, progNoise, progWeather, progCache, progClouds, progCSh, progSurf;
 const emptyVAO = gl && gl.createVertexArray();
 
 // ------------------------------------------------------------------ textures
@@ -425,6 +435,60 @@ function makeCache() {
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   const rects = layout.views.map((v) => v.src.map((x) => Math.round(x * s)));
   cache = { fb, a, b, w, h, rects, row: 0, done: false, scale: s };
+  makeSurfCache();
+}
+// the lunar ground seen standing on the moon: same size and layout as the terrain cache
+let surf = null;
+function makeSurfCache() {
+  if (surf) { gl.deleteFramebuffer(surf.fb); gl.deleteTexture(surf.a); gl.deleteTexture(surf.b); }
+  const { w, h } = cache;
+  const mk = () => {
+    const t = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texStorage2D(gl.TEXTURE_2D, 1, extCBF ? gl.RGBA16F : gl.RGBA8, w, h);
+    texParams(gl.TEXTURE_2D, gl.NEAREST, gl.CLAMP_TO_EDGE, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    return t;
+  };
+  const a = mk(), b = mk();
+  const fb = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, a, 0);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT1, gl.TEXTURE_2D, b, 0);
+  gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
+  gl.clearBufferfv(gl.COLOR, 0, [0, 0, 0, -1]);
+  gl.clearBufferfv(gl.COLOR, 1, [0, 0, 0, 0]);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  surf = { fb, a, b, row: 0, done: false, eye: null };
+}
+function stepSurfCache(SS) {
+  if (!surf || !cache) return;
+  if (surf.eye !== cfg.room.eye) { surf.row = 0; surf.done = false; surf.eye = cfg.room.eye; }
+  if (surf.done) return;
+  const band = params.has('band') ? parseInt(params.get('band'), 10) : 40;
+  gl.bindFramebuffer(gl.FRAMEBUFFER, surf.fb);
+  gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
+  gl.disable(gl.BLEND);
+  gl.useProgram(progSurf.p);
+  gl.bindVertexArray(emptyVAO);
+  setU(progSurf, 'uSurfLight', SS.light);
+  setU(progSurf, 'uSurfBase', SS.base);
+  let maxH = 0;
+  layout.views.forEach((v, i) => {
+    const r = cache.rects[i];
+    maxH = Math.max(maxH, r[3]);
+    if (surf.row >= r[3]) return;
+    gl.viewport(r[0], r[1], r[2], r[3]);
+    gl.enable(gl.SCISSOR_TEST);
+    gl.scissor(r[0], r[1] + surf.row, r[2], Math.min(band, r[3] - surf.row));
+    setU(progSurf, 'uView', r);
+    setU(progSurf, 'uPA', v.geo.pa); setU(progSurf, 'uDU', v.geo.du); setU(progSurf, 'uDV', v.geo.dv);
+    setU(progSurf, 'uBand', [surf.row, surf.row + band]);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  });
+  gl.disable(gl.SCISSOR_TEST);
+  surf.row += band;
+  if (surf.row >= maxH) surf.done = true;
 }
 function stepCache(S) {
   if (!cache || cache.done || !terrainMeta || !T.terNear) return;
@@ -502,6 +566,8 @@ export const ART = {
   fogVar: 260,
   cloudBase: 2600,
   cloudTop: 3900,
+  earthGain: 0.59,   // the Earth seen from the moon, on the walls (independent of exposure)
+  earthLight: 1.0,   // the light it throws on the ground there
 };
 
 // tuning hook: ?a.bump=1.3&a.alb=1.4,1.1,1,1
@@ -521,9 +587,9 @@ export function getPerf() { return perf; }
 
 const lockScale = params.has('scale');
 const stopAfter = params.has('frames') ? parseInt(params.get('frames'), 10) : 0;
-let hiresFrames = 0, wantTerrain = true;
+let hiresFrames = 0, wantTerrain = true, wantSurf = false;
 function drawFrame(now) {
-  if (stopAfter && status.hires && hiresFrames >= stopAfter && (!cache || cache.done || !wantTerrain)) { window.__moon.done = true; return; }
+  if (stopAfter && status.hires && hiresFrames >= stopAfter && (!cache || cache.done || !wantTerrain) && (!surf || surf.done || !wantSurf)) { window.__moon.done = true; return; }
   requestAnimationFrame(drawFrame);
   if (!status.ready || !progMain) return;
   if (status.hires) hiresFrames++;
@@ -574,6 +640,12 @@ function drawFrame(now) {
   }
   const terrainReady = earth && U.terrainValid && cache && cache.done && !params.has('noterrain');
   wantTerrain = earth && U.terrainValid;
+  // standing on the moon: the rabbits, and the ground (built once, while the screen is dark,
+  // and lit every frame for the Earth's height)
+  const onMoon = !earth && S.surfaceMode;
+  wantSurf = onMoon;
+  const SS = onMoon ? { ...surfaceState(S.t - SURF_T0, cfg.room.eye, S.earthEl), light: U.surfLight } : null;
+  if (onMoon) stepSurfCache(SS);
 
   // ---- volumetric fog and clouds (half resolution, accumulated over frames)
   const volOn = earth && (S.fogDens > 1e-5 || S.cloudCov > 0.01) && !params.has('nocloud');
@@ -652,7 +724,7 @@ function drawFrame(now) {
   const texUnits = [
     ['tColor', T.color], ['tHeight', T.height], ['tPatchH', patch ? patch.h : T.flatH], ['tPatchC', T.patchC || T.gray],
     ['tEarthDay', T.earthDay || T.gray], ['tEarthCN', T.earthCN || T.black], ['tTrans', T.trans.tex], ['tSkyView', T.sky.tex],
-    ['tMW', T.mw || T.black], ['tCacheA', cache.a], ['tCacheB', cache.b], ['tVol', volTex], ['tCloudSh', T.csh.tex],
+    ['tMW', T.mw || T.black], ['tCacheA', onMoon ? surf.a : cache.a], ['tCacheB', onMoon ? surf.b : cache.b], ['tVol', volTex], ['tCloudSh', T.csh.tex],
   ];
   texUnits.forEach(([n, tex], i) => { gl.activeTexture(gl.TEXTURE0 + i); gl.bindTexture(gl.TEXTURE_2D, tex); setI(P, n, i); });
   bindTerrain(P, texUnits.length);
@@ -674,6 +746,18 @@ function drawFrame(now) {
   setU(P, 'uLat', SITE_LAT);
   setU(P, 'uTerrain', terrainReady ? 1 : 0);
   setU(P, 'uCacheSize', [cache.w, cache.h]);
+  setU(P, 'uSurface', onMoon ? 1 : 0);
+  setU(P, 'uEarthGain', onMoon ? ART.earthGain / Math.pow(2, S.ev) : 1);
+  if (onMoon) {
+    setU(P, 'uSurfLight', SS.light);
+    setU(P, 'uSurfLightC', SURF_LIGHT.map((c) => c * ART.earthLight));
+    setU(P, 'uSurfLightR', (SURF_EARTH.radius * Math.PI) / 180);
+    setU(P, 'uSurfAmb', SS.amb);
+    setI(P, 'uRabN', params.has('norabbits') ? 0 : SS.n);
+    setUA(P, 'uRabP', 'v4', SS.P);
+    setUA(P, 'uRabQ', 'v4', SS.Q);
+    setUA(P, 'uRabR', 'v4', SS.R);
+  }
   setU(P, 'uVolOn', volOn ? 1 : 0);
   setU(P, 'uVolSize', [vol.w, vol.h]);
   setU(P, 'uMoonVis', 1);
@@ -683,7 +767,15 @@ function drawFrame(now) {
   setU(P, 'uRough', ART.rough);
   setU(P, 'uSunI', ART.sunI);
   setU(P, 'uExtMix', ART.extMix);
-  setU(P, 'uEarthAngR', (ART.earthAngR * Math.PI) / 180);
+  setU(P, 'uEarthAngR', ((onMoon ? SURF_EARTH.radius : ART.earthAngR) * Math.PI) / 180);
+  const G = U.ghosts;
+  setI(P, 'uGhostN', earth ? 0 : G.n);
+  if (!earth && G.n > 0) {
+    setUA(P, 'uGhost', 'v4', G.dir);
+    setUA(P, 'uGhostM', 'm3', G.M);
+    setUA(P, 'uGhostSun', 'v3', G.sun);
+    setUA(P, 'uGhostES', 'f', G.es);
+  }
   setU(P, 'uFocus', 0);
   setU(P, 'uDof', 0);
   layout.views.forEach((v, i) => {
@@ -699,7 +791,7 @@ function drawFrame(now) {
   if (volOn) vol.i = 1 - vol.i;
 
   // ---- stars (real catalogue, additive, masked by the sky visibility in alpha)
-  if (stars && earth && U.starGain > 0) {
+  if (stars && U.starGain > 0) {
     gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.NONE]);
     gl.enable(gl.BLEND);
     gl.blendEquation(gl.FUNC_ADD);
@@ -711,7 +803,7 @@ function drawFrame(now) {
     setU(SP, 'uLST', U.lst);
     setU(SP, 'uGain', U.starGain);
     setU(SP, 'uTime', t);
-    setU(SP, 'uExt', S.mie);
+    setU(SP, 'uExt', earth ? S.mie : 0);
     layout.views.forEach((v, i) => {
       const r = rects[i];
       gl.viewport(r[0], r[1], r[2], r[3]);
@@ -783,6 +875,7 @@ async function boot() {
     progCache = program(FULLSCREEN_VS, terrainCacheFS());
     progClouds = program(FULLSCREEN_VS, cloudsFS());
     progCSh = program(FULLSCREEN_VS, CLOUDSHADOW_FS);
+    progSurf = program(FULLSCREEN_VS, surfCacheFS());
   } catch (e) {
     console.error(e);
     ui.fatal('셰이더 오류: ' + e.message);
@@ -822,5 +915,5 @@ function setQuality(q) {
 }
 
 window.addEventListener('resize', () => { layoutDirty = true; });
-window.__moon = { status, clock, cfg, ART, frames: () => frameNo, cache: () => cache };
+window.__moon = { status, clock, cfg, ART, frames: () => frameNo, cache: () => cache, surf: () => surf };
 boot();
