@@ -16,11 +16,11 @@
 // not in the middle); the same crater seen low and at a slant; standing on the moon at
 // night as the Earth comes up over the rim, the only light there, lighting the ground
 // from behind. Back on the Earth, the moon rises golden out of the sea, its light breaking
-// up on the waves, and paper boats with a small light inside drift out toward it; before
-// dawn it stands pale over ranges rising out of a valley full of fog, layer on layer as in
-// an ink landscape; and back on the summit at dawn it sets in the west. Away from those
-// close-ups the moon only stops near the middle of a wall, where the image stays round for
-// viewers away from the sweet spot.
+// up on the waves, and paper boats with a small light inside drift here and there on the
+// water round the three walls; before dawn it stands pale over ranges rising out of a valley
+// full of fog, layer on layer as in an ink landscape; and back on the summit at dawn it sets
+// in the west. Away from those close-ups the moon only stops near the middle of a wall, where
+// the image stays round for viewers away from the sweet spot.
 
 // when each part begins (s)
 const TM = 470;   // the month (space)

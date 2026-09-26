@@ -648,6 +648,7 @@ export const ART = {
   earthLight: 1.0,   // the light it throws on the ground there
   seaGain: 5.0,      // the moon's path on the sea (1 = a mirror image of the disc as shown; more reads as a photograph exposed for the water)
   boatGain: 0.12,    // the paper boats' lights (display-referred)
+  glit: [0.0045, 12, 0.2], // the glitter on the sea: the moon's radius its sparks see (rad), the brightest spark (x mean), how long one lasts (s)
 };
 
 // tuning hook: ?a.bump=1.3&a.alb=1.4,1.1,1,1
@@ -871,6 +872,7 @@ function drawFrame(now) {
   setU(P, 'uBoatGain', ART.boatGain);
   setU(P, 'uSeaH', SEA_EYE);
   setU(P, 'uSeaGain', ART.seaGain);
+  setU(P, 'uGlit', ART.glit);
   setU(P, 'uEarthGain', onMoon ? ART.earthGain / Math.pow(2, S.ev) : 1);
   if (onMoon) {
     setU(P, 'uSurfLight', SS.light);

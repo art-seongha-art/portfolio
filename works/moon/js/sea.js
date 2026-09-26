@@ -4,12 +4,14 @@
 // The water is a sphere of the Earth's radius. Its slopes are a sum of deep-water wave
 // trains; the trains too fine for a pixel are left out of the normal and counted as
 // roughness instead (Bruneton, Neyret & Holzschuch 2010), so the sparkles close by and the
-// smooth path toward the horizon come from the same facets.
+// path toward the horizon come from the same facets. That roughness is not an even sheen:
+// its facets catch the moon one at a time, and each flashes (see seaGlitter).
 
-// wave trains, fixed: random lengths from 8 cm to 14 m and directions round the wind, which
-// blows from the moon toward the viewer (+z); short waves spread wider and are steeper.
-// Slope amplitude A·k, deep water ω = √(gk) (a little slowed).
-const NW = 36;
+// wave trains, fixed: random lengths from 4 cm to 8 m and directions round the wind, which
+// blows from the moon toward the viewer (+z). The ripples under a metre or so are steep and
+// spread wide, the few long waves gentle: a close, fine pattern that breaks the moon's path
+// into many small glints. Slope amplitude A·k; ω² = gk + (σ/ρ)k³ (a little slowed).
+const NW = 48;
 function hash(i, s) {
   let h = (Math.imul(i + 1, 0x9e3779b1) ^ Math.imul(s + 7, 0x85ebca77)) >>> 0;
   h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d) >>> 0;
@@ -18,12 +20,12 @@ function hash(i, s) {
 }
 const WAVES = [];
 for (let i = 0; i < NW; i++) {
-  const lambda = 0.08 * Math.pow(14 / 0.08, (i + hash(i, 4)) / NW);
+  const lambda = 0.04 * Math.pow(8 / 0.04, (i + hash(i, 4)) / NW);
   const k = (2 * Math.PI) / lambda;
-  const short = Math.min(1, Math.max(0, (4 - lambda) / 3.5));
-  const a = (0.6 + 0.6 * short) * (hash(i, 1) + hash(i, 5) - 1);
-  const steep = (0.022 + 0.034 * short) * (0.7 + 0.6 * hash(i, 2));
-  WAVES.push([Math.sin(a), Math.cos(a), k, steep, 0.85 * Math.sqrt(9.81 * k), 2 * Math.PI * hash(i, 3)]);
+  const short = Math.min(1, Math.max(0, (3.5 - lambda) / 2.5));
+  const a = (0.5 + 0.9 * short) * (hash(i, 1) + hash(i, 5) - 1);
+  const steep = (0.02 + 0.03 * short) * (0.7 + 0.6 * hash(i, 2));
+  WAVES.push([Math.sin(a), Math.cos(a), k, steep, 0.85 * Math.sqrt(9.81 * k + 7.3e-5 * k * k * k), 2 * Math.PI * hash(i, 3)]);
 }
 // islands: azimuth and half-width (deg; 0 = front, + = right), distance and height (m)
 const ISLES = [[-67, 8, 7500, 330], [-99, 15, 14000, 560], [-127, 6, 9000, 240], [53, 3, 12000, 140], [80, 11, 10000, 460], [113, 7, 6000, 210]];
@@ -32,27 +34,36 @@ const f = (v) => (Number.isInteger(v) ? `${v}.0` : String(+v.toFixed(6)));
 const D2R = Math.PI / 180;
 
 // Paper boats with a small light in each (종이배 등): folded from white paper, about 45 cm
-// long. Some were let go before the scene begins, the rest from the breakwater over its
-// first minutes; each drifts out toward the moon, rocked by the same waves as the water
-// (the ones longer than the boat), its light flickering a little. Worked out from the clock
-// alone, like everything else, so every window shows the same boats. Written into two rows
-// of buf (rowW floats each): position (eye frame, m) and light; heading, water slope, size.
-// They go to rows BOAT_ROW and BOAT_ROW + 1 of the shared data texture (main.js).
-export const BOAT_MAX = 36;
+// long. They were let go in small groups here and there along the breakwater and the shore,
+// round all three walls, each group at its own time: most long before the scene begins, so
+// they are already spread out over the water, near and far; a few during it, and those come
+// into view from below the walls. Each drifts slowly out, the boats of a group drawing apart,
+// rocked by the same waves as the water (the ones longer than the boat), its light flickering
+// a little. Worked out from the clock alone, like everything else, so every window shows the
+// same boats. Written into two rows of buf (rowW floats each), nearest first: position (eye
+// frame, m) and light; heading, water slope, size. They go to rows BOAT_ROW and BOAT_ROW + 1
+// of the shared data texture (main.js).
+export const BOAT_MAX = 56;
 export const BOAT_ROW = 6;
+const BOAT_GROUPS = 14;
+const boats = [];
 export function boatsAt(t, ts, buf, rowW, eye) {
-  let n = 0;
+  boats.length = 0;
   for (let i = 0; i < BOAT_MAX; i++) {
     const r = (k) => hash(i + 100, k);
-    const tr = -500 + 860 * r(1);                     // when it was let go (s, scene clock)
-    const age = ts - tr;
+    // its group: where it was let go (bearing, deg: 0 = front, + = right; spread evenly
+    // round the walls) and when (s, scene clock; in no order of bearing)
+    const g = i % BOAT_GROUPS;
+    const rg = (k) => hash(g + 300, k);
+    const gAz = -128 + 256 * (g + 0.15 + 0.7 * rg(1)) / BOAT_GROUPS;
+    const gT = -1700 + 2150 * (((g * 5) % BOAT_GROUPS) + rg(2)) / BOAT_GROUPS;
+    const age = ts - (gT + 25 * r(1));
     if (age < 0) continue;
-    const az0 = (-36 + 72 * r(2)) * D2R;
-    const v = 0.035 + 0.045 * r(4);                   // drifting out (m/s)
-    const dist = 9 + 4 * r(3) + v * age;
+    const v = (0.035 + 0.035 * rg(3)) * (0.85 + 0.3 * r(4));   // drifting out (m/s)
+    const dist = 7 + 3 * r(3) + v * age;
     if (dist > 320) continue;
-    // the bearing drifts slowly toward the moon's path (straight ahead) and wanders
-    const az = az0 * Math.exp(-age / 700) + 0.05 * Math.sin(age * 0.004 + 6.28 * r(5));
+    // its bearing, a little off the group's, wandering slowly
+    const az = (gAz + 9 * (r(2) - 0.5)) * D2R + 0.035 * Math.sin(age * 0.004 + 6.28 * r(5));
     const x = Math.sin(az) * dist, z = -Math.cos(az) * dist;
     // the waves at the boat (only those longer than it rock it)
     let h = 0, gx = 0, gz = 0;
@@ -67,11 +78,15 @@ export function boatsAt(t, ts, buf, rowW, eye) {
     // the light: lit as it is let go, flickering a little like a candle
     const lit = Math.min(1, age / 3) * (0.8 + 0.4 * r(6)) * (1 + 0.05 * Math.sin(11.3 * t + 9 * r(7)) + 0.035 * Math.sin(23.1 * t + 5 * r(8)));
     const yaw = 6.283 * r(9) + 0.06 * Math.sin(age * 0.05 + r(10) * 6);
-    buf.set([x, h - eye, z, lit], n * 4);
-    buf.set([yaw, gx, gz, 1.5 + 0.4 * r(11)], rowW + n * 4);
-    n++;
+    boats.push([dist, x, h - eye, z, lit, yaw, gx, gz, 1.5 + 0.4 * r(11)]);
   }
-  return n;
+  // nearest first: the shader lays each over those after it
+  boats.sort((a, b) => a[0] - b[0]);
+  boats.forEach((b, n) => {
+    buf.set(b.slice(1, 5), n * 4);
+    buf.set(b.slice(5, 9), rowW + n * 4);
+  });
+  return boats.length;
 }
 
 export const SEA_GLSL = `
@@ -80,6 +95,8 @@ uniform float uSeaH;         // eye height over the water (m)
 uniform float uSeaGain;      // brightness of the moon's path (1 = a mirror image of the disc as shown)
 uniform int   uBoatN;        // paper boats on the water (their data: rows ${BOAT_ROW}-${BOAT_ROW + 1} of tData)
 uniform float uBoatGain;     // how bright their lights are
+uniform vec3  uGlit;         // the glitter: x the moon's radius as its sparks count it (rad), y the brightest
+                             // a spark may be (times the mean), z how long one lasts (s)
 const float SEA_RE = 6371000.0;
 const int SEA_NW = ${NW};
 const vec4 SEA_W[SEA_NW] = vec4[SEA_NW](${WAVES.map((w) => `vec4(${f(w[0])}, ${f(w[1])}, ${f(w[2])}, ${f(w[3])})`).join(', ')});
@@ -183,9 +200,10 @@ vec4 boatsShade(vec3 d, float angPix, vec3 moonLight) {
   for (int i = 0; i < ${BOAT_MAX}; i++) {
     if (i >= uBoatN) break;
     vec4 P = texelFetch(tData, ivec2(i, ${BOAT_ROW}), 0);
-    vec4 O = texelFetch(tData, ivec2(i, ${BOAT_ROW + 1}), 0);
     float dist = length(P.xyz);
-    if (dot(d, P.xyz / dist) < cos(0.34 * O.w / dist + angPix * 2.0)) continue;
+    // (a boat is at most 2 x 0.34 m across its size: those nowhere near the ray are skipped)
+    if (dot(d, P.xyz / dist) < cos(0.34 * 2.0 / dist + angPix * 2.0)) continue;
+    vec4 O = texelFetch(tData, ivec2(i, ${BOAT_ROW + 1}), 0);
     mat3 F = boatFrame(O);
     mat3 Ft = transpose(F);
     vec3 ro = Ft * (-P.xyz) / O.w;
@@ -217,6 +235,9 @@ vec3 boatGlints(vec3 pw, vec3 N, vec3 V, float nv, float m2) {
     vec3 lp = P.xyz + vec3(0.0, 0.08, 0.0);
     vec3 l = lp - pw;
     float dl2 = dot(l, l);
+    // (its light on the water fades as 1/dl2: let it go softly between 8 and 12 m away)
+    if (dl2 > 144.0) continue;
+    float fade = 1.0 - smoothstep(64.0, 144.0, dl2);
     l *= inversesqrt(dl2);
     float nl = dot(N, l);
     if (nl <= 0.0) continue;
@@ -226,9 +247,45 @@ vec3 boatGlints(vec3 pw, vec3 N, vec3 V, float nv, float m2) {
     c2 *= c2;
     float D = exp(-(1.0 - c2) / (c2 * mb)) / (3.14159265 * mb * c2 * c2);
     float Fh = 0.02 + 0.98 * pow(1.0 - clamp(dot(V, H), 0.0, 1.0), 5.0);
-    acc += P.w * uBoatGain * 0.5 / dl2 * Fh * D * smithB(nv, mb) * smithB(nl, mb) / (4.0 * nv);
+    acc += fade * P.w * uBoatGain * 0.5 / dl2 * Fh * D * smithB(nv, mb) * smithB(nl, mb) / (4.0 * nv);
   }
   return acc * vec3(1.0, 0.66, 0.34);
+}
+
+// ---------------- the glitter (윤슬)
+// The waves too fine for the pixel do not light it evenly: each of their facets catches the
+// moon only while it is tilted just so, and then it flashes. Of the facets under the pixel
+// (SEA_FA across the line of sight by SEA_FB along it: longer along the crests, which face
+// the viewer), the chance that one catches the moon is the density of the fine slopes at the
+// one needed times the patch of slopes that sees the moon's disc, the disc taken near its
+// true size (uGlit.x), not as large as it is shown: the sparks are those of the real moon.
+// Their number is Poisson; a new count every uGlit.z or so, blended. Its mean is 1, so the
+// path keeps its brightness: far out many facets lie under a pixel and the path is nearly
+// even, closer in single sparks, short dashes near the viewer, never more than uGlit.y times
+// as bright as the mean.
+const float SEA_FA = 0.035, SEA_FB = 0.012;
+float poissonN(float lam, float u) {
+  if (lam > 12.0) return max(lam + sqrt(lam) * 0.5513 * log(u / (1.0 - u)), 0.0);
+  float p = exp(-lam), c = p, k = 0.0;
+  for (int i = 0; i < 32; i++) {
+    if (u <= c) break;
+    k += 1.0; p *= lam / k; c += p;
+  }
+  return k;
+}
+// x the point on the water (m), fpA x fpB the pixel's footprint there (m), m2u the variance
+// of the slopes too fine for it, c2 the cos^2 of the tilt from the normal to the one needed
+float seaGlitter(vec2 x, float fpA, float fpB, float m2u, float c2) {
+  float lam = max(fpA * fpB / (SEA_FA * SEA_FB), 1.0) * uGlit.x * uGlit.x / (4.0 * m2u) * exp(-(1.0 - c2) / (c2 * m2u));
+  lam = clamp(lam, 1.0 / uGlit.y, 1e4);
+  // the facet under the pixel's centre: cells across (round the viewer) and along the sight
+  float r = length(x);
+  ivec2 cell = ivec2(floor(vec2(atan(x.x, -x.y) * r / SEA_FA, r / SEA_FB)));
+  float e = uTime / uGlit.z + rnd4(ivec4(cell, 0, 71)).x;
+  int k = int(floor(e));
+  float n0 = poissonN(lam, clamp(rnd4(ivec4(cell, k, 72)).x, 1e-6, 1.0 - 1e-6));
+  float n1 = poissonN(lam, clamp(rnd4(ivec4(cell, k + 1, 72)).x, 1e-6, 1.0 - 1e-6));
+  return mix(n0, n1, smoothstep(0.0, 1.0, fract(e))) / lam;
 }
 
 // the water seen along d: colour and coverage (0 above the sea horizon). moonE is the
@@ -268,6 +325,7 @@ vec4 seaShade(vec3 d, float angPix, vec3 moonDir, vec3 moonE, float moonAng, vec
   float share = clamp((it - eR) / w + 0.5, 0.0, 1.0) - clamp(-eR / w + 0.5, 0.0, 1.0);
   sky = mix(sky, isleColor(R, di, moonLight), max(share, 0.0));
   // (the moon is a disc: the facets that catch it spread by its size)
+  float m2u = m2;
   m2 += 0.0005 + 0.25 * moonAng * moonAng;
   // the moon in the water: facets tilted to catch it (Beckmann); toward the horizon they
   // hide each other, which narrows and dims the far end of the path
@@ -277,6 +335,10 @@ vec4 seaShade(vec3 d, float angPix, vec3 moonDir, vec3 moonE, float moonAng, vec
   float D = exp(-(1.0 - c2) / (c2 * m2)) / (3.14159265 * m2 * c2 * c2);
   float Fh = 0.02 + 0.98 * pow(1.0 - clamp(dot(V, H), 0.0, 1.0), 5.0);
   vec3 glint = nl > 0.0 ? moonE * (uSeaGain * Fh * D * smithB(nv, m2) * smithB(nl, m2) / (4.0 * nv)) : vec3(0.0);
+  // what of it comes from the waves too fine to see glitters (all of it, but where the pixel
+  // sees the water whole and still: the moon's disc there is the real one, not the one shown)
+  float fu = m2u / (m2u + 0.0005 + 0.25 * uGlit.x * uGlit.x);
+  if (m2u > 1e-5) glint *= mix(1.0, seaGlitter(x, fpA, fpB, m2u, c2), fu);
   // the paper boats' lights, broken up on the waves under each
   if (uBoatN > 0) glint += boatGlints(vec3(x.x, -uSeaH, x.y), N, V, nv, m2 - 0.25 * moonAng * moonAng);
   vec3 col = sky * Fv + glint;
