@@ -5,10 +5,11 @@
 // from a hash of that second. The walls reach only 23-30 degrees up, so meteors end below
 // that and fall into view from above; the shower's radiant stands above the front wall.
 //
-// What a meteor looks like to the eye: a point, not a line. The head moves 10-40 degrees a
-// second for a fraction of a second; the air it has just passed through glows for about a
-// tenth of a second, so it drags a short fading wake. It brightens quickly, flickers as it
-// breaks up, often flares at the end and then is gone. Most are faint and white; the bright
+// What a meteor looks like to the eye: a point, not a line. The head moves 5-20 degrees a
+// second for half a second to a second and a half; the air it has just passed through glows
+// for about a tenth of a second, so it drags a short fading wake. It brightens as it goes
+// deeper into the air, peaks late, flickers as it breaks up, often flares at the end and then
+// is gone. Most are faint and white; the bright
 // ones show colour (the head green from magnesium and oxygen, or yellow from sodium, the
 // wake orange), and the brightest leave a faint train that hangs for a few seconds. Low
 // down they are farther away: shorter, and dimmed by the air.
@@ -52,8 +53,8 @@ function meteor(k, s, rate) {
   // how fast it crosses the sky (deg/s) and for how long: low down it is farther away, so it
   // looks slower and its path shorter
   const near = 0.45 + 0.55 * smooth(3, 20, elEnd);
-  const T = shower ? 0.3 + 0.45 * r(7) : 0.35 + 0.6 * r(7);
-  const L = (shower ? 14 + 20 * r(4) : 8 + 22 * r(4)) * near * T * D2R;
+  const T = shower ? 0.45 + 0.6 * r(7) : 0.5 + 0.9 * r(7);
+  const L = (shower ? 9 + 13 * r(4) : 5 + 14 * r(4)) * near * T * D2R;
   let start;
   if (shower) {
     // it comes from the direction of the radiant
@@ -82,7 +83,8 @@ function meteor(k, s, rate) {
 function lightCurve(m, u) {
   const bump = (c, w) => Math.exp(-((u - c) * (u - c)) / (w * w));
   const rise = smooth(0, 0.18, u);
-  const body = 0.55 + 0.45 * Math.sin(Math.PI * Math.min(1, u * 1.1));
+  // (brightest some 60 % of the way along)
+  const body = 0.5 + 0.5 * Math.sin(Math.PI * Math.pow(u, 1.4));
   const flick = 1 + 0.35 * bump(m.f1, 0.05) + 0.25 * bump(m.f2, 0.04);
   const end = 1 + m.flare * bump(0.9, 0.05);
   return rise * body * flick * end * (1 - smooth(0.94, 1.0, u));

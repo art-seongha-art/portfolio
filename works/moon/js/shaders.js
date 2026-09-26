@@ -716,6 +716,7 @@ void main() {
   float boatCov = 0.0;
   float occ = 1.0;             // how much light from the sky and moon gets through (for the shafts)
   float air = 1.0;             // how much hazy air lies in front of what this pixel shows
+  float seaCov = 0.0;          // how much of the pixel is water
   float expo = uExposure;
   SUNB = uSunB; EARTHB = uEarthB; ESHINE = uEarthshine;
 
@@ -737,8 +738,11 @@ void main() {
       vec4 sw = seaShade(d, angPix, uMoonDirW, moonDisp, uMoonAngR, moonLight);
       col = mix(col, sw.rgb, sw.a);
       starVis *= 1.0 - sw.a;
-      // (the water lies below the moonlight's way: it casts no shaft)
-      air = mix(air, 1.0 - exp(-uSeaH / max(-d.y, 1e-4) / 30.0), sw.a);
+      // (the water lies below the moonlight's way: it casts no shaft. Of the hazy air that
+      // glows round the moon, only what lies in front of the water shows over it: next to
+      // nothing close by, most of it toward the horizon, some kilometres out)
+      seaCov = sw.a;
+      air = mix(air, 1.0 - exp(-uSeaH / max(-d.y, 1e-4) / 6000.0), sw.a);
       vec4 bt = boatsShade(d, angPix, moonLight);
       col = col * (1.0 - bt.a) + bt.rgb;
       starVis *= 1.0 - bt.a;
@@ -757,7 +761,8 @@ void main() {
       vec3 mc = shadeMoon(mh, ro, rd, uM * ddx, uM * ddy, angPix) * uMoonScale * uMoonTint;
       float muM = mix(dm.y, uMoonDirW.y, uExtMix);
       vec3 Tm = transmittance(tTrans, Rg + uCamAlt, muM);
-      moonC = mc * Tm * mh.cov;
+      // (below the sea's horizon it is behind the water)
+      moonC = mc * Tm * mh.cov * (1.0 - seaCov);
       starVis *= 1.0 - mh.cov;
     }
     if (uGlow > 0.001) {
@@ -765,7 +770,7 @@ void main() {
       float x = max(gam - uMoonAngR, 0.0) / max(uMoonAngR, 1e-4);
       float g = 0.07 * exp(-x * 5.0) + 0.02 * exp(-x * 1.2) + uAureole * 0.012 * exp(-x * 0.3);
       vec3 Tg = transmittance(tTrans, Rg + uCamAlt, uMoonDirW.y);
-      moonC += uGlow * uMoonLum * uMoonScale * g * Tg * uMoonTint;
+      moonC += uGlow * uMoonLum * uMoonScale * g * Tg * uMoonTint * mix(1.0, air, seaCov);
     }
     float myDepth = terrainDepth(f);
     if (uTerrain > 0.5) {
@@ -1059,9 +1064,14 @@ void main() {
     }
     // the shafts are light scattered in the air in front of whatever the pixel shows: over
     // the sky and far away, hardly at all over something close. The glow of the air round
-    // the moon is already in the sky, so what the shafts add is mostly the shadow streaming
-    // from each thing that blocks it, and a little more light through the gaps.
-    float sh = (acc - 0.7 * acc0) / max(n, 1.0);
+    // the moon is already in the sky, so the shafts only take away: the shadow streaming
+    // from each thing that blocks it. (Light added where nothing blocks lifted only the wall
+    // the moon is on, and showed as a step at its corners.)
+    float sh = (acc - acc0) / max(n, 1.0);
+    // (and they fade with the pixel's own distance from the moon, gone well before the edges
+    // of its wall: the walls beside it have none)
+    vec3 dpx = normalize(uPA + f.x * uDU + f.y * uDV);
+    sh *= smoothstep(0.65, 0.15, acos(clamp(dot(dpx, uMoonDir), -1.0, 1.0)));
     c = max(c + uRayCol * sh * uRays * 0.5 * mix(0.15, 1.0, aux.b), vec3(0.0));
   }
   if (uBloom > 0.0) {

@@ -400,6 +400,12 @@ function pickQuality() {
 }
 
 // ------------------------------------------------------------------ render targets
+// a view's rectangle scaled by s, rounded at its edges so neighbouring views still meet (rounding
+// the corner and the size apart left a column no view drew, a dark line down a seam)
+function scaleRect(r, s) {
+  const x0 = Math.round(r[0] * s), y0 = Math.round(r[1] * s);
+  return [x0, y0, Math.round((r[0] + r[2]) * s) - x0, Math.round((r[1] + r[3]) * s) - y0];
+}
 let fbo = null;
 function makeTargets(w, h) {
   if (fbo) {
@@ -450,7 +456,7 @@ function wallPoint(geo, m) {
 const LOOKS = [
   { lo: [0.8, 1.0, 1.1], hi: [1.08, 1.0, 0.86], con: 0 },       // default: teal / warm
   { lo: [0.74, 0.88, 1.22], hi: [1.16, 1.0, 0.72], con: 0.2 },   // the sea: navy and gold
-  { lo: [0.84, 0.95, 1.12], hi: [0.97, 1.0, 1.03], con: 0.05 },  // mist: blue-grey, soft
+  { lo: [0.84, 0.95, 1.12], hi: [0.97, 1.0, 1.03], con: 0.12 },  // mist: blue-grey, soft
 ];
 function lookAt(x) {
   const i = Math.max(0, Math.min(LOOKS.length - 1, Math.floor(x))), j = Math.min(LOOKS.length - 1, i + 1), f = Math.max(0, Math.min(1, x - i));
@@ -511,7 +517,7 @@ function makeCache() {
   gl.clearBufferfv(gl.COLOR, 0, [0, 1, 0, -1]);
   gl.clearBufferfv(gl.COLOR, 1, [0, 0, 0, 0]);
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-  const rects = layout.views.map((v) => v.src.map((x) => Math.round(x * s)));
+  const rects = layout.views.map((v) => scaleRect(v.src, s));
   cache = { fb, a, b, w, h, rects, row: 0, done: false, scale: s };
   makeSurfCache();
 }
@@ -651,7 +657,8 @@ export const ART = {
   glit: [0.0045, 12, 0.2], // the glitter on the sea: the moon's radius its sparks see (rad), the brightest spark (x mean), how long one lasts (s)
 };
 
-// tuning hook: ?a.bump=1.3&a.alb=1.4,1.1,1,1
+// tuning hook: ?a.bump=1.3&a.alb=1.4,1.1,1,1 (and ?k.bloom=0 holds a timeline track at a value)
+const HOLD = [...params].filter(([k]) => k.startsWith('k.')).map(([k, v]) => [k.slice(2), parseFloat(v)]);
 for (const [k, v] of params) {
   if (!k.startsWith('a.')) continue;
   const key = k.slice(2);
@@ -689,6 +696,7 @@ function drawFrame(now) {
   resize();
   const t = clock.now();
   const S = stateAt(t);
+  for (const [k, v] of HOLD) S[k] = v;
   S.camAltEye = EYE_ALT;
   const U = deriveUniforms(S, stateAt);
   frameNo++;
@@ -704,7 +712,7 @@ function drawFrame(now) {
   }
   perf.fps = 1000 / ema; perf.scale = renderScale; perf.ms = ema;
 
-  const rects = layout.views.map((v) => v.src.map((x) => Math.round(x * renderScale)));
+  const rects = layout.views.map((v) => scaleRect(v.src, renderScale));
   const earth = U.earthMode;
 
   // ---- atmosphere LUTs (only on the Earth)
@@ -797,7 +805,7 @@ function drawFrame(now) {
     setU(C, 'uCacheSize', [cache.w, cache.h]);
     setU(C, 'uAurMax', U.aurMax);
     layout.views.forEach((v, i) => {
-      const r = rects[i].map((x) => Math.round(x / 2));
+      const r = scaleRect(rects[i], 0.5);
       gl.viewport(r[0], r[1], r[2], r[3]);
       gl.scissor(r[0], r[1], r[2], r[3]);
       setU(C, 'uView', r);
@@ -910,7 +918,7 @@ function drawFrame(now) {
     gl.scissor(r[0], r[1], r[2], r[3]);
     setU(P, 'uView', r);
     setU(P, 'uCacheRect', cache.rects[i]);
-    setU(P, 'uVolRect', r.map((x) => Math.round(x / 2)));
+    setU(P, 'uVolRect', scaleRect(r, 0.5));
     setU(P, 'uPA', v.geo.pa); setU(P, 'uDU', v.geo.du); setU(P, 'uDV', v.geo.dv);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   });
