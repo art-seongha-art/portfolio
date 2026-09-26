@@ -46,10 +46,31 @@ float vfogTau(vec3 d, float t0, float t1, float F) {
   float ha = h0 + d.y * t0, hb = h0 + d.y * t1;
   return max(uVFog.z * s * (softplus((F - ha) / s) - softplus((F - hb) / s)) / d.y, 0.0);
 }
+// value noise with a quintic fade and a lattice turned off the room's axes: no creases
+// along the lattice lines (below a range the fog is read at the foot of its crest, the same
+// point all the way down a column, so a crease there showed as a thin upright streak)
+float vnoise2q(vec2 p) {
+  vec2 i = floor(p), f = fract(p);
+  vec2 u = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+  float a = h12(i), b = h12(i + vec2(1, 0)), c = h12(i + vec2(0, 1)), d = h12(i + vec2(1, 1));
+  return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+}
+float fogNoise(vec2 p, float fw) {
+  float s = 0.0, a = 0.5, f = 1.0;
+  mat2 r = mat2(0.8, 0.6, -0.6, 0.8);
+  p = mat2(0.93, 0.37, -0.37, 0.93) * p;
+  for (int i = 0; i < 3; i++) {
+    s += a * mix(0.5, vnoise2q(p), clamp(1.6 - fw * f * 2.2, 0.0, 1.0));
+    p = r * p * 2.03 + 11.7;
+    f *= 2.03;
+    a *= 0.5;
+  }
+  return s;
+}
 // the fog's top rises and falls in slow billows that drift: its height at p (m above sea
 // level), and how much brighter it is there (the tops catch more of the moon)
 float vfogTop(vec3 p, float fp, out float lift) {
-  float b = fbm2l(p.xz / 380.0 + uTime * vec2(0.0024, 0.0009), 3, fp / 380.0);
+  float b = fogNoise(p.xz / 380.0 + uTime * vec2(0.0024, 0.0009), fp / 380.0);
   lift = b;
   return uVFog.x + 110.0 * (b - 0.5);
 }
@@ -84,7 +105,7 @@ vec4 landShade(vec3 d, float angPix, vec3 moonLight, out float vis, out float ne
   vec3 ambH = textureLod(tSkyView, vec2(0.5, 0.56), 6.0).rgb;
   vec3 amb = mix(ambH, ambUp, 0.4) * 1.3;
   // haze and fog: sky light and moonlight scattered forward round the moon
-  vec3 mistC = ambH * 1.15 + moonLight * (0.05 + 0.12 * hgPhase(dot(d, uMoonDirW), 0.72));
+  vec3 mistC = ambH * 1.15 + moonLight * (0.04 + 0.06 * hgPhase(dot(d, uMoonDirW), 0.72));
   vec3 hazeC = mix(ambH, mistC, 0.4);
   float hazeD = 5000.0 / (1.0 + 400.0 * uMist);
   float hl = max(length(d.xz), 1e-4);

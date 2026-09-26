@@ -201,9 +201,9 @@ export function initUI(ctx) {
     else if (k === 'f' || k === 'F') {
       if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen().catch(() => {});
     } else if (k === 'h' || k === 'H') body.classList.toggle('clean');
-    else if (/^[0-9-]$/.test(k) || k === 'q' || k === 'Q') {
-      // scenes: 1-9, then 0, - and q for the tenth to the twelfth
-      const i = k === '0' ? 9 : k === '-' ? 10 : k === 'q' || k === 'Q' ? 11 : +k - 1;
+    else if (/^[0-9-]$/.test(k)) {
+      // scenes: 1-9, then 0 and - for the tenth and eleventh
+      const i = k === '0' ? 9 : k === '-' ? 10 : +k - 1;
       if (SCENES[i]) clock.seek(SCENES[i].t + 0.01);
     }
     else if (k === ']') clock.setSpeed(Math.min(32, clock.speed * 2));

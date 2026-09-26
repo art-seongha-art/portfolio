@@ -55,7 +55,7 @@ function bodyMatrix(dirToBody, rollRad, fb, azHint = 0) {
   const wf = mul(dirToBody, -1);
   const el = Math.asin(Math.max(-1, Math.min(1, dirToBody[1])));
   // straight up or down the azimuth is undefined, and rounding noise would pick it afresh
-  // every frame (the moon below the camera at the slant flipped round): use the hint
+  // every frame (the moon straight below the camera flipped round): use the hint
   const az = Math.hypot(dirToBody[0], dirToBody[2]) > 1e-7 ? Math.atan2(dirToBody[0], -dirToBody[2]) : azHint;
   const up0 = [-Math.sin(el) * Math.sin(az), Math.cos(el), Math.sin(el) * Math.cos(az)];
   const up = norm(add(mul(up0, Math.cos(rollRad)), mul(cross(wf, up0), Math.sin(rollRad))));
