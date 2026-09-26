@@ -421,7 +421,8 @@ export function deriveUniforms(S, stateAtFn) {
     uMoonDirW: dir,
     uMoonAngR: angR,
     uMoonLum: moonLumSpace,
-    uMoonTint: [1, 1, 1],
+    uMoonTint: [S.mtR, S.mtG, S.mtB],
+    uMineral: S.mineral,
     uGlow: S.glow,
     uRefr: S.refr,
     uShimmer: S.shimmer,
@@ -473,7 +474,7 @@ export function deriveUniforms(S, stateAtFn) {
     U.aurMax = 0.1 * U.uMoonScale;
     U.uAbsScale = ABS / Math.max(e, 1e-9);
     U.uMWGain = MW_K * e;
-    U.starGain = STAR_K * e;
+    U.starGain = STAR_K * e * S.starBoost;
     U.keyLight = L.sunDir[1] > -0.07 && S.sunEl > -5 ? L.sunDir : dir;
     U.eclFrac = eclFrac;
   } else {

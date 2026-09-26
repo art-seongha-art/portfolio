@@ -15,9 +15,11 @@
 // until it fills the walls and the morning terminator reaches Copernicus (low on the left,
 // not in the middle); the same crater seen low and at a slant; standing on the moon at
 // night as the Earth comes up over the rim, the only light there, lighting the ground
-// from behind; back on the Earth late at night by the sea, the moon low over the water and
-// its light breaking up on the waves; and back to the summit at dawn as the moon sets in
-// the west. Away from those close-ups the moon only stops near the middle of a wall, where
+// from behind. Back on the Earth, the moon rises golden out of the sea, its light breaking
+// up on the waves, and paper boats with a small light inside drift here and there on the
+// water round the three walls; before dawn it stands pale over ranges rising out of a valley
+// full of fog, layer on layer as in an ink landscape; and back on the summit at dawn it sets
+// in the west. Away from those close-ups the moon only stops near the middle of a wall, where
 // the image stays round for viewers away from the sweet spot.
 
 // when each part begins (s)
@@ -26,12 +28,15 @@ const TC = 660;   // close-up in the corner between the left wall and the front
 const TO = 818;   // the moon overhead
 const TA = 933;   // approach to Copernicus
 const TS = 1061;  // Copernicus at a slant
-const TU = 1121;  // on the moon at night (Earthrise)
-const TW = 1309;  // by the sea, the moon's light on the water
-const TD = 1639;  // dawn, back on the summit
-export const LOOP = TD + 161; // 30:00: on the wall clock it starts every hour at :00 and :30
+const TU = 1181;  // on the moon at night (Earthrise)
+const TW = 1369;  // by the sea, the moon rising out of it, its light on the water
+const TK = 1819;  // before dawn: ranges standing out of the valley fog, a pale moon
+const TD = 2239;  // dawn, back on the summit
+export const LOOP = TD + 161; // 40:00: on the wall clock it starts every 40 minutes (:00, :40, :20)
 export const SURF_T0 = TU;    // the rabbits' clock starts here
+export const SEA_T0 = TW;     // the paper boats' clock starts here
 export const SEA_EYE = 6;     // eye height over the water at the sea (m): the end of a breakwater
+export const LAND_ALT = 1336; // the spur below Samsinbong before dawn: eye height above sea level (m)
 
 export const SCENES = [
   { id: 'dusk',     t: 0,       ko: '황혼 · 월출',           en: 'Dusk · Moonrise' },
@@ -44,6 +49,7 @@ export const SCENES = [
   { id: 'slant',    t: TS + 2,  ko: '코페르니쿠스 · 비스듬히', en: 'Copernicus at a slant' },
   { id: 'surface',  t: TU + 2,  ko: '달 위에서 · 지구돋이',   en: 'On the moon · Earthrise' },
   { id: 'sea',      t: TW + 1,  ko: '바다 · 윤슬',           en: 'The sea · Moonlight on the water' },
+  { id: 'mist',     t: TK + 1,  ko: '안개 · 능선',           en: 'Mist · Ranges' },
   { id: 'dawn',     t: TD + 1,  ko: '새벽 · 월몰',           en: 'Dawn · Moonset' },
 ];
 
@@ -74,10 +80,39 @@ const TRACKS = {
   // 1 = standing on the moon (the ground is built while the screen is dark)
   surface: [[0, 0], [TU, 0], [TU + 0.5, 1], [TW - 2.5, 1], [TW - 2, 0], [LOOP, 0]],
   // 1 = by the sea
-  sea: [[0, 0], [TW - 2, 0], [TW - 1.5, 1], [TD - 2, 1], [TD - 1.5, 0], [LOOP, 0]],
+  sea: [[0, 0], [TW - 2, 0], [TW - 1.5, 1], [TK - 2, 1], [TK - 1.5, 0], [LOOP, 0]],
+  // 1 = on the spur below Samsinbong before dawn, the main ridge of Jirisan across the view
+  land: [[0, 0], [TK - 2, 0], [TK - 1.5, 1], [TD - 2, 1], [TD - 1.5, 0], [LOOP, 0]],
+  // there (only read while it shows): where the room's front looks (deg from north)
+  ridgeHead: [[0, -15], [LOOP, -15]],
+  // the fog lying in the valleys: its top (m above sea level), how softly it thins (m), its
+  // density (1/m), from how far out (m)
+  vfTop: [[0, 780], [LOOP, 780]],
+  vfSoft: [[0, 45], [LOOP, 45]],
+  vfDens: [[0, 0.012], [LOOP, 0.012]],
+  vfStart: [[0, 0], [LOOP, 0]],
+  // a thin haze over the fog (1/m at its top) and how fast it thins with height (m)
+  mist: [[0, 0.00025], [LOOP, 0.00025]],
+  mistH: [[0, 450], [LOOP, 450]],
+  // the moon's colour over what the air does to it: golden over the sea, blue-white in the
+  // mist
+  mtR: [[0, 1], [TW - 2, 1], [TW - 1.5, 1.0], [TK - 2, 1.0], [TK - 1.5, 0.9], [TD - 2, 0.9], [TD - 1.5, 1], [LOOP, 1]],
+  mtG: [[0, 1], [TW - 2, 1], [TW - 1.5, 0.88], [TK - 2, 0.88], [TK - 1.5, 0.96], [TD - 2, 0.96], [TD - 1.5, 1], [LOOP, 1]],
+  mtB: [[0, 1], [TW - 2, 1], [TW - 1.5, 0.66], [TK - 2, 0.66], [TK - 1.5, 1.05], [TD - 2, 1.05], [TD - 1.5, 1], [LOOP, 1]],
+  // close up in space the moon's own colours, brought out a little (blue titanium-rich seas,
+  // browner iron-rich ones), as in the enhanced-colour photographs
+  mineral: [[0, 0], [TC, 0], [TC + 45, 0.45], [TO, 0.45], [TO + 1, 0.3], [TA, 0.3], [TA + 1, 0.4], [TS, 0.4], [TS + 1, 0.2], [TU, 0.2], [TU + 0.5, 0], [LOOP, 0]],
+  // light shafts toward the moon by the sea (the shadows of the clouds), and a wide aureole
+  // round it in hazy air
+  rays: [[0, 0], [TW - 2, 0], [TW - 1.5, 0.35], [TK - 2, 0.35], [TK - 1.5, 0], [LOOP, 0]],
+  aureole: [[0, 0], [TW - 2, 0], [TW - 1.5, 0.7], [TK - 2, 0.7], [TK - 1.5, 1.0], [TD - 2, 1.0], [TD - 1.5, 0], [LOOP, 0]],
+  // which look (LOOKS in main.js): 1 the sea, 2 the mist
+  look: [[0, 0], [TW - 2, 0], [TW - 1.5, 1], [TK - 2, 1], [TK - 1.5, 2], [TD - 2, 2], [TD - 1.5, 0], [LOOP, 0]],
+  // a night photograph's split toning by the sea and in the mist
+  tone: [[0, 0], [TW - 2, 0], [TW - 1.5, 0.45], [TK - 2, 0.45], [TK - 1.5, 0.55], [TD - 2, 0.55], [TD - 1.5, 0], [LOOP, 0]],
   terrainOn: [[0, 1], [392, 1], [393.5, 0], [TD - 2, 0], [TD, 1], [LOOP, 1]],
-  camAlt: [[0, EYE_ALT], [392, EYE_ALT], [394.5, 3300], [430, 5600], [468, 23000], [472, 23000], [TW - 2, 23000], [TW - 1.5, SEA_EYE],
-    [TD - 2, SEA_EYE], [TD - 1.5, EYE_ALT], [LOOP, EYE_ALT]],
+  camAlt: [[0, EYE_ALT], [392, EYE_ALT], [394.5, 3300], [430, 5600], [468, 23000], [472, 23000],
+    [TW - 2, 23000], [TW - 1.5, SEA_EYE], [TK - 2, SEA_EYE], [TK - 1.5, LAND_ALT], [TD - 2, LAND_ALT], [TD - 1.5, EYE_ALT], [LOOP, EYE_ALT]],
 
   // the moon on the sky: hour angle (deg); a full moon at dec +3 rises and sets near due
   // east and west, so it stays close to the middle of the side walls
@@ -86,8 +121,9 @@ const TRACKS = {
   H: [[0, -102.6], [30, -98.8], [60, -93.6], [120, -86.9], [175, -82.3], [250, -76.8], [300, -74.0], [380, -70.2], [TM, -68.7],
     [TD - 2, -68.7], [TD, 74.4], [TD + 56, 82.3], [TD + 111, 89.9], [TD + 139, 94.8], [TD + 156, 100.0], [LOOP, 101.1]],
   // the sun, below the horizon, opposite the moon
-  sunAz: [[0, 86], [TM, 86], [TD - 2, 86], [TD, -86], [LOOP, -86]],
-  sunEl: [[0, -2.6], [55, -4.4], [120, -8.0], [175, -12.4], [235, -17.5], [300, -20], [TM, -21], [TD - 2, -21], [TD + 1, -15], [TD + 89, -10], [TD + 144, -6.6], [LOOP, -6.0]],
+  sunAz: [[0, 86], [TM, 86], [TK - 2, 86], [TK - 1.5, -86], [LOOP, -86]],
+  sunEl: [[0, -2.6], [55, -4.4], [120, -8.0], [175, -12.4], [235, -17.5], [300, -20], [TM, -21], [TK - 2, -21],
+    [TK - 1.5, -14], [TD - 2.5, -12.5], [TD - 2, -21], [TD + 1, -15], [TD + 89, -10], [TD + 144, -6.6], [LOOP, -6.0]],
 
   // moon size / distance (log altitude above the surface, lunar radii). After the month
   // the moon comes into the corner (58-64 degrees wide), then hangs overhead (94-98), then
@@ -120,9 +156,11 @@ const TRACKS = {
   // it is low over the water in front.
   tgtAz: [[0, 0], [484, 0], [496, -22], [502, -22], [514, -64], [520, -64], [530, -90], [536, -90],
     [546, -118], [552, -118], [578, -242], [584, -242], [594, -270], [600, -270], [610, -296], [616, -296],
-    [628, -338], [634, -338], [646, -360], [TC, -360], [TC + 45, -405], [TO, -405], [TO + 1, -360], [TD - 2, -360], [TD, 0], [LOOP, 0]],
+    [628, -338], [634, -338], [646, -360], [TC, -360], [TC + 45, -405], [TO, -405], [TO + 1, -360], [TK - 2, -360],
+    [TK - 1.5, -354], [TD - 2, -350], [TD, 0], [LOOP, 0]],
   tgtEl: [[0, 9], [455, 9], [469, 12], [TC, 12], [TC + 45, 1], [TO, 1], [TO + 1, 60], [TA - 6, 56], [TA, 56],
-    [TA + 1, 8], [TA + 20, 3], [TA + 37, 0], [TS, 0], [TS + 1, -90], [TW - 2, -90], [TW - 1.5, 16], [TD - 2, 12.5], [TD - 1.5, 9], [LOOP, 9]],
+    [TA + 1, 8], [TA + 20, 3], [TA + 37, 0], [TS, 0], [TS + 1, -90], [TW - 2, -90],
+    [TW - 1.5, 1.8], [TW + 90, 5.5], [TK - 2, 14], [TK - 1.5, 21], [TD - 2, 17], [TD - 1.5, 9], [LOOP, 9]],
   // (it moves toward the front wall while hidden in the cloud, so it clears the corner)
   pathMix: [[0, 0], [391, 0], [408, 0.55], [455, 1], [TD - 2, 1], [TD, 0], [LOOP, 0]],
   // sub-solar point on the moon (deg). Full moon on the Earth nights (during the month the
@@ -144,19 +182,23 @@ const TRACKS = {
 
   // shooting stars on the Earth nights (chance of one starting, per second), and a shower
   // while the eclipse is total (the sky is darkest); stars twinkle most by the sea
-  meteors: [[0, 0], [100, 0], [140, 0.03], [370, 0.03], [385, 0], [TW - 2, 0], [TW + 10, 0.03], [TD - 2, 0.03], [TD, 0.02], [TD + 45, 0], [LOOP, 0]],
+  meteors: [[0, 0], [100, 0], [140, 0.03], [370, 0.03], [385, 0], [TW - 2, 0], [TW + 60, 0.03], [TK - 2, 0.03], [TK, 0], [TD - 2, 0], [TD, 0.02], [TD + 45, 0], [LOOP, 0]],
   shower: [[0, 0], [258, 0], [272, 1.2], [312, 1.2], [326, 0], [LOOP, 0]],
-  twinkle: [[0, 0.3], [TW - 2, 0.3], [TW, 1.0], [TD - 2, 1.0], [TD, 0.3], [LOOP, 0.3]],
+  twinkle: [[0, 0.3], [TW - 2, 0.3], [TW, 1.0], [TK - 2, 1.0], [TK, 0.3], [LOOP, 0.3]],
+  // over the sea a few more stars than the eye would see in moonlight, as in a long exposure
+  starBoost: [[0, 1], [TW - 2, 1], [TW - 1.5, 1.5], [TK - 2, 1.5], [TK - 1.5, 1], [LOOP, 1]],
 
   // Earth's shadow across the moon (lunar radii along the eclipse path)
   eclX: [[0, -9], [222, -9], [240, -5.3], [255, -3.4], [270, -1.6], [318, 1.6], [333, 3.4], [348, 5.3], [365, 9], [LOOP, 9]],
 
   // atmosphere and weather (by the sea: a little haze, a few high clouds)
-  mie: [[0, 1.6], [120, 1.35], [220, 1.1], [TM, 1.0], [TW - 2, 1.0], [TW - 1.5, 1.7], [TD - 2, 1.7], [TD + 1, 1.5], [LOOP, 1.8]],
+  mie: [[0, 1.6], [120, 1.35], [220, 1.1], [TM, 1.0], [TW - 2, 1.0],
+    [TW - 1.5, 1.7], [TK - 2, 1.7], [TK - 1.5, 1.8], [TD - 2.5, 1.8], [TD - 2, 1.7], [TD + 1, 1.5], [LOOP, 1.8]],
   fogTop: [[0, 1060], [300, 1150], [372, 1200], [390, 2400], [398, 2400], [400, 1100], [TD - 2, 1100], [TD + 1, 1120], [LOOP, 1080]],
   fogDens: [[0, 0.0055], [378, 0.0055], [390, 0.035], [397, 0.035], [399, 0.0], [TD - 2, 0.0], [TD, 0.0055], [LOOP, 0.0055]],
   cloudCov: [[0, 0.32], [150, 0.44], [215, 0.24], [370, 0.3], [386, 0.28], [393, 0.35], [398, 0.8], [406, 0.9], [440, 0.82], [TM, 0.82],
-    [TW - 2, 0.82], [TW - 1.5, 0.2], [TD - 2, 0.2], [TD + 1, 0.22], [LOOP, 0.2]],
+    [TW - 2, 0.82], [TW - 1.5, 0.2],
+    [TK - 2, 0.2], [TK - 1.5, 0.3], [TD - 2.5, 0.3], [TD - 2, 0.2], [TD + 1, 0.22], [LOOP, 0.2]],
   cloudDens: [[0, 0.0075], [388, 0.0075], [393, 0.02], [402, 0.02], [415, 0.009], [TW - 2, 0.009], [TW - 1.5, 0.006], [TD - 2, 0.006], [TD + 1, 0.0065], [LOOP, 0.0065]],
   windX: [[0, 0], [LOOP, (7000 * LOOP) / 945]],
   // the cloud the viewer rises through
@@ -167,22 +209,31 @@ const TRACKS = {
   blur: [[0, 10], [14, 10], [40, 0],
     [TO - 6, 0], [TO, 22], [TO + 2, 22], [TO + 12, 0], [TA - 6, 0], [TA, 22], [TA + 2, 22], [TA + 12, 0],
     [TS - 6, 0], [TS, 22], [TS + 2, 22], [TS + 12, 0], [TU - 6, 0], [TU, 22], [TU + 2, 22], [TU + 12, 0],
-    [TW - 9, 0], [TW - 3, 24], [TW + 1, 24], [TW + 16, 0], [TD - 9, 0], [TD - 3, 24], [TD + 1, 24], [TD + 16, 0], [LOOP - 12, 0], [LOOP, 14]],
+    [TW - 9, 0], [TW - 3, 24], [TW + 1, 24], [TW + 16, 0],
+    [TK - 9, 0], [TK - 3, 24], [TK + 1, 24], [TK + 16, 0], [TD - 9, 0], [TD - 3, 24], [TD + 1, 24], [TD + 16, 0], [LOOP - 12, 0], [LOOP, 14]],
   fade: [[0, 0], [10, 1], [464, 1], [469, 0.2], [474, 1],
     [TO - 6, 1], [TO, 0], [TO + 2, 0], [TO + 10, 1], [TA - 6, 1], [TA, 0], [TA + 2, 0], [TA + 10, 1],
     [TS - 6, 1], [TS, 0], [TS + 2, 0], [TS + 10, 1], [TU - 6, 1], [TU, 0], [TU + 2, 0], [TU + 10, 1],
-    [TW - 10, 1], [TW - 3, 0], [TW + 1, 0], [TW + 10, 1], [TD - 10, 1], [TD - 3, 0], [TD + 1, 0], [TD + 10, 1], [LOOP - 10, 1], [LOOP, 0]],
+    [TW - 10, 1], [TW - 3, 0], [TW + 1, 0], [TW + 10, 1],
+    [TK - 10, 1], [TK - 3, 0], [TK + 1, 0], [TK + 10, 1], [TD - 10, 1], [TD - 3, 0], [TD + 1, 0], [TD + 10, 1], [LOOP - 10, 1], [LOOP, 0]],
   // exposure: Earth scenes = automatic (sky model) + this bias, space scenes = absolute EV
-  ev: [[0, -0.3], [110, -0.1], [160, 0.3], [200, 0.0], [300, 0.1], [380, 0.0], [386, 0.0], [390, 0.0], [396, -0.1], [404, -0.3], [416, -0.5], [TM, -0.5],
+  // (shaped from the rendered frames so the brightness changes gradually: at the end of
+  // dusk the eye keeps the landscape as the twilight goes and the moonlight takes over; in
+  // the fog and the cloud the viewer rises through it stays even; at dawn the twilight
+  // comes in without the moonlit ground first going dark)
+  ev: [[0, -0.3], [54, -0.246], [71, -0.074], [83, 0.338], [97, 0.621], [122, 1.393], [133, 2.087], [139, 2.663], [152, 3.138], [160, 2.799], [163, 2.253], [165, 1.392], [166, 0.99], [169, 0.268], [172, 0.123], [185, 0.122], [200, 0], [300, 0.1],
+    [372, 0.003], [375, 0.026], [378, -0.066], [380, 0.021], [383, -0.432], [387, 0.295], [392, 0.607], [393, -0.761], [394, -0.944], [397, -0.844], [400, -0.897], [403, -1.148], [405, -1.43], [406, -1.431], [408, -0.935], [410, -0.657], [426, -0.5], [TM, -0.5],
     [475, 0.3], [TC, 0.3], [TC + 45, 0.35], [TO, 0.35], [TO + 1, 0.5], [TA, 0.5], [TA + 1, 0.6], [TA + 35, 0.8], [TA + 67, 1.2], [TS, 1.3], [TS + 1, 0.8], [TU - 1, 0.8],
-    [TU, 5.0], [TU + 40, 4.8], [TU + 70, 4.8], [TU + 170, 3.6], [TW - 2, 3.6], [TW - 1.5, 0.0], [TD - 2, 0.0],
-    [TD + 1, 0.1], [TD + 56, 0.2], [TD + 111, 0.1], [LOOP, 0.0]],
+    [TU, 5.0], [TU + 40, 4.8], [TU + 70, 4.8], [TU + 170, 3.6], [TW - 2, 3.6],
+    [TW - 1.5, 0.0], [TK - 2, 0.0], [TK - 1.5, -0.2], [TD - 2.5, -0.2], [TD - 2, 0.0],
+    [TD + 1, 0.1], [TD + 14, 0.159], [TD + 28, 0.047], [TD + 41, 0.319], [TD + 45, 1.106], [TD + 47, 1.503], [TD + 51, 2.006], [TD + 58, 2.374], [TD + 81, 2.756], [TD + 100, 2.281], [TD + 105, 1.857], [TD + 114, 1.291], [TD + 131, 0.663], [TD + 140, 0.399], [TD + 147, 0.01], [TD + 152, -0.369], [TD + 155, -0.195], [TD + 156, 0.002], [LOOP, 0.0]],
   vig: [[0, 0.72], [466, 0.72], [474, 0.55], [TW - 2, 0.55], [TW + 1, 0.72], [LOOP, 0.72]],
   bloom: [[0, 0.5], [TM, 0.5], [475, 0.2], [TS, 0.2], [TS + 1, 0.1], [TW - 2, 0.1], [TW + 1, 0.5], [LOOP, 0.5]],
   halation: [[0, 0.55], [TM, 0.55], [475, 0.2], [TS, 0.2], [TS + 1, 0.0], [TW - 2, 0.0], [TW + 1, 0.55], [LOOP, 0.55]],
-  glow: [[0, 0.6], [TM, 0.6], [475, 0.1], [TW - 2, 0.1], [TW + 1, 0.6], [LOOP, 0.6]],
+  glow: [[0, 0.6], [TM, 0.6], [475, 0.1], [TW - 2, 0.1], [TW + 1, 0.6], [TK - 2, 0.6], [TK - 1.5, 0.9], [TD - 2, 0.9], [TD - 1.5, 0.6], [LOOP, 0.6]],
   refr: [[0, 0.9], [LOOP, 0.9]],
-  shimmer: [[0, 0.5], [120, 0.15], [200, 0.0], [TD + 1, 0.0], [TD + 89, 0.2], [LOOP, 0.5]],
+  shimmer: [[0, 0.5], [120, 0.15], [200, 0.0], [TW - 2, 0.0], [TW - 1.5, 0.4], [TW + 150, 0.1], [TK - 2, 0.0],
+    [TD + 1, 0.0], [TD + 89, 0.2], [LOOP, 0.5]],
   limbSoft: [[0, 0.12], [60, 0.12], [120, 0], [LOOP - 45, 0], [LOOP, 0.1]],
   lodBias: [[0, 1.2], [50, 1.2], [110, 0], [LOOP - 45, 0], [LOOP, 1.0]],
 
