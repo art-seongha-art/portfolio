@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>배양 정원 — 세균과 곰팡이가 피어나는 접시</title>
+<meta property="og:title" content="배양 정원 · SEONGHA PARK">
+<meta property="og:description" content="손짓으로 포자를 심고 온기로 발아시키는 실시간 배양접시. 세균 콜로니와 곰팡이가 생장 모델을 따라 서서히 피어난다.">
+
+<!--
+  ── 생장 규칙의 근거 ─────────────────────────────────────────────
+  세균: 마츠시타(Matsushita)·후지카와의 고초균 콜로니 형태도를 따른다.
+        한천 굳기 × 영양 농도에 따라 DLA형 가지 뻗기, Eden형 둥근 덩이,
+        동심원 고리(이동-정착 반복), 매끈한 원판이 갈라진다.
+        수식은 Kitsunezaki 계열 — 밀도 의존(비선형) 확산 ∇·(Db·b∇b)에
+        Monod 포화 영양 소비를 결합한 반응-확산 두 마당(b, n).
+        ∇·(b∇b) = ½∇²(b²) 로 이산화한다.
+  곰팡이: Boswell 계열 균사 선단 신장·분지 모델을 GPU에서 감당할 수 있는
+        반응-확산 근사로 옮겼다. 굳은(quenched) 잡음이 한천의 미세한
+        불균질을 흉내 내 가장자리가 실제 균사 다발처럼 삐죽삐죽해진다.
+        보송한 기중균사는 셸 텍스처링(fur) 열두어 겹으로 세운다.
+        군집 중심부터 나이 들며 포자가 앉아 색이 짙어지고(가장자리는
+        늘 하얀 어린 균사), 밤낮 리듬처럼 색 고리가 진다.
+  상호작용: 페니실륨 둘레에는 세균이 못 붙는 저지선(항생 억제)이 생기고,
+        군집끼리는 영양을 먼저 빨아들여 서로 자연스럽게 비켜 자란다.
+  ────────────────────────────────────────────────────────────────
+-->
+
+<style>
+  :root { color-scheme: dark; }
+  html,body { margin:0; height:100%; background:#ececee; overflow:hidden;
+              font:13px/1.5 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif; color:#cfd3da; }
+  #c { position:fixed; inset:0; width:100%; height:100%; display:block; touch-action:none; }
+
+  #panel { position:fixed; top:12px; right:12px; width:250px; max-height:calc(100vh - 24px);
+           overflow-y:auto; padding:12px 6px 14px 13px; border-radius:11px;
+           scrollbar-width:thin; scrollbar-color:#5a6474 rgba(255,255,255,.05);
+           background:rgba(14,16,20,.82); backdrop-filter:blur(14px);
+           border:1px solid rgba(255,255,255,.09); z-index:10; transition:opacity .2s; }
+  #panel.hidden { opacity:0; pointer-events:none; }
+  #panel h2 { margin:0 0 9px; font-size:12px; font-weight:600; letter-spacing:.02em; color:#eef1f5; }
+  #panel h3 { margin:9px 0 4px; font-size:10.5px; font-weight:600; letter-spacing:.05em;
+              color:#8a93a2; border-top:1px solid rgba(255,255,255,.07); padding-top:8px; }
+  #panel h3:first-of-type { border-top:0; }
+  .row { display:flex; align-items:center; gap:7px; margin:5px 0; }
+  .row label { flex:1 1 auto; font-size:11.5px; color:#a9b0bc; }
+  .row .val { flex:0 0 42px; text-align:right; font-variant-numeric:tabular-nums; font-size:11px; color:#7f8794; }
+  .row input[type=range] { flex:0 0 96px; height:3px; -webkit-appearance:none; background:#2b3038; border-radius:2px; }
+  .row input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:11px; height:11px;
+       border-radius:50%; background:#c8ced8; cursor:pointer; }
+  .row input[type=checkbox] { accent-color:#7d8896; }
+  .row select.pick { flex:0 0 104px; background:#22262e; color:#cfd3da; font-size:11px;
+        border:1px solid rgba(255,255,255,.1); border-radius:5px; padding:2px 4px; }
+  button.act { width:100%; margin-top:9px; padding:7px; border-radius:7px; cursor:pointer;
+        background:#232830; color:#cfd3da; border:1px solid rgba(255,255,255,.1); font-size:11.5px; }
+  button.act:hover { background:#2b313a; color:#fff; }
+
+  #cammsg { position:fixed; left:12px; right:12px; bottom:56px; z-index:11; font-size:11.5px;
+            line-height:1.5; color:#e6c98a; padding:7px 10px; border-radius:8px;
+            background:rgba(20,17,12,.82); backdrop-filter:blur(10px);
+            border:1px solid rgba(230,201,138,.22); transition:opacity .2s; }
+  #cammsg.hidden { opacity:0; pointer-events:none; }
+  /* 배경이 흰 스튜디오라 글씨는 어둡게 */
+  #hint { position:fixed; left:14px; bottom:12px; z-index:10; font-size:11.5px; color:#8a9099;
+          line-height:1.7; transition:opacity .2s; }
+  #hint.hidden { opacity:0; }
+  #hint b { color:#4a5058; font-weight:600; }
+  #clock { position:fixed; left:14px; top:14px; z-index:12; font-size:23px; font-weight:700;
+         line-height:1.1; color:#33373d; font-variant-numeric:tabular-nums;
+         text-shadow:0 1px 8px rgba(255,255,255,.7); transition:opacity .2s; pointer-events:none; }
+  #clock.hidden { opacity:0; }
+  #clock small { display:block; font-size:10.5px; font-weight:500; color:#8b919b; letter-spacing:.02em; }
+  #boot { position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+          flex-direction:column; gap:14px; z-index:20; background:#ececee; transition:opacity .5s; }
+  #boot.gone { opacity:0; pointer-events:none; }
+  #boot p { margin:0; color:#6d747f; font-size:12.5px; }
+  #boot .bar { width:190px; height:2px; background:#d5d6da; border-radius:1px; overflow:hidden; }
+  #boot .bar i { display:block; height:100%; width:0; background:#7d848f; transition:width .3s; }
+  #cam { position:fixed; right:12px; bottom:12px; width:168px; border-radius:8px; z-index:10;
+         transform:scaleX(-1); opacity:.34; border:1px solid rgba(255,255,255,.08); transition:opacity .2s; }
+  #cam.hidden { opacity:0; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<video id="cam" class="hidden" autoplay playsinline muted></video>
+
+<div id="clock"><span id="clockDay">0일 0시간</span><small id="clockSub">배양 시간 · 군집 0</small></div>
+
+<div id="panel">
+  <h2>배양 정원 <span style="color:#6b7381;font-weight:400">— 세균·곰팡이 생장</span></h2>
+
+  <h3>배양</h3>
+  <div class="row"><label>배속</label><input type="range" id="r배속" min="0.25" max="8" step="0.25" value="1"><span class="val" id="v배속">1×</span></div>
+  <div class="row"><label>한천 부드러움</label><input type="range" id="r한천" min="0.06" max="0.5" step="0.01" value="0.26"><span class="val" id="v한천">0.26</span></div>
+  <div class="row"><label>영양분 (새 접시)</label><input type="range" id="r영양" min="0.3" max="1" step="0.05" value="0.85"><span class="val" id="v영양">0.85</span></div>
+  <div class="row"><label>떠다니는 포자</label><input type="range" id="r포자바람" min="0" max="1" step="0.05" value="0.35"><span class="val" id="v포자바람">0.35</span></div>
+  <div class="row"><label>배지</label><select class="pick" id="s배지"></select></div>
+  <button class="act" id="b접시">새 접시 붓기 (R)</button>
+  <button class="act" id="b한줌">포자 한 줌 뿌리기</button>
+
+  <h3>보기</h3>
+  <div class="row"><label>곰팡이 털 길이</label><input type="range" id="r털" min="0.3" max="2" step="0.05" value="1"><span class="val" id="v털">1.0</span></div>
+  <div class="row"><label>블룸</label><input type="checkbox" id="c블룸" checked></div>
+  <div class="row"><label>화질</label><select class="pick" id="s화질">
+    <option value="2">좋게</option><option value="1" selected>보통</option><option value="0">가볍게</option></select></div>
+
+  <h3>손보기</h3>
+  <div class="row"><label>손 인식 (C)</label><input type="checkbox" id="c손" checked></div>
+  <div class="row"><label>웹캠 미리보기</label><input type="checkbox" id="c미리"></div>
+  <div class="row"><label>손인식 CPU</label><input type="checkbox" id="c손CPU"></div>
+</div>
+
+<div id="cammsg" class="hidden"></div>
+<div id="hint">
+  <b>손바닥</b>을 펴서 대면 온기 — 생장이 빨라지고 잠든 포자가 발아<br>
+  <b>엄지+검지 꼬집기</b> 포자 심기 · <b>주먹</b>은 냉기 — 생장 억제<br>
+  <b>끌기</b> 둘러보기 · <b>휠</b> 다가가기 · <b>클릭</b> 포자 심기 · <b>H</b> 화면 정리 · <b>F</b> 전체화면
+</div>
+
+<div id="boot"><p id="bootMsg">한천을 붓는 중…</p><div class="bar"><i id="bootBar"></i></div></div>
+
+<script type="importmap">
+{"imports":{
+  "three":"../wing-mobile/libs/three/three.module.js",
+  "three/addons/":"../wing-mobile/libs/three/addons/"
+}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { HDRLoader }       from 'three/addons/loaders/HDRLoader.js';
+import { EffectComposer }  from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass }      from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass }      from 'three/addons/postprocessing/OutputPass.js';
+
+const 손닿는기기 = matchMedia('(pointer:coarse)').matches || navigator.maxTouchPoints > 1;
+
+// ────────────────────────────────────────────────────────────────
+// 조절값
+// ────────────────────────────────────────────────────────────────
+const P = {
+  배속: 1,
+  한천부드러움: 0.26,   // 마츠시타 형태도의 가로축. 작으면 굳은 한천 → DLA 가지
+  영양0: 0.85,          // 세로축. 리셋할 때 붓는다
+  포자바람: 0.35,       // 저절로 날아드는 포자 빈도
+  털길이: 1.0,
+  블룸: true,
+  화질: 손닿는기기 ? 0 : 1,
+  손켬: true, 미리보기: false, 손CPU: 손닿는기기,
+};
+
+// 화질 단계 → 시뮬 해상도 · 융단 겹수 · 한천 격자
+const 화질표 = [
+  { 시뮬: 320, 겹: 7,  격자: 128, dpr: 1.5 },
+  { 시뮬: 512, 겹: 12, 격자: 192, dpr: 2 },
+  { 시뮬: 640, 겹: 16, 격자: 256, dpr: 2 },
+];
+
+// 접시 치수 (월드 단위)
+const 한천반경 = 1.15, 유리반경 = 1.24, 유리높이 = 0.30, 한천두께 = 0.115;
+const 맵반경 = 1.30;              // 시뮬 uv 정사각형이 덮는 반경
+const 접시반경비 = 한천반경 / 맵반경;   // 셰이더의 접시 가장자리 (uv 좌표계)
+
+// ────────────────────────────────────────────────────────────────
+// 종 도감 — 시뮬 매개변수와 겉모습
+//   diff 확산(퍼지는 힘) · grow 증식 · branch 굳은잡음(가지 뻗기) ·
+//   ring 세균=이동-정착 고리 진동수 / 곰팡이=색 고리 · gloss 축축한 광 ·
+//   fuzz 융단 높이 · height 두께 · wrink 주름
+// ────────────────────────────────────────────────────────────────
+const 종들 = [
+  // 세균 (0–5) — 축축하고 반들반들, 융단 없음
+  { 이름:'황색 포도상구균풍', 어림:'#e7b83c', 성숙:'#cf951f', diff:0.55, grow:1.05, branch:0.15, ring:0,   gloss:0.10, fuzz:0,     height:0.050, wrink:0.22 },
+  { 이름:'세라티아풍(붉음)',  어림:'#d95b45', 성숙:'#a52c1e', diff:0.50, grow:1.00, branch:0.12, ring:0,   gloss:0.09, fuzz:0,     height:0.046, wrink:0.30 },
+  { 이름:'프로테우스풍(고리)', 어림:'#e3d9c2', 성숙:'#c9bc9c', diff:1.65, grow:1.15, branch:0.10, ring:0.26,gloss:0.28, fuzz:0,     height:0.020, wrink:0.10 },
+  { 이름:'슈도모나스풍',      어림:'#cbe063', 성숙:'#97b937', diff:0.80, grow:1.10, branch:0.22, ring:0,   gloss:0.13, fuzz:0,     height:0.032, wrink:0.18 },
+  { 이름:'크로모박테리움풍',  어림:'#8a58a8', 성숙:'#38204e', diff:0.45, grow:0.90, branch:0.14, ring:0,   gloss:0.08, fuzz:0,     height:0.048, wrink:0.38 },
+  { 이름:'고초균풍(가지)',    어림:'#efe9d6', 성숙:'#d6ccae', diff:0.15, grow:0.95, branch:0.88, ring:0,   gloss:0.45, fuzz:0,     height:0.026, wrink:0.26 },
+  // 곰팡이 (6–11) — 가장자리는 어린 흰 균사, 중심부터 포자색으로 짙어진다
+  { 이름:'푸른곰팡이',   어림:'#f2f4ee', 성숙:'#3f7a62', diff:0.80, grow:0.55, branch:0.50, ring:2.2, gloss:0.92, fuzz:0.052, height:0.030, wrink:0.30 },
+  { 이름:'검은곰팡이',   어림:'#efe8d8', 성숙:'#221d19', diff:0.90, grow:0.60, branch:0.45, ring:0,   gloss:0.95, fuzz:0.078, height:0.036, wrink:0.34 },
+  { 이름:'누룩곰팡이',   어림:'#f0eddc', 성숙:'#9d9339', diff:0.85, grow:0.58, branch:0.52, ring:1.4, gloss:0.9,  fuzz:0.060, height:0.030, wrink:0.28 },
+  { 이름:'붉은빵곰팡이', 어림:'#f6e3d4', 성숙:'#d96a35', diff:1.30, grow:0.80, branch:0.60, ring:0,   gloss:0.88, fuzz:0.092, height:0.040, wrink:0.24 },
+  { 이름:'털곰팡이',     어림:'#f4f2ee', 성숙:'#a39c93', diff:1.10, grow:0.70, branch:0.72, ring:0,   gloss:0.9,  fuzz:0.115, height:0.044, wrink:0.20 },
+  { 이름:'청록곰팡이',   어림:'#eef3ea', 성숙:'#2f8f5b', diff:1.00, grow:0.75, branch:0.42, ring:2.8, gloss:0.9,  fuzz:0.050, height:0.028, wrink:0.26 },
+];
+
+const 배지들 = [
+  { 이름:'물감 놀이',    색:'#e8e2ee', 거칠기:0.13, 무지개:1 },   // 레퍼런스처럼 물감 푼 한천
+  { 이름:'LB 한천',      색:'#c99b5f', 거칠기:0.16 },
+  { 이름:'혈액 한천',    색:'#9c2420', 거칠기:0.14 },
+  { 이름:'사부로 한천',  색:'#decf9c', 거칠기:0.17 },
+  { 이름:'EMB 한천',     색:'#4b3a52', 거칠기:0.13 },
+  { 이름:'메틸렌블루',   색:'#3e6b85', 거칠기:0.15 },
+];
+let 배지 = 0;
+
+// ────────────────────────────────────────────────────────────────
+// 판 깔기
+// ────────────────────────────────────────────────────────────────
+const 붓 = (n, t) => { document.getElementById('bootBar').style.width = n + '%';
+                       if (t) document.getElementById('bootMsg').textContent = t; };
+
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+if (!renderer.getContext().getParameter) throw new Error('WebGL 없음');
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#ececee');    // 흰 스튜디오
+const camera = new THREE.PerspectiveCamera(42, 1, 0.05, 30);
+
+// 궤도 — addons 에 컨트롤이 없어서 손수 만든다. 레퍼런스처럼 위에서 내려다본다
+const 궤도 = { 방위: 0.55, 극: 0.30, 극목표: 0.30, 방위목표: 0.55, 거리: 3.55, 거리목표: 3.55 };
+function 카메라놓기() {
+  const r = 궤도.거리, 극 = 궤도.극, 방 = 궤도.방위;
+  camera.position.set(r*Math.sin(극)*Math.sin(방), r*Math.cos(극), r*Math.sin(극)*Math.cos(방));
+  camera.position.y += 한천두께;
+  camera.lookAt(0, 한천두께 + 0.02, 0);
+}
+
+// 스튜디오 조명 — 큰 키라이트 + 반대편 필라이트 + 넉넉한 앰비언트
+const 해 = new THREE.DirectionalLight('#fffdf7', 1.5);
+해.position.set(1.6, 2.8, 1.1);
+const 필 = new THREE.DirectionalLight('#eef2ff', 0.45);
+필.position.set(-1.8, 1.6, -1.3);
+scene.add(해, 필, new THREE.AmbientLight('#ffffff', 0.32));
+
+// ────────────────────────────────────────────────────────────────
+// GPGPU 시뮬 — MRT 핑퐁 (상태 + 혈통)
+//   상태: R 세균 b · G 곰팡이 f · B 영양 n · A 나이(-1 = 휴면 포자)
+//   혈통: R 종번호 (i+1)/16 · G 군집 난수 · B 예비 · A 굳은잡음 씨앗
+// ────────────────────────────────────────────────────────────────
+const 시뮬머리 = /* glsl */`
+precision highp float;
+float h21(vec2 p){ p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32); return fract(p.x*p.y); }
+float vno(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.-2.*f);
+  return mix(mix(h21(i),h21(i+vec2(1,0)),f.x), mix(h21(i+vec2(0,1)),h21(i+vec2(1,1)),f.x), f.y); }
+float fbm(vec2 p){ return 0.55*vno(p)+0.3*vno(p*2.13)+0.15*vno(p*4.71); }
+`;
+
+const 시뮬정점 = /* glsl */`
+in vec3 position; in vec2 uv; out vec2 vUv;
+void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`;
+
+const 시뮬본체 = /* glsl */`
+uniform sampler2D uS, uI;
+uniform vec2  uPx;
+uniform float uDt, uT, uAgar, uGerm, uDishR;
+uniform vec4  uPts[4];   uniform int uPtN;    // xy 자리, z 온기(+)/냉기(-), w 반경
+uniform vec4  uDrops[6]; uniform int uDropN;  // xy 자리, z 종번호, w 씨앗
+uniform vec4  uSpec[12];                      // diff, grow, branch, ring
+in vec2 vUv;
+layout(location=0) out vec4 oS;
+layout(location=1) out vec4 oI;
+
+void main(){
+  vec2 Pw = (vUv - 0.5) * 2.0;
+  float mask = 1.0 - smoothstep(uDishR - 0.015, uDishR, length(Pw));
+  vec4 s  = texture(uS, vUv);
+  vec4 id = texture(uI, vUv);
+  float b = s.r, f = s.g, n = s.b, age = s.a;
+
+  // 이웃 아홉 칸 — 휴면 포자의 생물량은 퍼지지 않는다
+  float lapB2 = 0.0, lapF = 0.0, lapN = 0.0;
+  float bestM = 0.0; vec2 bestUV = vUv;
+  for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
+    if (i == 0 && j == 0) continue;
+    vec2 u2 = vUv + vec2(float(i), float(j)) * uPx;
+    vec4 ns = texture(uS, u2);
+    float live = step(-0.5, ns.a);
+    float nb = ns.r * live, nf = ns.g * live;
+    float w = (i == 0 || j == 0) ? 0.2 : 0.05;
+    lapB2 += w * nb * nb;  lapF += w * nf;  lapN += w * ns.b;
+    float m = nb + nf;
+    if (m > bestM) { bestM = m; bestUV = u2; }
+  }
+  float selfLive = step(-0.5, age);
+  lapB2 -= (b*b*selfLive);  lapF -= f*selfLive;  lapN -= n;
+
+  // 손의 입김
+  float warm = 0.0, cold = 0.0;
+  for (int k = 0; k < 4; k++) { if (k >= uPtN) break;
+    float d = distance(vUv, uPts[k].xy);
+    float g = exp(-d*d / (uPts[k].w * uPts[k].w));
+    warm += max(uPts[k].z, 0.0) * g;  cold += max(-uPts[k].z, 0.0) * g; }
+
+  int sp = int(id.r * 16.0 + 0.5) - 1;
+
+  if (age < -0.5) {
+    // 휴면 포자 — 온기가 닿거나 아주 드물게 저절로 깨어난다
+    float ger = uGerm * uDt + warm * 0.01 * uDt;
+    if (h21(vUv * 913.7 + fract(uT * 0.173)) < ger) age = 0.001;
+    oS = vec4(b, f, n + uDt * 0.12 * lapN, age) * vec4(mask, mask, mask, 1.0);
+    oI = id;
+  } else {
+    // 빈 칸이면 다가오는 이웃의 종 규칙을 미리 쓴다 (경계 전진)
+    int spE = sp; vec4 idE = id;
+    if (sp < 0 && bestM > 0.003) { idE = texture(uI, bestUV); spE = int(idE.r * 16.0 + 0.5) - 1; }
+    vec4 sd = (spE >= 0) ? uSpec[spE] : vec4(0.0);
+    bool mold = spE >= 6;
+
+    float mono = n / (n + 0.38);
+    float q  = fbm(vUv * 150.0 + idE.a * 41.3);
+    float nm = mix(1.0, 0.25 + 1.7 * q, sd.z);          // 굳은잡음 → 가지
+    float speed = (1.0 + 2.2 * warm) / (1.0 + 4.5 * cold);
+    float grow = sd.y * mono * nm * speed;
+
+    if (spE >= 0) {
+      if (!mold) {
+        float gate = 1.0;   // 프로테우스풍: 이동-정착을 되풀이해 고리가 남는다
+        if (sd.w > 0.0) gate = smoothstep(-0.1, 0.3, sin(uT * sd.w + idE.g * 6.2831));
+        b += uDt * (uAgar * sd.x * gate * 0.5 * lapB2 + grow * b * (1.0 - b));
+        b -= uDt * b * (2.6 * f + 0.004 * (1.0 - mono));   // 항생 억제 + 굶주림
+      } else {
+        f += uDt * (0.055 * sd.x * lapF + grow * f * (1.0 - f));
+        f -= uDt * f * (0.20 * b * step(b, 0.6) + 0.003 * (1.0 - mono));
+      }
+      n -= uDt * (0.18 * mono * b + 0.12 * (n / (n + 0.5)) * f);
+      if (b + f > 0.06) age += uDt * 0.015 * (0.35 + 0.65 * mono) * speed;
+    }
+    n += uDt * 0.12 * lapN;
+
+    // 갓 개척된 칸은 혈통을 물려받는다
+    if ((s.r + s.g) < 0.012 && (b + f) >= 0.012 && sp < 0) { id = idE; age = max(age, 0.001); }
+    if ((b + f) < 0.004) { id = vec4(0.0); age = min(age, 0.0); }
+
+    oS = vec4(clamp(b,0.0,1.2), clamp(f,0.0,1.2), clamp(n,0.0,1.2), age) * vec4(mask,mask,mask,1.0);
+    oI = id;
+  }
+
+  // 포자 떨어뜨리기 — 씨앗이 음수면 심자마자 깨어난다
+  for (int k = 0; k < 6; k++) { if (k >= uDropN) break;
+    float d = distance(vUv, uDrops[k].xy);
+    if (d < 0.008) {
+      float spN = uDrops[k].z;
+      float seed = abs(uDrops[k].w);
+      bool m2 = spN >= 5.5;
+      float amt = 0.05 * (1.0 - d / 0.008);
+      oS.r = m2 ? oS.r : max(oS.r, amt);
+      oS.g = m2 ? max(oS.g, amt) : oS.g;
+      oS.a = (uDrops[k].w < 0.0) ? 0.001 : -1.0;
+      oI = vec4((spN + 1.0) / 16.0, h21(vec2(seed, 3.7)), 0.0, seed);
+    } }
+  if (mask <= 0.0) { oS = vec4(0.0); oI = vec4(0.0); }
+}`;
+
+const 초기본체 = /* glsl */`
+uniform float uN0, uDishR;
+in vec2 vUv;
+layout(location=0) out vec4 oS;
+layout(location=1) out vec4 oI;
+void main(){
+  vec2 Pw = (vUv - 0.5) * 2.0;
+  float mask = 1.0 - smoothstep(uDishR - 0.015, uDishR, length(Pw));
+  float n = uN0 * (0.92 + 0.16 * fbm(vUv * 9.0));   // 부을 때 생긴 얼룩
+  oS = vec4(0.0, 0.0, n * mask, 0.0);
+  oI = vec4(0.0);
+}`;
+
+let 시뮬해상도 = 화질표[P.화질].시뮬;
+let 판A, 판B, 시뮬물, 초기물;
+const 시뮬장면 = new THREE.Scene();
+const 시뮬카메라 = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+const 시뮬판떼기 = new THREE.Mesh(new THREE.PlaneGeometry(2, 2));
+시뮬장면.add(시뮬판떼기);
+
+function 판만들기(res) {
+  const opt = { count: 2, type: THREE.HalfFloatType, depthBuffer: false,
+    minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter,
+    wrapS: THREE.ClampToEdgeWrapping, wrapT: THREE.ClampToEdgeWrapping };
+  return new THREE.WebGLRenderTarget(res, res, opt);
+}
+
+const 종시뮬 = 종들.map(z => new THREE.Vector4(z.diff, z.grow, z.branch, z.ring));
+function 시뮬재료만들기() {
+  시뮬물 = new THREE.RawShaderMaterial({
+    glslVersion: THREE.GLSL3, vertexShader: 시뮬정점,
+    fragmentShader: 시뮬머리 + 시뮬본체,
+    uniforms: {
+      uS: { value: null }, uI: { value: null },
+      uPx: { value: new THREE.Vector2(1/시뮬해상도, 1/시뮬해상도) },
+      uDt: { value: 0.35 }, uT: { value: 0 },
+      uAgar: { value: P.한천부드러움 }, uGerm: { value: 0.00012 },
+      uDishR: { value: 접시반경비 },
+      uPts: { value: [0,0,0,0].map(() => new THREE.Vector4()) }, uPtN: { value: 0 },
+      uDrops: { value: [0,0,0,0,0,0].map(() => new THREE.Vector4()) }, uDropN: { value: 0 },
+      uSpec: { value: 종시뮬 },
+    } });
+  초기물 = new THREE.RawShaderMaterial({
+    glslVersion: THREE.GLSL3, vertexShader: 시뮬정점,
+    fragmentShader: 시뮬머리 + 초기본체,
+    uniforms: { uN0: { value: P.영양0 }, uDishR: { value: 접시반경비 } } });
+}
+시뮬재료만들기();
+
+let 시뮬시간 = 0;                        // 셰이더 고리 진동에 쓰는 누적 시간
+function 접시붓기() {
+  판A?.dispose(); 판B?.dispose();
+  시뮬해상도 = 화질표[P.화질].시뮬;
+  판A = 판만들기(시뮬해상도); 판B = 판만들기(시뮬해상도);
+  시뮬물.uniforms.uPx.value.set(1/시뮬해상도, 1/시뮬해상도);
+  초기물.uniforms.uN0.value = P.영양0;
+  시뮬판떼기.material = 초기물;
+  for (const 판 of [판A, 판B]) { renderer.setRenderTarget(판); renderer.render(시뮬장면, 시뮬카메라); }
+  renderer.setRenderTarget(null);
+  시뮬판떼기.material = 시뮬물;
+  시뮬시간 = 0; 배양분 = 0;
+}
+
+// 이번 프레임에 떨어뜨릴 포자 줄서기
+const 포자줄 = [];
+function 포자심기(uvx, uvy, 종번호 = -1, 깨움 = false) {
+  const r = Math.hypot((uvx - 0.5) * 2, (uvy - 0.5) * 2);
+  if (r > 접시반경비 - 0.03) return;
+  if (종번호 < 0) 종번호 = Math.floor(Math.random() * 12);
+  포자줄.push({ x: uvx, y: uvy, 종: 종번호, 씨: (깨움 ? -1 : 1) * (Math.random() * 100 + 1) });
+}
+function 포자한줌(개수 = 10) {
+  for (let i = 0; i < 개수; i++) {
+    const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * (접시반경비 - 0.06);
+    포자심기(0.5 + r * Math.cos(a) / 2, 0.5 + r * Math.sin(a) / 2);
+  }
+}
+
+function 시뮬돌리기(걸음수, 손점들) {
+  const u = 시뮬물.uniforms;
+  u.uAgar.value = P.한천부드러움;
+  u.uGerm.value = 0.0001 * (0.3 + P.포자바람 * 2);
+  u.uPtN.value = Math.min(4, 손점들.length);
+  for (let i = 0; i < u.uPtN.value; i++) u.uPts.value[i].copy(손점들[i]);
+  for (let s = 0; s < 걸음수; s++) {
+    if (s === 0 && 포자줄.length) {
+      u.uDropN.value = Math.min(6, 포자줄.length);
+      for (let i = 0; i < u.uDropN.value; i++) {
+        const d = 포자줄.shift();
+        u.uDrops.value[i].set(d.x, d.y, d.종, d.씨);
+      }
+    } else u.uDropN.value = 0;
+    u.uS.value = 판A.textures[0]; u.uI.value = 판A.textures[1];
+    renderer.setRenderTarget(판B); renderer.render(시뮬장면, 시뮬카메라);
+    [판A, 판B] = [판B, 판A];
+    시뮬시간 += u.uDt.value;
+  }
+  renderer.setRenderTarget(null);
+}
+
+// ────────────────────────────────────────────────────────────────
+// 접시 — 유리·한천·군집·융단
+// ────────────────────────────────────────────────────────────────
+const 씬맡 = new THREE.Group(); scene.add(씬맡);
+
+// 탁자 — 흰 촬영대. 가운데가 살짝 밝다
+{
+  const 캔 = document.createElement('canvas'); 캔.width = 캔.height = 256;
+  const g = 캔.getContext('2d');
+  const 그 = g.createRadialGradient(128,128,10, 128,128,128);
+  그.addColorStop(0, '#fbfbfc'); 그.addColorStop(1, '#dcdde1');
+  g.fillStyle = 그; g.fillRect(0,0,256,256);
+  const 탁자 = new THREE.Mesh(new THREE.CircleGeometry(9, 48),
+    new THREE.MeshStandardMaterial({ map: new THREE.CanvasTexture(캔), roughness: 0.9 }));
+  탁자.rotation.x = -Math.PI/2; 탁자.position.y = -0.012; 씬맡.add(탁자);
+  // 접시 그림자 흉내
+  const 캔2 = document.createElement('canvas'); 캔2.width = 캔2.height = 128;
+  const g2 = 캔2.getContext('2d');
+  const 그2 = g2.createRadialGradient(64,64,30, 64,64,64);
+  그2.addColorStop(0, 'rgba(40,42,50,.30)'); 그2.addColorStop(0.8, 'rgba(40,42,50,.12)'); 그2.addColorStop(1, 'rgba(40,42,50,0)');
+  g2.fillStyle = 그2; g2.fillRect(0,0,128,128);
+  const 그늘 = new THREE.Mesh(new THREE.PlaneGeometry(유리반경*2.9, 유리반경*2.9),
+    new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(캔2), transparent: true, depthWrite: false }));
+  그늘.rotation.x = -Math.PI/2; 그늘.position.y = -0.008; 씬맡.add(그늘);
+}
+
+// 유리 접시
+{
+  const 유리물 = new THREE.MeshPhysicalMaterial({
+    color: '#dbe4e9', roughness: 0.05, metalness: 0,
+    transmission: 1, thickness: 0.05, ior: 1.5, clearcoat: 1,
+    transparent: true, side: THREE.DoubleSide, depthWrite: false });
+  const 벽 = new THREE.Mesh(new THREE.CylinderGeometry(유리반경, 유리반경, 유리높이, 96, 1, true), 유리물);
+  벽.position.y = 유리높이/2; 벽.renderOrder = 2; 씬맡.add(벽);
+  const 테 = new THREE.Mesh(new THREE.TorusGeometry(유리반경, 0.009, 10, 96), 유리물);
+  테.rotation.x = Math.PI/2; 테.position.y = 유리높이; 테.renderOrder = 2; 씬맡.add(테);
+  const 바닥 = new THREE.Mesh(new THREE.CircleGeometry(유리반경, 96), 유리물);
+  바닥.rotation.x = -Math.PI/2; 바닥.position.y = 0.001; 바닥.renderOrder = 0; 씬맡.add(바닥);
+}
+
+// 셰이더 공용 — 군집 겉모습 도감
+const 종색어림 = 종들.map(z => new THREE.Color(z.어림));
+const 종색성숙 = 종들.map(z => new THREE.Color(z.성숙));
+const 종겉 = 종들.map(z => new THREE.Vector4(z.gloss, z.fuzz, z.height, z.wrink));
+const 종고리 = 종들.map(z => z.ring);
+
+const 겉머리 = /* glsl */`
+uniform sampler2D tS, tI;
+uniform vec3 uColY[12]; uniform vec3 uColM[12];
+uniform vec4 uMat[12]; uniform float uRingC[12];
+uniform vec3 uAgarCol; uniform float uAgarRough; uniform float uAgarSwirl;
+float g_h21(vec2 p){ p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32); return fract(p.x*p.y); }
+float g_vno(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.-2.*f);
+  return mix(mix(g_h21(i),g_h21(i+vec2(1,0)),f.x), mix(g_h21(i+vec2(0,1)),g_h21(i+vec2(1,1)),f.x), f.y); }
+float g_fbm(vec2 p){ return 0.55*g_vno(p)+0.3*g_vno(p*2.13)+0.15*g_vno(p*4.71); }
+int gSp(vec4 id){ return int(id.r*16.0+0.5)-1; }
+float cH(vec2 uvp){
+  vec4 s = texture2D(tS, uvp); vec4 id = texture2D(tI, uvp);
+  int sp = gSp(id); if (sp < 0 || s.a < -0.5) return 0.0;
+  vec4 mt = uMat[sp];
+  float mat = clamp(s.a * 0.9, 0.0, 1.0);
+  float hb = smoothstep(0.03, 0.85, s.r);
+  float hf = smoothstep(0.03, 0.75, s.g);
+  return mt.z * (sp < 6 ? hb * (0.7 + 0.3*mat) : hf * (0.5 + 0.5*mat) * 0.85);
+}
+float cHm(vec2 uvp){   // 잔주름까지 — 법선 뽑을 때만
+  vec4 s = texture2D(tS, uvp); vec4 id = texture2D(tI, uvp);
+  int sp = gSp(id); if (sp < 0 || s.a < -0.5) return 0.0;
+  vec4 mt = uMat[sp];
+  float mat = clamp(s.a * 0.9, 0.0, 1.0);
+  float body = cH(uvp);
+  float rid = abs(g_vno(uvp*95.0 + id.a*29.0)*2.0-1.0);   // 골 파인 주름
+  float w = mt.w * mat * (1.0-rid) * 0.018 * smoothstep(0.06,0.4,s.r+s.g);
+  return body + w;
+}
+`;
+
+let 한천물;
+function 한천만들기() {
+  const 격자 = 화질표[P.화질].격자;
+  const 기하 = new THREE.PlaneGeometry(맵반경*2, 맵반경*2, 격자, 격자);
+  const 물 = new THREE.MeshPhysicalMaterial({
+    color: '#ffffff', roughness: 0.16, clearcoat: 0.7, clearcoatRoughness: 0.25 });
+  물.defines = { USE_UV: '' };
+  물.onBeforeCompile = (sh) => {
+    sh.uniforms.tS = { value: null }; sh.uniforms.tI = { value: null };
+    sh.uniforms.uColY = { value: 종색어림 }; sh.uniforms.uColM = { value: 종색성숙 };
+    sh.uniforms.uMat = { value: 종겉 }; sh.uniforms.uRingC = { value: 종고리 };
+    sh.uniforms.uAgarCol = { value: new THREE.Color(배지들[배지].색) };
+    sh.uniforms.uAgarRough = { value: 배지들[배지].거칠기 };
+    sh.uniforms.uAgarSwirl = { value: 배지들[배지].무지개 ? 1 : 0 };
+    물.userData.sh = sh;
+    sh.vertexShader = 겉머리 + sh.vertexShader.replace('#include <begin_vertex>', /* glsl */`
+      #include <begin_vertex>
+      transformed.z += cH(uv);`);
+    sh.fragmentShader = (겉머리 + sh.fragmentShader)
+      .replace('#include <color_fragment>', /* glsl */`
+      #include <color_fragment>
+      {
+        if (length((vUv - 0.5) * 2.0) > ${접시반경비.toFixed(4)}) discard;   // 접시 밖 모서리는 없다
+        vec4 s = texture2D(tS, vUv); vec4 id = texture2D(tI, vUv);
+        int sp = gSp(id);
+        vec3 agarBase = uAgarCol;
+        if (uAgarSwirl > 0.5) {
+          // 물감을 풀어 넣은 한천 — 레퍼런스의 알록달록한 접시
+          float t1 = g_fbm(vUv*2.7 + 3.1) + 0.35*g_fbm(vUv*7.3 + 11.0);
+          float t2 = g_fbm(vUv*2.7 + 9.7);
+          agarBase = 0.46 + 0.40*cos(6.2831*(t1*1.15 + vec3(0.08,0.40,0.71) + t2*0.35));
+          agarBase *= 0.9;
+        }
+        // 영양을 빨린 자리는 뿌옇게 바랜다
+        vec3 agar = mix(agarBase, agarBase*0.6 + vec3(0.32), (1.0 - s.b) * 0.35);
+        vec3 col = agar;
+        if (sp >= 0 && s.a > -0.5) {
+          float mat = clamp(s.a*0.9, 0.0, 1.0);
+          float mb = smoothstep(0.03, 0.6, s.r);
+          float mf = smoothstep(0.03, 0.5, s.g);
+          vec3 cy = uColY[sp], cm = uColM[sp];
+          float band = 1.0;
+          if (uRingC[sp] > 0.0) band = 0.86 + 0.14*sin(s.a*uRingC[sp]*22.0 + id.g*6.283);
+          vec3 body = mix(cy, cm*band, mat);
+          if (sp >= 6) body = mix(cy, cm*band, smoothstep(0.25, 0.95, mat)); // 곰팡이 테두리는 늘 하얗다
+          float cover = max(mb, mf);
+          // 가장자리 얇은 데는 한천이 비친다
+          col = mix(agar, body, smoothstep(0.0, 0.55, cover));
+          // 갓 자란 테두리는 살짝 밝게
+          float rim = cover * (1.0 - cover) * 4.0;
+          col += rim * 0.06;
+        } else if (s.a < -0.5) {
+          // 잠든 포자 — 작은 점
+          col = mix(agar, vec3(0.55), smoothstep(0.005, 0.05, s.r + s.g) * 0.5);
+        }
+        diffuseColor.rgb = col;
+      }`)
+      .replace('#include <roughnessmap_fragment>', /* glsl */`
+      #include <roughnessmap_fragment>
+      {
+        vec4 s = texture2D(tS, vUv); vec4 id = texture2D(tI, vUv);
+        int sp = gSp(id);
+        float r = uAgarRough;
+        if (sp >= 0 && s.a > -0.5) {
+          float cover = smoothstep(0.03, 0.5, max(s.r, s.g));
+          r = mix(r, uMat[sp].x, cover);
+        }
+        roughnessFactor = r;
+      }`)
+      .replace('#include <normal_fragment_maps>', /* glsl */`
+      {
+        // 두께 마당에서 법선 일으키기 (범프)
+        vec2 dx = dFdx(vUv), dy = dFdy(vUv);
+        float H  = cHm(vUv);
+        vec2 dH = vec2(cHm(vUv+dx)-H, cHm(vUv+dy)-H) * 140.0;
+        vec3 sp_ = -vViewPosition;
+        vec3 sx = normalize(dFdx(sp_)), sy = normalize(dFdy(sp_));
+        vec3 r1 = cross(sy, normal), r2 = cross(normal, sx);
+        float det = dot(sx, r1) * faceDirection;
+        normal = normalize(abs(det)*normal - sign(det)*(dH.x*r1 + dH.y*r2));
+      }`);
+  };
+  const 판 = new THREE.Mesh(기하, 물);
+  판.rotation.x = -Math.PI/2; 판.position.y = 한천두께;
+  판.onBeforeRender = () => {
+    const sh = 물.userData.sh; if (!sh) return;
+    sh.uniforms.tS.value = 판A.textures[0]; sh.uniforms.tI.value = 판A.textures[1];
+    sh.uniforms.uAgarCol.value.set(배지들[배지].색);
+    sh.uniforms.uAgarRough.value = 배지들[배지].거칠기;
+    sh.uniforms.uAgarSwirl.value = 배지들[배지].무지개 ? 1 : 0;
+  };
+  한천물 = 물;
+  // 한천 옆면
+  const 옆 = new THREE.Mesh(new THREE.CylinderGeometry(한천반경, 한천반경, 한천두께, 96, 1, true),
+    new THREE.MeshPhysicalMaterial({ color: 배지들[배지].색, roughness: 0.2, clearcoat: 0.6 }));
+  옆.position.y = 한천두께/2;
+  판.userData.옆 = 옆;
+  return [판, 옆];
+}
+
+// 융단 — 셸 텍스처링. 겹마다 조금씩 올라가며 올이 성겨진다
+let 융단, 융단물;
+function 융단만들기() {
+  const q = 화질표[P.화질];
+  const 기하 = new THREE.PlaneGeometry(맵반경*2, 맵반경*2, 96, 96);
+  융단물 = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false,
+    uniforms: {
+      tS: { value: null }, tI: { value: null },
+      uColY: { value: 종색어림 }, uColM: { value: 종색성숙 },
+      uMat: { value: 종겉 }, uRingC: { value: 종고리 },
+      uAgarCol: { value: new THREE.Color(배지들[배지].색) }, uAgarRough: { value: 0.2 }, uAgarSwirl: { value: 0 },
+      uN: { value: q.겹 }, uFuzz: { value: P.털길이 }, uL: { value: new THREE.Vector3(0.45,0.8,0.3).normalize() },
+    },
+    vertexShader: 겉머리 + /* glsl */`
+      varying vec2 vUv; varying float vLayer;
+      uniform float uN, uFuzz;
+      void main(){
+        vUv = uv;
+        float layer = (float(gl_InstanceID)+1.0) / uN;
+        vLayer = layer;
+        vec4 s = texture2D(tS, uv); vec4 id = texture2D(tI, uv);
+        int sp = gSp(id);
+        float h = cH(uv);
+        if (sp >= 6 && s.a > -0.5) {
+          float mat = clamp(s.a*0.9, 0.0, 1.0);
+          float body = smoothstep(0.004, 0.25, s.g);
+          h += layer * uMat[sp].y * uFuzz * body * (0.45 + 0.55*min(mat*2.5, 1.0));
+        }
+        vec3 p = position; p.z += h;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+      }`,
+    fragmentShader: 겉머리 + /* glsl */`
+      varying vec2 vUv; varying float vLayer;
+      uniform vec3 uL; uniform float uFuzz;
+      void main(){
+        vec4 s = texture2D(tS, vUv); vec4 id = texture2D(tI, vUv);
+        int sp = gSp(id);
+        if (sp < 6 || s.a < -0.5) discard;      // 융단은 곰팡이 몫
+        float f = s.g;
+        float body = smoothstep(0.004, 0.18, f);
+        if (body < 0.01) discard;
+        float mat = clamp(s.a*0.9, 0.0, 1.0);
+        // 올 — 촘촘한 굳은잡음을 겹이 올라갈수록 세게 잘라낸다. 위 겹은 밖으로 살짝 눕는다
+        vec2 suv = vUv + (vUv - 0.5) * vLayer * 0.012;
+        float strand = g_vno(suv*820.0 + id.a*57.0)*0.75 + g_vno(suv*310.0 + id.a*13.0)*0.25;
+        float thr = mix(0.30, 0.78, vLayer);
+        float a = smoothstep(thr, thr + 0.14, strand * (0.55 + 0.45*body));
+        a *= (1.0 - vLayer*vLayer*0.55);
+        if (a < 0.02) discard;
+        // 색 — 위 겹은 어린 흰 올, 아래·중심은 포자색
+        vec3 cy = uColY[sp], cm = uColM[sp];
+        float band = 1.0;
+        if (uRingC[sp] > 0.0) band = 0.85 + 0.15*sin(s.a*uRingC[sp]*22.0 + id.g*6.283);
+        float mature = smoothstep(0.3, 0.95, mat) * (1.0 - vLayer*0.55);
+        vec3 col = mix(cy, cm*band, mature);
+        // 성숙한 중심 꼭대기에 앉은 포자 알갱이
+        float dots = step(0.8, g_vno(vUv*260.0 + id.a*7.0)) * smoothstep(0.5,0.9,mat) * vLayer;
+        col = mix(col, cm*0.85, dots);
+        // 빛 — 아래 겹은 그늘지고 위 겹은 환하다
+        float ao = 0.30 + 0.70*vLayer;
+        float lam = 0.65 + 0.35*max(uL.z, 0.0);
+        gl_FragColor = vec4(col * ao * lam * 1.25, a);
+      }`,
+  });
+  융단 = new THREE.InstancedMesh(기하, 융단물, q.겹);
+  융단.rotation.x = -Math.PI/2; 융단.position.y = 한천두께 + 0.0015;
+  융단.frustumCulled = false; 융단.renderOrder = 1;
+  융단.onBeforeRender = () => {
+    융단물.uniforms.tS.value = 판A.textures[0];
+    융단물.uniforms.tI.value = 판A.textures[1];
+    융단물.uniforms.uFuzz.value = P.털길이;
+  };
+  return 융단;
+}
+
+let 한천판, 한천옆;
+function 접시세우기() {
+  if (한천판) { 씬맡.remove(한천판, 한천옆, 융단); 한천판.geometry.dispose(); 융단.geometry.dispose(); }
+  [한천판, 한천옆] = 한천만들기();
+  씬맡.add(한천판, 한천옆, 융단만들기());
+}
+
+// 손끝 표지 — 온기(호박빛)·냉기(푸른빛) 고리
+const 표지들 = [];
+function 표지만들기() {
+  const m = new THREE.Mesh(new THREE.RingGeometry(0.055, 0.075, 40),
+    new THREE.MeshBasicMaterial({ color: '#ffb347', transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false }));
+  m.rotation.x = -Math.PI/2; m.position.y = 한천두께 + 0.06; m.renderOrder = 3;
+  씬맡.add(m); 표지들.push(m); return m;
+}
+표지만들기(); 표지만들기(); 표지만들기();
+
+// ────────────────────────────────────────────────────────────────
+// 입력 — 마우스·터치
+// ────────────────────────────────────────────────────────────────
+const 광선 = new THREE.Raycaster();
+const 한천면 = new THREE.Plane(new THREE.Vector3(0,1,0), -한천두께);
+function 화면에서한천으로(cx, cy) {
+  const nd = new THREE.Vector2((cx/innerWidth)*2-1, -(cy/innerHeight)*2+1);
+  광선.setFromCamera(nd, camera);
+  const p = new THREE.Vector3();
+  if (!광선.ray.intersectPlane(한천면, p)) return null;
+  const u = (p.x/맵반경+1)/2, v = 1-(p.z/맵반경+1)/2;
+  if (Math.hypot(u*2-1, v*2-1) > 접시반경비) return null;
+  return { u, v, p };
+}
+
+const 마우스 = { x:-1, y:-1, 끄는중:false, 눌림:false, 눌린곳:[0,0], 눌린때:0, 한천:null };
+canvas.addEventListener('pointerdown', e => {
+  마우스.눌림 = true; 마우스.끄는중 = false;
+  마우스.눌린곳 = [e.clientX, e.clientY]; 마우스.눌린때 = performance.now();
+});
+addEventListener('pointermove', e => {
+  마우스.x = e.clientX; 마우스.y = e.clientY;
+  if (마우스.눌림) {
+    const dx = e.clientX - 마우스.눌린곳[0], dy = e.clientY - 마우스.눌린곳[1];
+    if (Math.hypot(dx, dy) > 7) 마우스.끄는중 = true;
+    if (마우스.끄는중) {
+      궤도.방위목표 -= (e.movementX ?? 0) * 0.005;
+      궤도.극목표 = THREE.MathUtils.clamp(궤도.극목표 - (e.movementY ?? 0)*0.004, 0.12, 1.25);
+    }
+  }
+  마우스.한천 = 화면에서한천으로(e.clientX, e.clientY);
+});
+addEventListener('pointerup', e => {
+  if (마우스.눌림 && !마우스.끄는중 && performance.now() - 마우스.눌린때 < 400) {
+    const h = 화면에서한천으로(e.clientX, e.clientY);
+    if (h) 포자심기(h.u, h.v);
+  }
+  마우스.눌림 = false; 마우스.끄는중 = false;
+});
+addEventListener('wheel', e => {
+  궤도.거리목표 = THREE.MathUtils.clamp(궤도.거리목표 * (1 + Math.sign(e.deltaY)*0.08), 1.4, 7);
+}, { passive: true });
+
+// ────────────────────────────────────────────────────────────────
+// 손 인식 — wing-mobile 의 일꾼을 그대로 빌려 쓴다
+// ────────────────────────────────────────────────────────────────
+const video = document.getElementById('cam');
+const 캠말 = document.getElementById('cammsg');
+function 캠말하기(t) { if (!t) { 캠말.classList.add('hidden'); return; }
+  캠말.textContent = t; 캠말.classList.remove('hidden'); }
+
+let 일꾼 = null, 일꾼상태 = '꺼짐', 일꾼바쁨 = false, 연속실패 = 0;
+let 손들 = [];                       // [{점: Float32Array(42)}...]
+const 손길 = '../wing-mobile/libs/';
+
+function 일꾼세우기(델리게이트) {
+  if (typeof Worker === 'undefined' || typeof createImageBitmap !== 'function') return;
+  일꾼?.terminate(); 일꾼상태 = '준비중'; 일꾼바쁨 = false;
+  일꾼 = new Worker(손길 + 'hand-worker.js');
+  일꾼.onmessage = (ev) => {
+    const m = ev.data;
+    if (m.종류 === '준비됨') { 일꾼상태 = '됨'; 연속실패 = 0; 캠말하기(''); return; }
+    if (m.종류 === '실패') {
+      일꾼상태 = '못함';
+      if (델리게이트 === 'GPU') 일꾼세우기('CPU');
+      else 캠말하기('손 인식을 켜지 못했습니다 — ' + m.왜);
+      return;
+    }
+    if (m.종류 === '결과') {
+      일꾼바쁨 = false;
+      if (m.오류) { if (++연속실패 === 3 && 델리게이트 === 'GPU') 일꾼세우기('CPU'); return; }
+      연속실패 = 0;
+      손들 = m.손들.map(a => ({ 점: a }));
+      if (!손들.length) 손없던때 ??= performance.now();
+      else 손없던때 = null;
+    }
+  };
+  일꾼.postMessage({ 종류: '준비',
+    wasm: new URL(손길 + 'mediapipe/wasm', location.href).href,
+    모델: new URL(손길 + 'mediapipe/models/hand_landmarker.task', location.href).href,
+    델리게이트, 손수: 손닿는기기 ? 1 : 2 });
+}
+let 손없던때 = null;
+
+async function 캠켜기() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: 640, height: 480, facingMode: 'user' }, audio: false });
+    video.srcObject = stream; await video.play();
+    일꾼세우기(P.손CPU ? 'CPU' : 'GPU');
+  } catch (e) {
+    캠말하기('카메라를 못 씁니다 — 마우스·터치로 즐겨 주세요 (' + (e?.name || e) + ')');
+    P.손켬 = false; 동기화();
+  }
+}
+function 캠끄기() {
+  일꾼?.terminate(); 일꾼 = null; 일꾼상태 = '꺼짐'; 손들 = [];
+  video.srcObject?.getTracks().forEach(t => t.stop()); video.srcObject = null;
+}
+
+function 손프레임보내기() {
+  if (일꾼상태 !== '됨' || 일꾼바쁨 || video.readyState < 2) return;
+  일꾼바쁨 = true;
+  createImageBitmap(video).then(그림 => {
+    if (!일꾼) { 그림.close(); return; }
+    일꾼.postMessage({ 종류: '프레임', 그림, 시각: performance.now() }, [그림]);
+  }).catch(() => { 일꾼바쁨 = false; });
+}
+
+// 손짓 풀이: 손바닥 폄 = 온기 · 주먹 = 냉기 · 꼬집기 = 포자
+const 꼬집던 = [false, false];
+function 손짓풀기() {
+  const 점찍기 = [];
+  손들.forEach((손, i) => {
+    const q = 손.점;
+    const X = k => 1 - q[k*2], Y = k => q[k*2+1];       // 거울 반전
+    const 손판 = [0,5,9,13,17].reduce((a,k) => [a[0]+X(k)/5, a[1]+Y(k)/5], [0,0]);
+    const 크기 = Math.hypot(X(0)-X(9), Y(0)-Y(9)) + 1e-5;
+    const 폄 = [8,12,16,20].reduce((a,k) => a + Math.hypot(X(k)-손판[0], Y(k)-손판[1]), 0) / (4*크기);
+    const 꼬집 = Math.hypot(X(4)-X(8), Y(4)-Y(8)) / 크기 < 0.35;
+
+    // 영상 좌표 → 접시 uv (가운데 0.72 만큼만 쓰면 팔을 덜 뻗어도 된다)
+    const u = THREE.MathUtils.clamp((X(8)-0.5)/0.72 + 0.5, 0, 1);
+    const v = THREE.MathUtils.clamp(0.5 - (Y(8)-0.5)/0.72, 0, 1);
+    const pu = THREE.MathUtils.clamp((손판[0]-0.5)/0.72 + 0.5, 0, 1);
+    const pv = THREE.MathUtils.clamp(0.5 - (손판[1]-0.5)/0.72, 0, 1);
+
+    if (꼬집 && !꼬집던[i]) 포자심기(u, v);
+    꼬집던[i] = 꼬집;
+
+    if (폄 > 1.35)      점찍기.push(new THREE.Vector4(pu, pv, 1.0, 0.13));   // 손바닥 = 온기
+    else if (폄 < 0.9)  점찍기.push(new THREE.Vector4(pu, pv, -1.0, 0.11));  // 주먹 = 냉기
+    else                점찍기.push(new THREE.Vector4(u, v, 0.35, 0.07));    // 어중간 = 미지근
+  });
+  return 점찍기;
+}
+
+// ────────────────────────────────────────────────────────────────
+// 화면 꾸미기 · 패널
+// ────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const 배지고르개 = $('s배지');
+배지들.forEach((b, i) => 배지고르개.add(new Option(b.이름, i)));
+
+function 동기화() {
+  $('r배속').value = P.배속;   $('v배속').textContent = P.배속 + '×';
+  $('r한천').value = P.한천부드러움; $('v한천').textContent = P.한천부드러움.toFixed(2);
+  $('r영양').value = P.영양0;  $('v영양').textContent = P.영양0.toFixed(2);
+  $('r포자바람').value = P.포자바람; $('v포자바람').textContent = P.포자바람.toFixed(2);
+  $('r털').value = P.털길이;  $('v털').textContent = P.털길이.toFixed(1);
+  $('c블룸').checked = P.블룸; $('s화질').value = P.화질;
+  $('c손').checked = P.손켬;  $('c미리').checked = P.미리보기; $('c손CPU').checked = P.손CPU;
+  video.classList.toggle('hidden', !(P.미리보기 && P.손켬));
+}
+$('r배속').oninput = e => { P.배속 = +e.target.value; $('v배속').textContent = P.배속 + '×'; };
+$('r한천').oninput = e => { P.한천부드러움 = +e.target.value; $('v한천').textContent = P.한천부드러움.toFixed(2); };
+$('r영양').oninput = e => { P.영양0 = +e.target.value; $('v영양').textContent = P.영양0.toFixed(2); };
+$('r포자바람').oninput = e => { P.포자바람 = +e.target.value; $('v포자바람').textContent = P.포자바람.toFixed(2); };
+$('r털').oninput = e => { P.털길이 = +e.target.value; $('v털').textContent = P.털길이.toFixed(1); };
+$('c블룸').onchange = e => { P.블룸 = e.target.checked; 합성다시(); };
+$('s화질').onchange = e => { P.화질 = +e.target.value; 접시붓기(); 접시세우기(); 크기맞추기(); 시작파종(); };
+$('s배지').onchange = e => { 배지 = +e.target.value; 한천옆.material.color.set(배지들[배지].색); };
+$('b접시').onclick = () => { 접시붓기(); 시작파종(); };
+$('b한줌').onclick = () => 포자한줌(10);
+$('c손').onchange = e => { P.손켬 = e.target.checked; P.손켬 ? 캠켜기() : 캠끄기(); 동기화(); };
+$('c미리').onchange = e => { P.미리보기 = e.target.checked; 동기화(); };
+$('c손CPU').onchange = e => { P.손CPU = e.target.checked; if (P.손켬 && 일꾼) 일꾼세우기(P.손CPU ? 'CPU' : 'GPU'); };
+
+let 숨김 = false;
+addEventListener('keydown', e => {
+  if (e.key === 'h' || e.key === 'H') { 숨김 = !숨김;
+    for (const id of ['panel','hint','clock']) $(id).classList.toggle('hidden', 숨김); }
+  if (e.key === 'f' || e.key === 'F') document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+  if (e.key === 'r' || e.key === 'R') { 접시붓기(); 시작파종(); }
+  if (e.key === 'c' || e.key === 'C') { P.손켬 = !P.손켬; P.손켬 ? 캠켜기() : 캠끄기(); 동기화(); }
+});
+
+function 시작파종() {
+  // 처음부터 몇은 깨어 있고, 나머지는 손길을 기다린다
+  포자한줌(9);
+  for (let i = 0; i < 3; i++) {
+    const a = Math.random()*Math.PI*2, r = Math.sqrt(Math.random())*(접시반경비-0.15);
+    포자심기(0.5 + r*Math.cos(a)/2, 0.5 + r*Math.sin(a)/2, Math.floor(Math.random()*12), true);
+  }
+}
+
+// 배양 시계
+let 배양분 = 0;                     // 시뮬 한 걸음 = 4분 셈
+function 시계갱신() {
+  const 일 = Math.floor(배양분/1440), 시 = Math.floor((배양분%1440)/60);
+  $('clockDay').textContent = `${일}일 ${시}시간`;
+  $('clockSub').textContent = `배양 시간 · ${배지들[배지].이름}`;
+}
+setInterval(시계갱신, 500);
+
+// ────────────────────────────────────────────────────────────────
+// 합성 (블룸)
+// ────────────────────────────────────────────────────────────────
+let composer = null;
+function 합성다시() {
+  composer?.dispose?.(); composer = null;
+  if (!P.블룸) return;
+  composer = new EffectComposer(renderer);
+  composer.addPass(new RenderPass(scene, camera));
+  const 블룸 = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.16, 0.45, 0.92);
+  composer.addPass(블룸);
+  composer.addPass(new OutputPass());
+}
+
+function 크기맞추기() {
+  const dpr = Math.min(devicePixelRatio || 1, 화질표[P.화질].dpr);
+  renderer.setPixelRatio(dpr);
+  renderer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix();
+  composer?.setSize(innerWidth, innerHeight);
+}
+addEventListener('resize', 크기맞추기);
+
+// ────────────────────────────────────────────────────────────────
+// 시작
+// ────────────────────────────────────────────────────────────────
+붓(15, '유리 접시를 닦는 중…');
+접시붓기();
+접시세우기();
+붓(40, '빛을 데우는 중…');
+
+new HDRLoader().load('../wing-mobile/assets/hdri/studio_small_09_1k.hdr', (hdr) => {
+  hdr.mapping = THREE.EquirectangularReflectionMapping;
+  scene.environment = hdr;
+  scene.environmentIntensity = 0.6;
+  붓(85, '포자를 뿌리는 중…');
+  마무리();
+}, undefined, () => 마무리());   // HDR 이 없어도 굶지 않는다
+
+let 시작됨 = false;
+function 마무리() {
+  if (시작됨) return; 시작됨 = true;
+  크기맞추기(); 합성다시(); 동기화();
+  시작파종();
+  if (P.손켬) 캠켜기();
+  붓(100);
+  document.getElementById('boot').classList.add('gone');
+  requestAnimationFrame(돌기);
+}
+
+// 콘솔에서 갖고 놀 수 있게 조금 열어 둔다
+window.배양정원 = { P, 포자심기, 포자한줌, 접시붓기, 시작파종 };
+
+// 저절로 날아드는 포자
+let 다음바람 = performance.now() + 15000;
+
+let 지난때 = performance.now();
+function 돌기(때) {
+  requestAnimationFrame(돌기);
+  const dt초 = Math.min((때 - 지난때)/1000, 0.1); 지난때 = 때;
+
+  // 궤도 감속
+  궤도.방위 += (궤도.방위목표 - 궤도.방위) * 0.12;
+  궤도.극   += (궤도.극목표 - 궤도.극) * 0.12;
+  궤도.거리 += (궤도.거리목표 - 궤도.거리) * 0.1;
+  카메라놓기();
+
+  // 입김 모으기 — 손 먼저, 마우스가 거든다
+  let 점들 = [];
+  if (P.손켬 && 일꾼상태 === '됨') { 손프레임보내기(); 점들 = 손짓풀기(); }
+  if (마우스.한천 && !마우스.끄는중) {
+    점들.push(new THREE.Vector4(마우스.한천.u, 마우스.한천.v, 마우스.눌림 ? 1.0 : 0.3, 마우스.눌림 ? 0.12 : 0.06));
+  }
+  // 표지 그리기
+  표지들.forEach((m, i) => {
+    const pt = 점들[i];
+    if (!pt || Math.abs(pt.z) < 0.05 || pt.w > 0.3) { m.material.opacity *= 0.8; return; }
+    m.position.x = (pt.x*2-1) * 맵반경;
+    m.position.z = -(pt.y*2-1) * 맵반경;
+    m.material.color.set(pt.z > 0 ? '#ffb347' : '#7fb8e8');
+    m.material.opacity = Math.min(0.65, m.material.opacity + 0.08);
+    const s = 1 + 0.12*Math.sin(때*0.006 + i);
+    m.scale.set(s, s, s);
+  });
+
+  // 바람에 실려 오는 포자
+  if (때 > 다음바람) {
+    다음바람 = 때 + (12000 + Math.random()*20000) / Math.max(P.포자바람, 0.05);
+    if (P.포자바람 > 0.01) 포자한줌(1);
+  }
+
+  // 시뮬 — 배속만큼 걸음을 나눠 밟는다. 한 걸음 dt 0.05 로 늘 안정
+  const 걸음 = Math.max(1, Math.round(P.배속));
+  시뮬물.uniforms.uDt.value = 0.05 * P.배속 / 걸음;
+  시뮬물.uniforms.uT.value = 시뮬시간;
+  시뮬돌리기(걸음, 점들);
+  배양분 += 걸음 * 4;
+  window.__진단 = { 프레임: (window.__진단?.프레임 || 0) + 1, 배양분 };
+
+  if (composer && P.블룸) composer.render();
+  else renderer.render(scene, camera);
+}
+</script>
+</body>
+</html>
