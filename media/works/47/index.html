@@ -61,7 +61,7 @@ button:disabled{opacity:.4;cursor:default}
 <div class="wrap">
 <header>
 <h1>잠자리 날개 무늬 생성기</h1>
-<p>무작위나 「여섯 가지 보기」로 모양을 넘겨 보다가 마음에 들면 ★ 보관하세요. 지나온 모양은 아래 줄에서 눌러 돌아갑니다. 검은 부분이 판, 흰 부분이 뚫리는 칸입니다. 「막힌 칸」을 켜면 흐름을 따라 뚫지 않고 남기는 칸이 다른 색으로 보입니다.</p>
+<p>무작위나 「여섯 가지 보기」로 모양을 넘겨 보다가 마음에 들면 ★ 보관하세요. 지나온 모양은 아래 줄에서 눌러 돌아갑니다. 검은 부분이 판, 흰 부분이 뚫리는 칸입니다. 「막힌 칸」을 켜면 흐름을 따라 뚫지 않고 남기는 칸이 다른 색으로 보입니다. 「칸 칠하기」를 켜고 그림의 칸을 누르거나 끌면 손으로 막고 뚫을 수 있습니다.</p>
 </header>
 <div class="main">
 <div class="controls">
@@ -80,6 +80,7 @@ button:disabled{opacity:.4;cursor:default}
 <button type="button" class="primary" id="btnPlate">SVG 저장 · 판</button>
 <button type="button" id="btnLines">SVG 저장 · 자름선</button>
 <button type="button" id="btnView" aria-pressed="false">자름선으로 보기</button>
+<button type="button" id="btnPaint" aria-pressed="false" title="그림의 칸을 누르거나 끌어서 막고 뚫는다">칸 칠하기</button>
 <button type="button" id="btnPng">PNG 저장</button>
 <button type="button" id="btnSix">여섯 가지 보기</button>
 <button type="button" id="btnShare">주소로 공유</button>
@@ -127,7 +128,7 @@ const DEFAULTS={
   // 받침
   tabW:1.0, tabH:34, tabAlign:0, rootSolid:0.03, baseRound:1,
   // 막힌 칸(뚫지 않고 판으로 남기는 칸). 흐름을 따라 띠 모양으로 막는다
-  shut:false, shutColor:'#D9A441', shutBands:3.5, shutW:0.4, shutPos:0.2, shutRand:0.5, shutRoot:0.1, shutFront:0.3, shutEdge:0.45,
+  shut:false, shutColor:'#D9A441', shutBands:3, shutW:0.22, shutPos:0.2, shutRand:0.3, shutRoot:0.08, shutFade:0.5, shutTip:0.3, shutFront:0.35, shutEdge:0.45, shutMin:5, shutMark:[],   // shutMark: 손으로 칠한 칸 [x, y, 막힘 1·뚫림 0]
   seed:7, lengthMm:1000, mirror:false, res:2
 };
 function area(p){let s=0;for(let i=0,n=p.length;i<n;i++){const a=p[i],b=p[(i+1)%n];s+=a[0]*b[1]-b[0]*a[1];}return s/2;}
@@ -381,26 +382,36 @@ function generateWing(user){
     const c=dp(sm,0.2);if(c.length>=3)cells.push(c);}
   // ── 막힌 칸 ── 띠의 경계가 맥을 따라가게, 칸마다 "옆 맥이 흘러가 닿는 자리"를 눈금으로 쓴다(뒷전은 높이 그대로, 끝을 돌아 앞줄에 닿으면 이어서 센다)
   const isShut=new Uint8Array(cells.length);
+  const cen=cells.map(c=>{let a=0,x=0,y=0;for(let i=0,m=c.length;i<m;i++){const u=c[i],w=c[(i+1)%m],k=u[0]*w[1]-w[0]*u[1];a+=k;x+=(u[0]+w[0])*k;y+=(u[1]+w[1])*k;}return [Math.round(x/(3*a)*10)/10,Math.round(y/(3*a)*10)/10];});
+  const lab=(x,y)=>{const i=Math.round((x-minX)*res),j=Math.round((y-minY)*res);return i>=0&&j>=0&&i<GW&&j<GH?Lb[j*GW+i]:0;},byLab=new Map();   // 자리 → 칸 번호. ponytail: 칸의 무게중심이 칸 밖에 놓이는 심하게 굽은 칸은 못 찾는다
+  cen.forEach((c,ci)=>{const l=lab(c[0],c[1]);if(l)byLab.set(l,ci);});
   if(P.shut){
     const fwd=(x,y)=>{let hx=0,hy=0;for(let s=0;s<700;s++){let f=field(x,y);if(s&&f[0]*hx+f[1]*hy<0)f=[-f[0],-f[1]];hx=f[0];hy=f[1];x+=4*hx;y+=4*hy;if(!inside(x,y))break;}
       const yy=cl(y,yLo,yHi);return ((x-at(IA,yy))/at(IW,yy)>0.5?y:2*yHi-y)/L;};
-    const psiL=new Map();for(const ln of lines){const p=ln.pts[ln.pts.length>>1];psiL.set(ln.id,fwd(p[0],p[1]));}
-    let p0=Infinity,p1=-Infinity;for(const v of psiL.values()){if(v<p0)p0=v;if(v>p1)p1=v;}if(!(p1>p0)){p0=0;p1=1;}                 // 눈금을 0(뿌리 쪽 뒷전)~1(끝·앞쪽)로 맞춘다
-    const nb=Math.max(0,P.shutBands),band=p=>{const t=(p-p0)/(p1-p0)*nb+P.shutPos,s=t+0.5*P.shutRand*noise(t*100,31,100);return s-Math.floor(s)<P.shutW;};
-    const cen=[],body=[];
-    cells.forEach((c,ci)=>{let a=0,cx=0,cy=0;for(let i=0,m=c.length;i<m;i++){const u=c[i],w=c[(i+1)%m],k=u[0]*w[1]-w[0]*u[1];a+=k;cx+=(u[0]+w[0])*k;cy+=(u[1]+w[1])*k;}cx/=3*a;cy/=3*a;
-      cen.push([cx,cy]);const v=(cy-yLo)/(yHi-yLo),m=mg>0?mAt(cy):0;let sh;
-      if(cx<at(IA,cy)+at(TX,cy))sh=v<P.shutFront;                                         // 앞줄 칸
-      else if(v<P.shutRoot)sh=true;                                                       // 뿌리 쪽
-      else if(m>=4&&nearB(cx,cy,m))sh=v<P.shutEdge||band(cy/L);                            // 가장자리 줄
-      else{const f=field(cx,cy),d=sizeAt(cx,cy);let ps=Infinity;                          // 양옆 맥 가운데 눈금이 작은 쪽을 따른다 → 한 줄의 칸이 함께 막힌다
-        for(const sg of [1,-1])for(let t=1;t<=2.5*d;t+=1){const q=nearest(cx-f[1]*sg*t,cy+f[0]*sg*t,1.6,-99,0);if(q){if(q[2]>=0)ps=Math.min(ps,psiL.get(q[2]));break;}}
-        sh=band(ps<Infinity?ps:fwd(cx,cy));body.push(ci);}
-      if(sh)isShut[ci]=1;});
-    // 띠 안에 혼자 뚫렸거나 혼자 막힌 칸은 흐름 앞뒤의 칸을 따른다
-    const lab=(x,y)=>{const i=Math.round((x-minX)*res),j=Math.round((y-minY)*res);return i<0||j<0||i>=GW||j>=GH?0:Lb[j*GW+i];},byLab=new Map();cen.forEach((c,ci)=>byLab.set(lab(c[0],c[1]),ci));
+    const body=[],psC=[],vC=[];
+    cen.forEach((c,ci)=>{const cx=c[0],cy=c[1],v=(cy-yLo)/(yHi-yLo),m=mg>0?mAt(cy):0;
+      if(cx<at(IA,cy)+at(TX,cy)){if(v<P.shutFront)isShut[ci]=1;}                           // 앞줄 칸
+      else if(m>=4&&nearB(cx,cy,m)){if(v<P.shutEdge)isShut[ci]=1;}                         // 가장자리 줄
+      else{psC[ci]=fwd(cx,cy);vC[ci]=v;body.push(ci);}});
+    // 흐름을 따라 앞뒤로 이웃한 칸(가로맥 건너의 칸)을 찾는다
     const along=(ci,sg)=>{let x=cen[ci][0],y=cen[ci][1],hx=0,hy=0;const me=lab(x,y);for(let s=0;s<60;s++){let f=field(x,y);if(s?f[0]*hx+f[1]*hy<0:sg<0)f=[-f[0],-f[1]];hx=f[0];hy=f[1];x+=2*hx;y+=2*hy;const l=lab(x,y);if(l&&l!==me)return byLab.has(l)?byLab.get(l):-1;}return -1;};
-    const flip=body.filter(ci=>{const a=along(ci,1),b=along(ci,-1);return a>=0&&b>=0&&isShut[a]===isShut[b]&&isShut[a]!==isShut[ci];});for(const ci of flip)isShut[ci]^=1;}
+    const NX=new Map();for(const ci of body)NX.set(ci,[along(ci,1),along(ci,-1)]);
+    // 눈금을 앞뒤 두 칸씩과 고르게 한다 → 띠의 가장자리가 한 줄 안에서 들쭉날쭉하지 않고 맥을 따라 매끈하게 간다
+    const sm=body.map(ci=>{let s=psC[ci],c=1;for(const d of [0,1]){let j=ci;for(let h=0;h<2;h++){j=NX.has(j)?NX.get(j)[d]:-1;if(j<0||psC[j]===undefined)break;s+=psC[j];c++;}}return s/c;});body.forEach((ci,k)=>{psC[ci]=sm[k];});
+    const srt=sm.slice().sort((a,b)=>a-b),p0=srt.length?srt[Math.floor(0.02*srt.length)]:0,p1=srt.length?srt[Math.ceil(0.98*srt.length)-1]:1,pr=p1>p0?p1-p0:1;      // 눈금을 0(뿌리 쪽 뒷전)~1(끝·앞쪽)로 맞춘다
+    const nb=Math.max(0,P.shutBands),mid=p=>{const t=(p-p0)/pr*nb+P.shutPos,s=t+0.5*P.shutRand*noise(t*100,31,100);return Math.abs(s-Math.floor(s)-0.5)*2;};   // 0 = 뚫린 띠 한가운데 … 1 = 막힌 띠 한가운데
+    const wAt=v=>(P.shutW+(1-P.shutW)*Math.pow(P.shutFade>0?cl(1-(v-P.shutRoot)/P.shutFade,0,1):(v<P.shutRoot?1:0),2))*(P.shutTip>0?cl((1-v)/P.shutTip,0,1):1);   // 뿌리로 갈수록 막힌 쪽이 넓어지고(뚫린 띠가 가늘어지며 끝난다), 끝으로 갈수록 막힌 띠가 가늘어진다
+    for(const ci of body)if(mid(psC[ci])>=1-wAt(vC[ci]))isShut[ci]=1;
+    // 띠 안에 혼자 뚫렸거나 혼자 막힌 칸은 흐름 앞뒤의 칸을 따른다
+    for(const ci of body){const q=NX.get(ci);if(q[0]>=0&&q[1]>=0&&isShut[q[0]]===isShut[q[1]]&&isShut[q[0]]!==isShut[ci])isShut[ci]^=1;}
+    // 몇 칸짜리 외딴 조각은 둘레에 맞춘다(흩어진 점처럼 보이지 않게)
+    const adj=cells.map(()=>[]),link=(a,b)=>{if(a&&b&&a!==b){const i=byLab.get(a),j=byLab.get(b);if(i!==undefined&&j!==undefined&&adj[i].indexOf(j)<0){adj[i].push(j);adj[j].push(i);}}};
+    for(let k=0;k<n;k++){const a=Lb[k];if(!a)continue;if(k%GW<GW-1&&Lb[k+1]!==a)link(a,Lb[k+1]);if(k<n-GW&&Lb[k+GW]!==a)link(a,Lb[k+GW]);}
+    const isBody=new Uint8Array(cells.length);for(const ci of body)isBody[ci]=1;
+    for(let pass=0;pass<2;pass++){const seen=new Uint8Array(cells.length);for(let s0=0;s0<cells.length;s0++){if(seen[s0])continue;const grp=[s0];seen[s0]=1;
+        for(let h=0;h<grp.length;h++)for(const j of adj[grp[h]])if(!seen[j]&&isShut[j]===isShut[s0]){seen[j]=1;grp.push(j);}
+        if(grp.length<P.shutMin)for(const ci of grp)if(isBody[ci])isShut[ci]^=1;}}}
+  if(Array.isArray(P.shutMark))for(const m of P.shutMark){const ci=byLab.get(lab(+m[0],+m[1]));if(ci!==undefined)isShut[ci]=m[2]?1:0;}   // 손으로 칠한 칸이 맨 위에 온다
   // ── SVG ──
   const Wv=maxX-minX,Hv=maxY-minY,f=x=>(Math.round(x*100)/100);const fx=p=>f(P.mirror?maxX-p[0]:p[0]-minX)+','+f(maxY-p[1]);
   const oPath='M'+dp(out,0.15).map(fx).join('L')+'Z';
@@ -411,7 +422,7 @@ function generateWing(user){
   const plate=head+`<path id="plate" fill="#000" fill-rule="evenodd" d="${oPath} ${cPaths.join(' ')}"/>\n${sPaths.length?`<path id="closed" fill="${sCol}" d="${sPaths.join(' ')}"/>\n`:''}</svg>\n`;
   const linesSvg=head+`<g id="outline" fill="none" stroke="#E6007E" stroke-width="1"><path d="${oPath}"/></g>\n<g id="cells" fill="none" stroke="#000" stroke-width="0.8">\n${cPaths.map(d=>`<path d="${d}"/>`).join('\n')}\n</g>\n${sPaths.length?`<g id="closed" fill="none" stroke="${sCol}" stroke-width="0.8">\n${sPaths.map(d=>`<path d="${d}"/>`).join('\n')}\n</g>\n`:''}</svg>\n`;
   const flowUV=lines.map(ln=>ln.pts.filter((_,i)=>i%2===0).map(p=>{const y=cl(p[1],yLo,yHi);return [(p[0]-at(IA,y))/at(IW,y),(y-yLo)/(yHi-yLo)];}));
-  return {flowUV,plate,lines:linesSvg,sPaths,sCol,shutN:sPaths.length,cells:cells.length,veins:lines.length+nF,viewW:Wv,viewH:Hv,oPath,cPaths,mm};
+  return {flowUV,plate,lines:linesSvg,aPaths,shutOf:Array.from(isShut),cen,sPaths,sCol,shutN:sPaths.length,cells:cells.length,veins:lines.length+nF,viewW:Wv,viewH:Hv,oPath,cPaths,mm};
 }
 root.WingGen={generateWing,DEFAULTS,SHAPES:SHP,SHAPE_GROUPS:SHG};
 })(typeof globalThis!=='undefined'?globalThis:this);
@@ -430,12 +441,14 @@ const GROUPS=[
   ['seed','섞기 번호','',1,999,1,'같은 번호면 같은 무늬가 나온다']]],
  ['막힌 칸',true,[
   ['shutBands','막힌 띠 수','',0.5,8,0.1,'흐름을 따라 막히는 띠가 몇 줄쯤 생기는가'],
-  ['shutW','띠 굵기','',0,1,0.01,'띠 하나에서 막힌 쪽이 차지하는 폭. 0이면 띠가 없고 1이면 모두 막힌다'],
+  ['shutW','띠 굵기','',0,1,0.01,'막힌 띠의 폭. 0이면 띠가 없고 1이면 모두 막힌다'],
   ['shutPos','띠 자리','',0,1,0.01,'막힌 띠와 뚫린 띠의 자리를 흐름을 가로질러 옮긴다'],
   ['shutRand','띠 들쭉날쭉','',0,1,0.01,'0이면 띠 폭이 고르고, 올리면 넓은 띠와 좁은 띠가 섞인다'],
   ['shutRoot','뿌리 쪽 막는 높이','',0,0.6,0.01,'뿌리에서 이 높이까지는 모두 막는다'],
+  ['shutFade','뿌리 쪽으로 번짐','',0,1,0.01,'막힌 곳이 뿌리에서 위로 번져 가는 길이. 뚫린 띠가 뿌리 쪽으로 가늘어지며 끝난다. 0이면 반듯하게 끊긴다'],
+  ['shutTip','끝 쪽으로 가늘어짐','',0,1,0.01,'막힌 띠가 날개 끝으로 가며 가늘어지는 길이. 0이면 끝까지 같은 폭으로 간다'],
   ['shutFront','앞쪽 줄 막는 높이','',0,1,0.01,'앞전을 따라가는 곧은 줄을 뿌리에서 이 높이까지 막는다'],
-  ['shutEdge','가장자리 줄 막는 높이','',0,1,0.01,'뒷전을 따라 도는 칸 한 줄을 뿌리에서 이 높이까지 막는다. 그 위로는 띠를 따른다']]],
+  ['shutEdge','가장자리 줄 막는 높이','',0,1,0.01,'뒷전을 따라 도는 칸 한 줄을 뿌리에서 이 높이까지 막는다']]],
  ['외곽 모양',false,[
   ['shapeW','모음 외곽의 폭','배',0.6,1.6,0.01,'모음에서 고른 외곽을 좁히거나 넓힌다'],
   ['shape2','섞을 외곽 번호','',-1,70,1,'모음의 다른 외곽과 섞는다. -1이면 섞지 않는다'],
@@ -526,7 +539,8 @@ GROUPS.forEach(([name,open,rows])=>{const d=document.createElement('details');if
   if(name==='외곽 모양'){const c=document.createElement('label');c.className='check';const i=document.createElement('input');i.type='checkbox';i.id='p-mirror';i.addEventListener('change',()=>{P.mirror=i.checked;draw();});c.append(i,document.createTextNode('좌우 뒤집기 (반대쪽 날개)'));box.appendChild(c);}
   if(name==='막힌 칸'){const c=document.createElement('label');c.className='check';const i=document.createElement('input');i.type='checkbox';i.id='p-shut';i.addEventListener('change',()=>{P.shut=i.checked;draw();});c.append(i,document.createTextNode('흐름을 따라 칸 막기 (뚫지 않고 판으로 남긴다)'));
     const c2=document.createElement('label');c2.className='check';const col=document.createElement('input');col.type='color';col.id='p-shutColor';col.addEventListener('input',()=>{P.shutColor=col.value;const e=$('stage').querySelector('.shut');if(e)e.setAttribute(lines?'stroke':'fill',col.value);});col.addEventListener('change',()=>draw());
-    c2.append(document.createTextNode('막힌 칸 색 '),col);box.insertBefore(c2,box.firstChild);box.insertBefore(c,box.firstChild);}
+    c2.append(document.createTextNode('막힌 칸 색 '),col);const cb=document.createElement('button');cb.type='button';cb.className='mini';cb.id='btnUnmark';cb.textContent='손으로 칠한 것 지우기';cb.addEventListener('click',()=>{P.shutMark=[];draw();msg('손으로 칠한 것을 지웠습니다. 막대로 정한 띠는 그대로입니다.');});
+    box.insertBefore(cb,box.firstChild);box.insertBefore(c2,box.firstChild);box.insertBefore(c,box.firstChild);}
   if(name==='맥의 흐름'){const c=document.createElement('label');c.className='check';const i=document.createElement('select');i.id='p-flow';[['B','본보기 1 (넓은 날개)'],['A','본보기 2 (휜 날개)']].forEach(([v,t])=>{const o=document.createElement('option');o.value=v;o.textContent=t;i.appendChild(o);});
     i.addEventListener('change',()=>{P.flow=i.value;draw();});c.append(document.createTextNode('흐름의 본보기 '),i);box.insertBefore(c,box.firstChild);}
   {const gb=document.createElement('button');gb.type='button';gb.className='mini';gb.textContent='이 묶음 처음 값으로';gb.addEventListener('click',()=>{rows.forEach(q=>{P[q[0]]=D[q[0]];});sync();draw();msg('「'+name+'」 묶음을 처음 값으로 돌렸습니다.');});box.appendChild(gb);}
@@ -535,7 +549,7 @@ $('find').addEventListener('input',()=>{const q=$('find').value.trim().toLowerCa
 PRESETS.forEach(([name,o])=>{const b=document.createElement('button');b.type='button';b.className='chip';b.textContent=name;b.addEventListener('click',()=>{P=Object.assign({},D,keepOf(),o);sync();draw();msg('"'+name+'" 모양을 불러왔습니다.');});$('presets').appendChild(b);});
 function fmt(k,unit){const v=P[k];if(k==='lengthMm')return Math.round(v)+' mm';if(MMKEYS[k])return (v*P.lengthMm/1000).toFixed(1)+' mm';if(unit==='줄'||k==='depth'||k==='seed'||k==='shape'||k==='shape2')return String(Math.round(v))+(unit?' '+unit:'');if(unit==='배')return v.toFixed(2)+' 배';if(unit==='°')return Math.round(v)+'°';return v.toFixed(2);}
 function sync(){if(dry)return;document.querySelectorAll('#groups input[type=range]').forEach(i=>{i.value=P[i.dataset.k];});$('p-mirror').checked=!!P.mirror;$('p-flow').value=P.flow||'B';$('p-shut').checked=!!P.shut;$('p-shutColor').value=P.shutColor||D.shutColor;}
-const keepOf=()=>{const o={lengthMm:P.lengthMm,mirror:P.mirror};Object.keys(D).forEach(k=>{if(k.indexOf('shut')===0)o[k]=P[k];});return o;};   // 모양을 바꿔도 그대로 두는 것: 길이·뒤집기·막힌 칸 설정
+const keepOf=()=>{const o={lengthMm:P.lengthMm,mirror:P.mirror};Object.keys(D).forEach(k=>{if(k.indexOf('shut')===0&&k!=='shutMark')o[k]=P[k];});return o;};   // 모양을 바꿔도 그대로 두는 것: 길이·뒤집기·막힌 칸 설정(손으로 칠한 칸은 그 무늬의 것이라 두지 않는다)
 let hist=[],hpos=-1,favs=[];
 try{favs=JSON.parse(localStorage.getItem('wing-favs-v1')||'[]')||[];}catch(e){}
 function thumb(r){try{const c=document.createElement('canvas'),h=184,w=Math.max(40,Math.round(h*r.viewW/r.viewH));c.width=w;c.height=h;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,w,h);x.scale(w/r.viewW,h/r.viewH);x.fillStyle='#14171A';x.fill(new Path2D(r.oPath+' '+r.cPaths.join(' ')),'evenodd');if(r.sPaths.length){x.fillStyle=r.sCol;x.fill(new Path2D(r.sPaths.join(' ')));}return c.toDataURL('image/png');}catch(e){return '';}}
@@ -556,7 +570,7 @@ let sixUsed=null;
 function pickShape(){const SH=WingGen.SHAPES||[],G=WingGen.SHAPE_GROUPS||[];if(!SH.length)return -1;if(G.length!==SH.length)return Math.floor(Math.random()*SH.length);
   let gs=Array.from(new Set(G));if(sixUsed){const left=gs.filter(g=>!sixUsed.has(g));if(left.length)gs=left;}const g=gs[Math.floor(Math.random()*gs.length)];if(sixUsed)sixUsed.add(g);
   const m=[];G.forEach((x,i)=>{if(x===g)m.push(i);});return m[Math.floor(Math.random()*m.length)];}   // 닮은 꼴 묶음을 먼저 고른다 → 드문 꼴도 흔한 꼴만큼 나온다
-function mutate(b,amt){const o=Object.assign({},b),skip={lengthMm:1,shape:1,seed:1,nFront:1,tabW:1,tabH:1,tabAlign:1,rootSolid:1,baseRound:1,minCell:1,maxCell:1,slit:1,rim:1,frontMul:1};
+function mutate(b,amt){const o=Object.assign({},b,{shutMark:D.shutMark}),skip={lengthMm:1,shape:1,seed:1,nFront:1,tabW:1,tabH:1,tabAlign:1,rootSolid:1,baseRound:1,minCell:1,maxCell:1,slit:1,rim:1,frontMul:1};
   Object.keys(RANGE).forEach(k=>{if(skip[k]||k.indexOf('shut')===0||(b.shape>=0&&FORM.has(k)))return;const g=RANGE[k],v=b[k]+(Math.random()-0.5)*0.5*amt*(g[1]-g[0]);o[k]=Math.min(g[1],Math.max(g[0],v));});
   o.seed=Math.round(rand(1,999));const SH=WingGen.SHAPES||[];if(SH.length&&b.shape>=0&&Math.random()<0.45*amt){const i=pickShape();o.shape=i;o.tabH=SH[i][3];}return o;}
 function draw(fast,noCommit){if(dry)return;if(randomizing){randomizing=false;if(before){P=lockMerge(P,before);sync();}}
@@ -565,13 +579,14 @@ function draw(fast,noCommit){if(dry)return;if(randomizing){randomizing=false;if(
   if(!fast){const lib=P.shape>=0;document.querySelectorAll('#groups .row').forEach(r=>{const k=r.dataset.k;r.classList.toggle('na',(!P.shut&&k.indexOf('shut')===0)||(lib?FORM.has(k):(k==='shapeW'||k==='shape2'||k==='shapeMix')));});}   // 지금 쓰이지 않는 막대는 감춘다
   const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');svg.setAttribute('viewBox','0 0 '+r.viewW.toFixed(1)+' '+r.viewH.toFixed(1));svg.setAttribute('role','img');svg.setAttribute('aria-label','날개 무늬 미리보기');
   if(lines){const o=document.createElementNS(ns,'path');o.setAttribute('d',r.oPath);o.setAttribute('fill','none');o.setAttribute('stroke','#D6006E');o.setAttribute('stroke-width','2');svg.appendChild(o);
-    const c=document.createElementNS(ns,'path');c.setAttribute('d',r.cPaths.join(' '));c.setAttribute('fill','none');c.setAttribute('stroke','#14171A');c.setAttribute('stroke-width','1.4');svg.appendChild(c);}
-  else{const p=document.createElementNS(ns,'path');p.setAttribute('d',r.oPath+' '+r.cPaths.join(' '));p.setAttribute('fill','#14171A');p.setAttribute('fill-rule','evenodd');svg.appendChild(p);}
-  if(r.sPaths.length){const q=document.createElementNS(ns,'path');q.setAttribute('class','shut');q.setAttribute('d',r.sPaths.join(' '));if(lines){q.setAttribute('fill','none');q.setAttribute('stroke',r.sCol);q.setAttribute('stroke-width','1.4');}else q.setAttribute('fill',r.sCol);svg.appendChild(q);}
+    const c=document.createElementNS(ns,'path');c.setAttribute('class','cut');c.setAttribute('d',r.cPaths.join(' '));c.setAttribute('fill','none');c.setAttribute('stroke','#14171A');c.setAttribute('stroke-width','1.4');svg.appendChild(c);}
+  else{const p=document.createElementNS(ns,'path');p.setAttribute('class','cut');p.setAttribute('d',r.oPath+' '+r.cPaths.join(' '));p.setAttribute('fill','#14171A');p.setAttribute('fill-rule','evenodd');svg.appendChild(p);}
+  {const q=document.createElementNS(ns,'path');q.setAttribute('class','shut');q.setAttribute('d',r.sPaths.join(' '));if(lines){q.setAttribute('fill','none');q.setAttribute('stroke',r.sCol);q.setAttribute('stroke-width','1.4');}else q.setAttribute('fill',r.sCol);svg.appendChild(q);}
+  if(paint){const g=document.createElementNS(ns,'g');g.setAttribute('fill','transparent');r.aPaths.forEach((d,i)=>{const h=document.createElementNS(ns,'path');h.setAttribute('d',d);h.dataset.i=i;g.appendChild(h);});svg.appendChild(g);}   // 칠할 때 어느 칸인지 알아내는 투명한 덮개
   $('stage').replaceChildren(svg);
   if(zoom){svg.style.height='190vh';svg.style.maxHeight='none';svg.style.width='auto';$('stage').style.overflow='auto';}else $('stage').style.overflow='';
   const thin=P.sec*(1-P.thickVar)*r.mm;
-  $('stats').replaceChildren(...[['칸',r.cells+'개'+(P.shut?' (막힌 칸 '+r.shutN+'개)':'')],['전체 크기',(r.viewW*r.mm).toFixed(0)+' × '+(r.viewH*r.mm).toFixed(0)+' mm (여백 포함)'],['가장 가는 살',thin.toFixed(1)+' mm']].map(([a,b])=>{const s=document.createElement('span');s.textContent=a+' '+b;return s;}));
+  $('stats').replaceChildren(...[['칸',r.cells+'개'+(r.shutN?' (막힌 칸 '+r.shutN+'개)':'')],['전체 크기',(r.viewW*r.mm).toFixed(0)+' × '+(r.viewH*r.mm).toFixed(0)+' mm (여백 포함)'],['가장 가는 살',thin.toFixed(1)+' mm']].map(([a,b])=>{const s=document.createElement('span');s.textContent=a+' '+b;return s;}));
   if(!fast)try{localStorage.setItem('wing-params-v17',JSON.stringify(P));}catch(e){}
   if(!fast&&!noCommit)commit();
 }
@@ -604,6 +619,16 @@ document.addEventListener('keydown',e=>{const tg=e.target&&e.target.tagName;if(t
 $('btnSeed').addEventListener('click',()=>{P.seed=Math.round(rand(1,999));sync();draw();msg('외곽은 그대로 두고 맥과 칸을 다시 섞었습니다.');});
 $('btnReset').addEventListener('click',()=>{P=Object.assign({},D);sync();draw();msg('처음 값으로 돌렸습니다.');});
 $('btnView').addEventListener('click',e=>{lines=!lines;e.currentTarget.setAttribute('aria-pressed',String(lines));e.currentTarget.textContent=lines?'판으로 보기':'자름선으로 보기';draw();});
+// ── 칸 칠하기 ── 누른 칸이 뚫려 있었으면 막고, 막혀 있었으면 뚫는다. 끌면 지나간 칸이 모두 같은 쪽으로 바뀐다
+let paint=false,pd=null;const stage=$('stage');
+const cellAt=(x,y)=>{const el=document.elementFromPoint(x,y);return el&&stage.contains(el)&&el.dataset&&el.dataset.i!==undefined?+el.dataset.i:-1;};
+function dab(i){if(i<0||pd.seen.has(i))return;pd.seen.add(i);if(last.shutOf[i]===pd.to)return;last.shutOf[i]=pd.to;const c=last.cen[i];P.shutMark=(P.shutMark||[]).filter(m=>m[0]!==c[0]||m[1]!==c[1]).concat([[c[0],c[1],pd.to]]);
+  last.cPaths=last.aPaths.filter((_,k)=>!last.shutOf[k]);last.sPaths=last.aPaths.filter((_,k)=>last.shutOf[k]);stage.querySelector('.cut').setAttribute('d',(lines?'':last.oPath+' ')+last.cPaths.join(' '));stage.querySelector('.shut').setAttribute('d',last.sPaths.join(' '));}   // 끄는 동안에는 화면만 고치고, 손을 떼면 다시 계산한다
+stage.addEventListener('pointerdown',e=>{if(!paint||!last||e.button)return;const i=cellAt(e.clientX,e.clientY);if(i<0)return;e.preventDefault();pd={to:last.shutOf[i]?0:1,seen:new Set(),x:e.clientX,y:e.clientY};try{stage.setPointerCapture(e.pointerId);}catch(_){}dab(i);});
+stage.addEventListener('pointermove',e=>{if(!pd)return;const dx=e.clientX-pd.x,dy=e.clientY-pd.y,st=Math.max(1,Math.ceil(Math.hypot(dx,dy)/5));for(let k=1;k<=st;k++)dab(cellAt(pd.x+dx*k/st,pd.y+dy*k/st));pd.x=e.clientX;pd.y=e.clientY;});   // 빨리 끌어도 사이의 칸을 건너뛰지 않는다
+const stopPaint=()=>{if(!pd)return;const to=pd.to,cnt=pd.seen.size;pd=null;draw();msg(cnt+'칸을 '+(to?'막았습니다.':'뚫었습니다.')+' 「◀ 이전」으로 되돌릴 수 있습니다.');};
+stage.addEventListener('pointerup',stopPaint);stage.addEventListener('pointercancel',stopPaint);
+$('btnPaint').addEventListener('click',e=>{paint=!paint;e.currentTarget.setAttribute('aria-pressed',String(paint));stage.style.cursor=paint?'crosshair':'';stage.style.touchAction=paint?'none':'';draw(false,true);msg(paint?'칸을 누르거나 끌면 막힙니다. 막힌 칸에서 시작하면 다시 뚫립니다.':'칸 칠하기를 껐습니다.');});
 $('btnCopy').addEventListener('click',async()=>{const t=JSON.stringify(P);$('cfg').value=t;try{await navigator.clipboard.writeText(t);msg('설정을 복사했습니다.');}catch(e){$('cfg').select();msg('복사가 막혀 있습니다. 아래 칸의 글을 직접 복사하세요.');}});
 $('btnApply').addEventListener('click',()=>{try{const o=JSON.parse($('cfg').value);P=Object.assign({},D,o);sync();draw();msg('설정을 넣었습니다.');}catch(e){msg('설정 글을 읽지 못했습니다. 복사한 글 전체를 그대로 붙여 넣었는지 확인하세요.');}});
 async function save(kind){if(!last)return;const data=(kind==='plate'?last.plate:last.lines).replace('</svg>','<!-- wing-params:'+JSON.stringify(P)+' -->\n</svg>'),filename='잠자리날개_'+(kind==='plate'?'판':'자름선')+'_'+Math.round(P.lengthMm)+'mm_'+P.seed+'.svg';
