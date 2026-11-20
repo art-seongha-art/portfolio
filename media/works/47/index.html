@@ -118,6 +118,7 @@ const DEFAULTS={
   // 앞줄(앞전을 따라가는 곧은 맥)
   nFront:2, frontW:0.115, frontStep:1.35,
   // 흐름
+  ribs:0, ribW:13,                                  // 굵은 잎맥(뿌리에서 끝까지 면을 긴 띠로 나눈다)
   sweep:1.0, turn:0, wobble:0.06, wave:0, margin:1.0, stagger:0.3, slit:0.13, slitPos:0.6,
   // 칸
   cell:15.5, aspect:1.4, sizeVar:1.0, aspVar:1.0, jitter:0.2, sizeRand:0.12, lenRand:0.25, minCell:0.27, minThick:1.6, maxCell:2.6,
@@ -260,6 +261,9 @@ function generateWing(user){
     lines.push({pts,q,id});queue.push(pts);};
   const drain=()=>{while(queue.length){const sl=queue.shift();let j=0;
     while(j<sl.length){const p=sl[j],d=0.86*sizeAt(p[0],p[1]),f=field(p[0],p[1]);tryStart(p[0]-f[1]*d,p[1]+f[0]*d);tryStart(p[0]+f[1]*d,p[1]-f[0]*d);j+=Math.max(1,Math.round(0.4*d/h));}}};
+  for(let r=1,nr=Math.round(P.ribs);r<=nr;r++){const fr=r/(nr+1),pts=[];
+    for(let i=0;i<=N;i++){const y=V[i]*L;if(y<yLo||y>yHi)continue;const a0=TX[i]+hwT,sp=IW[i]-a0;if(sp<P.ribW*0.6)continue;pts.push([IA[i]+a0+sp*fr,y]);}
+    if(pts.length>8){const id=nid++;for(const p of pts)add(p[0],p[1],id);lines.push({pts,q:pts,id,rib:1});queue.push(pts);}}
   drain();
   for(let t=0;t<300;t++){const y=yLo+(yHi-yLo)*rnd(),x=at(IA,y)+at(IW,y)*rnd(),n0=lines.length;tryStart(x,y);if(lines.length>n0)drain();}
   // ── 가로맥 ── 한 점에서 옆으로 쏘아 이웃 맥(또는 테두리)에 닿으면 잇는다. 이미 놓인 가로맥에 바짝 붙으면 놓지 않는다
@@ -352,6 +356,7 @@ function generateWing(user){
   const D=edt(Bd,GW,GH);
   for(let j=0;j<GH;j++){const y=minY+j/res;for(let i=0;i<GW;i++){const k=j*GW+i;F[k]=Lb[k]?(D[k]+0.5)/res-P.sec/2*(1-0.22*P.accent)*(1+P.thickVar*noise(minX+i/res,y,110)):-1;}}
   for(const g of mainSegs)stamp(g[0],g[1],g[2],g[3],P.main/2);
+  for(const ln of lines)if(ln.rib){const q=ln.q,m=q.length;for(let j=0;j<m-1;j++)stamp(q[j][0],q[j][1],q[j+1][0],q[j+1][1],P.ribW/2*(0.45+0.55*Math.sqrt(Math.sin(Math.PI*(j+0.5)/m))));}   // 양 끝으로 갈수록 가늘게
   if(P.accent>0){let mxl=1;for(const ln of lines)mxl=Math.max(mxl,ln.q.length);
     for(const ln of lines){const q=ln.q,m=q.length,g=Math.pow(m/mxl,1.5);
       for(let j=0;j<m-1;j++){const ci=Math.round(((q[j][0]+q[j+1][0])/2-minX)*res),cj=Math.round(((q[j][1]+q[j+1][1])/2-minY)*res);if(ci<1||cj<1||ci>=GW-1||cj>=GH-1)continue;const k=cj*GW+ci;
@@ -423,6 +428,8 @@ const GROUPS=[
   ['margin','가장자리 줄 폭','',0,2,0.05,'뒷전을 따라 도는 칸 한 줄의 폭. 0이면 없다'],
   ['slit','긴 틈 길이','',0,0.4,0.01,'앞쪽 둘째 줄에 생기는 긴 틈. 0이면 없다'],
   ['slitPos','긴 틈 자리','',0.2,0.9,0.01,'뿌리(0)에서 끝(1) 사이'],
+  ['ribs','굵은 잎맥 수','줄',0,7,1,'뿌리에서 끝까지 면을 긴 띠로 나누는 굵은 맥. 나뭇잎 같은 느낌이 난다'],
+  ['ribW','굵은 잎맥 굵기','mm',4,30,0.5,''],
   ['nFront','앞쪽 곧은 맥 수','줄',0,4,1,'앞전을 따라 끝까지 나란히 가는 맥'],
   ['frontW','앞쪽 띠 폭','',0.04,0.4,0.01,'곧은 맥들이 차지하는 폭'],
   ['frontStep','앞쪽 칸 길이','',0.8,6,0.05,'앞쪽 사다리 칸의 길이(칸 크기의 몇 배)']]],
@@ -448,12 +455,18 @@ const GROUPS=[
   ['baseRound','무늬 아랫부분 둥글기','',0,2,0.05,'0이면 가로로 반듯하게 끝나고, 올리면 외곽을 따라 둥글게 말려 내려온다'],
   ['rootSolid','뿌리 통판 길이','',0,0.25,0.005,'뿌리에서 이만큼은 뚫지 않는다']]]
 ];
-const MMKEYS={cell:1,rim:1,main:1,sec:1,soft:1,tabH:1,wave:1};
+const MMKEYS={cell:1,rim:1,main:1,sec:1,soft:1,tabH:1,wave:1,ribW:1};
 const WING_A={flow:'A',width:0.275,peak:0.62,root:0.34,belly:2.6,taper:0.05,tip:1.4,lean:-0.1,tipCenter:0.41,leadStart:0.78,tabH:40,rootSolid:0.02,cell:19,main:7.2,sec:6.8,rim:12.5,frontMul:1.05,frontW:0.13};
 const G={tabH:30,rootSolid:0.014,bottomRound:2};   // 뿌리가 좁아져 작은 받침으로 이어지는 꼴
+// 나뭇잎 외곽: 양쪽이 같이 휘는 렌즈 꼴, 가운데 선이 한쪽으로 휜다
+function leafOutline(a,bend,lean){const n=48,Wd=a*1000,tf=70/Wd,vs=[],w=[];let kp=0;for(let k=0;k<=n;k++){const v=0.5*(1-Math.cos(Math.PI*k/n));vs.push(v);w.push(Math.pow(Math.sin(Math.PI*Math.pow(v,0.92)),0.85));if(w[k]>w[kp])kp=k;}
+  const left=[],width=[];for(let k=0;k<=n;k++){const v=vs[k],wf=k<=kp?Math.max(w[k],tf):w[k],c=1000*(lean*v+bend*Math.sin(Math.PI*v));left.push(c-0.5*Wd*wf);width.push(Wd*wf);}
+  const s0=left[0];for(let k=0;k<=n;k++)left[k]=Math.round(left[k]-s0);left[n]=Math.round(left[n]+width[n]/2);for(let k=0;k<n;k++)width[k]=Math.round(width[k]);width[n]=0;return [left,width,1,0];}
+const LEAF={outline:leafOutline(0.3,-0.07,0.16),shape:-1,sweep:0,wobble:0.1,nFront:0,margin:0,ribs:3,ribW:18,bend:0,lean:0,flex:0,tabW:1,tabH:30,rootSolid:0.02,cell:18,aspect:1.2,jitter:0.8,lenRand:0.5,sizeVar:0,aspVar:0,stagger:1,accent:0,sec:5.4,soft:3.6,slit:0,rim:12,frontMul:1,bottomRound:1};
 const PRESETS=[
  ['본보기 1 · 넓은 날개',{}],
  ['본보기 2 · 휜 날개',WING_A],
+ ['나뭇잎',LEAF],
  ['가는 방추',Object.assign({},G,{width:0.15,peak:0.5,root:0.28,belly:2,taper:0.25,tip:1.0,tipCenter:0.5,leadStart:0.5,frontW:0.17})],
  ['넓은 반달',Object.assign({},G,{width:0.5,peak:0.45,root:0.15,belly:2.4,taper:0.12,tip:1.3,tipCenter:0.22,leadStart:0.82,frontW:0.075})],
  ['곤봉',Object.assign({},G,{width:0.4,peak:0.8,root:0.16,belly:0.75,bottomRound:1,taper:0,tip:1.5,tipCenter:0.5,leadStart:0.8,lean:0.16,frontW:0.085})],
