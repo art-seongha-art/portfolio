@@ -112,7 +112,7 @@ const SHP=[[[0,0,-1,-3,-6,-8,-11,-15,-19,-24,-26,-31,-35,-37,-42,-43,-46,-47,-49
 const SHG=[1,9,2,8,5,1,6,9,6,4,9,7,6,3,4,4,4,1,7,7,1,1,7,6,7,6,6,7,6,6,0,0,0,0,0,1,4,4,8,4,4,7,7,7,4,4,4,7,6,3,4,3,4,1,6,6,6,8,9,7,3,3,6,4,3,7,6,6,6,3,4];                         // 외곽마다 닮은 꼴 묶음 번호                       // 보내 주신 그림에서 잰 외곽 모음 [앞전 자리 33개, 폭 33개, 받침 폭, 받침 높이]
 function rng(seed){let a=(seed>>>0)||1;return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
 const DEFAULTS={
-  flow:'B', shape:-1, shapeW:1, shape2:-1, shapeMix:0,                    // shape: 외곽 모음 번호(-1이면 아래 수식으로 만든다)                                       // 본보기 흐름: B(넓은 뒷날개) / A(앞날개)
+  flow:'B', shape:-1, shapeW:1, shape2:-1, shapeMix:0, outline:null,                    // shape: 외곽 모음 번호(-1이면 아래 수식으로 만든다)                                       // 본보기 흐름: B(넓은 뒷날개) / A(앞날개)
   // 외곽
   width:0.296, peak:0.28, root:0.48, belly:3.3, bottomRound:1, taper:0.43, tip:1.23, tipCenter:0.27, leadStart:0.72, bend:-0.02, lean:0.00, flex:0.06,
   // 앞줄(앞전을 따라가는 곧은 맥)
@@ -170,7 +170,7 @@ function generateWing(user){
   const Wd=W0.map(w=>Wm*w);
   const ls=cl(P.leadStart,0.3,0.97);
   const XL=V.map(v=>{const s=cl((v-ls)/(1-ls),0,1);return L*(P.bend*Math.sin(Math.PI*v)+P.lean*v)+P.tipCenter*Wm*(1-Math.sqrt(1-s*s));});
-  const lib=SHP[Math.round(P.shape)];let libE=null;
+  const lib=P.outline||SHP[Math.round(P.shape)];let libE=null;      // outline: 그때그때 새로 지은 외곽(모음과 같은 꼴의 자료)
   if(lib){const n=lib[0].length-1,cr=(A,t)=>{const i=Math.min(n-1,Math.floor(t)),f=t-i,p0=A[Math.max(0,i-1)],p1=A[i],p2=A[i+1],p3=A[Math.min(n,i+2)];return 0.5*(2*p1+(p2-p0)*f+(2*p0-5*p1+4*p2-p3)*f*f+(3*p1-3*p2+p3-p0)*f*f*f);};   // 매끈하게 잇는다
     const tau=v=>n*Math.acos(1-2*cl(v,0,1))/Math.PI;                                    // 잴 때 양 끝을 촘촘히 쟀으므로 같은 눈금으로 읽는다
     const lb2=SHP[Math.round(P.shape2)],mx=lb2?cl(P.shapeMix,0,1):0,ev=(k,t)=>mx?cr(lib[k],t)*(1-mx)+cr(lb2[k],t)*mx:cr(lib[k],t);                 // 다른 외곽과 섞는다
@@ -393,7 +393,7 @@ const D=WingGen.DEFAULTS;
 const GROUPS=[
  ['자주 쓰는 조절',true,[
   ['lengthMm','길이','mm',300,3000,10,'날개 뿌리에서 끝까지의 실제 길이'],
-  ['shape','외곽 모음 번호','',-1,70,1,'보내 주신 그림에서 잰 외곽 71가지. -1이면 아래 「외곽 모양」 막대들로 외곽을 만든다'],
+  ['shape','외곽 모음 번호','',-1,70,1,'보내 주신 그림에서 잰 외곽 71가지. -1이면 무작위가 새로 지은 외곽이나 아래 「외곽 모양」 막대들을 쓴다'],
   ['cell','칸 크기','mm',11,60,0.5,'맥과 맥 사이의 대략적인 간격'],
   ['sec','맥 굵기','mm',2,20,0.1,'칸과 칸 사이 살의 기준 굵기'],
   ['accent','흐름의 강약','',0,1.6,0.05,'0이면 모든 선이 같은 굵기. 올리면 길게 이어지는 맥이 굵어지고 가로맥은 가늘어진다'],
@@ -475,8 +475,8 @@ GROUPS.forEach(([name,open,rows])=>{const d=document.createElement('details');if
     const u=document.createElement('span');u.className='unit';u.textContent=(mmk||k==='lengthMm')?'mm':(unit||'');
     const rs=document.createElement('button');rs.type='button';rs.className='mini';rs.textContent='↺';rs.title='이 값만 처음으로';rs.setAttribute('aria-label',label+' 처음 값으로');rs.addEventListener('click',()=>{P[k]=D[k];sync();draw();});
     const i=document.createElement('input');i.type='range';i.id='p-'+k;i.min=min;i.max=max;i.step=step;i.dataset.k=k;i.dataset.unit=unit;
-    i.addEventListener('input',()=>{P[k]=parseFloat(i.value);draw(true);});i.addEventListener('change',()=>draw());
-    nb.addEventListener('change',()=>{let v=parseFloat(nb.value);if(!isFinite(v)){draw(false,true);return;}if(mmk)v=v*1000/P.lengthMm;P[k]=Math.min(max,Math.max(min,v));sync();draw();});   // 막대 범위 밖 값은 범위 안으로 당긴다
+    i.addEventListener('input',()=>{P[k]=parseFloat(i.value);if(k==='shape')P.outline=null;draw(true);});i.addEventListener('change',()=>draw());
+    nb.addEventListener('change',()=>{let v=parseFloat(nb.value);if(!isFinite(v)){draw(false,true);return;}if(mmk)v=v*1000/P.lengthMm;P[k]=Math.min(max,Math.max(min,v));if(k==='shape')P.outline=null;sync();draw();});   // 막대 범위 밖 값은 범위 안으로 당긴다
     const top=document.createElement('div');top.className='rowtop';top.append(l,nb,u,rs);r.append(top,i);
     if(help){const h=document.createElement('small');h.textContent=help;r.appendChild(h);}box.appendChild(r);});
   if(name==='외곽 모양'){const c=document.createElement('label');c.className='check';const i=document.createElement('input');i.type='checkbox';i.id='p-mirror';i.addEventListener('change',()=>{P.mirror=i.checked;draw();});c.append(i,document.createTextNode('좌우 뒤집기 (반대쪽 날개)'));box.appendChild(c);}
@@ -500,21 +500,34 @@ function saveFavs(){try{localStorage.setItem('wing-favs-v1',JSON.stringify(favs)
 function commit(){const s=JSON.stringify(P);if(hpos>=0&&hist[hpos].s===s)return;hist=hist.slice(0,hpos+1);hist.push({s,img:last?thumb(last):''});if(hist.length>30)hist.shift();hpos=hist.length-1;showHist();}
 function go(i){if(i<0||i>=hist.length||i===hpos)return;hpos=i;P=Object.assign({},D,JSON.parse(hist[i].s));sync();draw(false,true);showHist();msg('지나온 모양 '+(i+1)+'번으로 돌아왔습니다.');}
 let vars=[],zoom=false;
-const OUTK=['shape','shapeW','shape2','shapeMix','width','peak','taper','tip','tipCenter','leadStart','root','belly','bottomRound','flex','bend','lean','tabW','tabH','tabAlign','rootSolid','baseRound','frontW'],FORM=new Set(['width','peak','taper','tip','tipCenter','leadStart','root','belly','bottomRound','flex']);
+const OUTK=['outline','shape','shapeW','shape2','shapeMix','width','peak','taper','tip','tipCenter','leadStart','root','belly','bottomRound','flex','bend','lean','tabW','tabH','tabAlign','rootSolid','baseRound','frontW'],FORM=new Set(['width','peak','taper','tip','tipCenter','leadStart','root','belly','bottomRound','flex']);
 let before=null,randomizing=false;
 function lockMerge(c,b){const o=Object.assign({},c);if($('lockOutline').checked)OUTK.forEach(k=>{o[k]=b[k];});if($('lockPattern').checked)Object.keys(b).forEach(k=>{if(OUTK.indexOf(k)<0)o[k]=b[k];});o.lengthMm=b.lengthMm;o.mirror=b.mirror;return o;}
 document.addEventListener('click',e=>{if(!dry&&e.target&&e.target.closest&&e.target.closest('#btnRandom')){before=P;randomizing=true;}},true);
+// 외곽을 새로 짓는다: 폭 비율·가장 넓은 자리·자루·끝 모양·휨·S자 굽이를 매번 새로 정한다
+function genOutline(){const n=48,a=Math.exp(rand(Math.log(0.13),Math.log(0.7))),Wd=a*1000,p=rand(0.18,0.8),B=rand(0.42,0.78),A=B*p/(1-p),tabW=Math.min(0.6*Wd,rand(55,100)),tf=tabW/Wd,
+    stem=Math.random()<0.35?rand(0.12,0.42):0,lean=Math.random()<0.4?0:rand(-0.14,0.3),bend=Math.random()<0.4?0:rand(-0.2,0.2),sb=Math.random()<0.7?0:rand(-0.07,0.07),f=rand(0.12,0.5),
+    two=Math.random()<0.25?[rand(0.2,0.85),rand(0.15,0.4),rand(0.08,0.16)]:null,vs=[],w=[];let mx=1e-9;
+  for(let k=0;k<=n;k++){const v=0.5*(1-Math.cos(Math.PI*k/n)),u=stem?Math.max(0,(v-stem*0.7)/(1-stem*0.7)):v;vs.push(v);w.push(Math.pow(u,A)*Math.pow(1-u,B));mx=Math.max(mx,w[k]);}
+  let m2=1e-9;for(let k=0;k<=n;k++){w[k]=w[k]/mx+(two?two[1]*Math.exp(-Math.pow((vs[k]-two[0])/two[2],2))*Math.sqrt(Math.max(0,1-vs[k])):0);m2=Math.max(m2,w[k]);}
+  let kp=0;for(let k=0;k<=n;k++)if(w[k]>w[kp])kp=k;const left=[],width=[];                    // 가장 넓은 곳 아래로는 받침보다 가늘어지지 않는다(잘록한 목 없음)
+  for(let k=0;k<=n;k++){const v=vs[k],wf=k<=kp?Math.max(w[k]/m2,tf):w[k]/m2,c=1000*(lean*v+bend*Math.sin(Math.PI*v)+sb*Math.sin(2*Math.PI*v));left.push(c-f*Wd*wf);width.push(Wd*wf);}
+  const s0=left[0];for(let k=0;k<=n;k++)left[k]=Math.round(left[k]-s0);left[n]=Math.round(left[n]+width[n]/2);for(let k=0;k<n;k++)width[k]=Math.round(width[k]);width[n]=0;
+  return {data:[left,width,1,0],tabH:Math.round(rand(30,48)),frontW:Math.min(0.2,Math.max(0.07,0.036/a))};}
+// 무늬의 스타일: 굵기·칸·강약·흐름·가로맥 배열을 넓은 범위에서 새로 정한다
+function style(){const sec=rand(4.6,9),cell=Math.max(sec*1.9+6,rand(13,30));return {sec,main:sec+0.6,rim:rand(8,14),cell,aspect:rand(1,2.2),accent:Math.random()<0.2?0:rand(0.4,1.4),stagger:[0,0.3,1][Math.floor(Math.random()*3)],sweep:rand(0.55,1.5),flow:Math.random()<0.35?'A':'B',
+  margin:Math.random()<0.15?0:rand(0.8,1.4),nFront:1+Math.floor(Math.random()*3),frontStep:rand(1,2.4),soft:rand(1.6,4),sizeVar:rand(0.3,1.6),lenRand:rand(0.1,0.6),slit:Math.random()<0.4?0:rand(0.08,0.2),slitPos:rand(0.45,0.7),wobble:rand(0,0.14),seed:Math.round(rand(1,999))};}
 let sixUsed=null;
 function pickShape(){const SH=WingGen.SHAPES||[],G=WingGen.SHAPE_GROUPS||[];if(!SH.length)return -1;if(G.length!==SH.length)return Math.floor(Math.random()*SH.length);
   let gs=Array.from(new Set(G));if(sixUsed){const left=gs.filter(g=>!sixUsed.has(g));if(left.length)gs=left;}const g=gs[Math.floor(Math.random()*gs.length)];if(sixUsed)sixUsed.add(g);
   const m=[];G.forEach((x,i)=>{if(x===g)m.push(i);});return m[Math.floor(Math.random()*m.length)];}   // 닮은 꼴 묶음을 먼저 고른다 → 드문 꼴도 흔한 꼴만큼 나온다
 function mutate(b,amt){const o=Object.assign({},b),skip={lengthMm:1,shape:1,seed:1,nFront:1,tabW:1,tabH:1,tabAlign:1,rootSolid:1,baseRound:1,minCell:1,maxCell:1,slit:1,rim:1,frontMul:1};
-  Object.keys(RANGE).forEach(k=>{if(skip[k]||(b.shape>=0&&FORM.has(k)))return;const g=RANGE[k],v=b[k]+(Math.random()-0.5)*0.5*amt*(g[1]-g[0]);o[k]=Math.min(g[1],Math.max(g[0],v));});
-  o.seed=Math.round(rand(1,999));const SH=WingGen.SHAPES||[];if(SH.length&&b.shape>=0&&Math.random()<0.45*amt){const i=pickShape();o.shape=i;o.tabH=SH[i][3];}return o;}
+  Object.keys(RANGE).forEach(k=>{if(skip[k]||((b.shape>=0||b.outline)&&FORM.has(k))||k==='shape2')return;const g=RANGE[k],v=b[k]+(Math.random()-0.5)*0.5*amt*(g[1]-g[0]);o[k]=Math.min(g[1],Math.max(g[0],v));});
+  o.seed=Math.round(rand(1,999));const SH=WingGen.SHAPES||[];if(b.outline){if(Math.random()<0.45*amt){const g=genOutline();o.outline=g.data;o.tabH=g.tabH;o.frontW=g.frontW;}}else if(SH.length&&b.shape>=0&&Math.random()<0.45*amt){const i=pickShape();o.shape=i;o.tabH=SH[i][3];}return o;}
 function draw(fast,noCommit){if(dry)return;if(randomizing){randomizing=false;if(before){P=lockMerge(P,before);sync();}}
   let r;try{r=WingGen.generateWing(fast?Object.assign({},P,{res:1.3}):P);}catch(e){msg('이 값 조합으로는 그릴 수 없습니다. 값을 조금 바꿔 보세요.');return;}
   last=r;document.querySelectorAll('input.num').forEach(nb=>{if(document.activeElement===nb)return;const k=nb.dataset.k,v=MMKEYS[k]?P[k]*P.lengthMm/1000:P[k];nb.value=MMKEYS[k]?v.toFixed(1):String(+(+v).toFixed(3));});
-  if(!fast){const lib=P.shape>=0;document.querySelectorAll('#groups .row').forEach(r=>{const k=r.dataset.k;r.classList.toggle('na',lib?FORM.has(k):(k==='shapeW'||k==='shape2'||k==='shapeMix'));});}   // 지금 쓰이지 않는 막대는 감춘다
+  if(!fast){const lib=P.shape>=0||!!P.outline;document.querySelectorAll('#groups .row').forEach(r=>{const k=r.dataset.k;r.classList.toggle('na',lib?FORM.has(k):(k==='shapeW'||k==='shape2'||k==='shapeMix'));});}   // 지금 쓰이지 않는 막대는 감춘다
   const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');svg.setAttribute('viewBox','0 0 '+r.viewW.toFixed(1)+' '+r.viewH.toFixed(1));svg.setAttribute('role','img');svg.setAttribute('aria-label','날개 무늬 미리보기');
   if(lines){const o=document.createElementNS(ns,'path');o.setAttribute('d',r.oPath);o.setAttribute('fill','none');o.setAttribute('stroke','#D6006E');o.setAttribute('stroke-width','2');svg.appendChild(o);
     const c=document.createElementNS(ns,'path');c.setAttribute('d',r.cPaths.join(' '));c.setAttribute('fill','none');c.setAttribute('stroke','#14171A');c.setAttribute('stroke-width','1.4');svg.appendChild(c);}
@@ -528,10 +541,11 @@ function draw(fast,noCommit){if(dry)return;if(randomizing){randomizing=false;if(
 }
 function rand(a,b){return a+Math.random()*(b-a);}
 $('btnRandom').addEventListener('click',()=>{const keep={lengthMm:P.lengthMm,mirror:P.mirror},SH=WingGen.SHAPES||[];
+  if(Math.random()<0.55){const o=genOutline();P=Object.assign({},D,G,keep,style(),{outline:o.data,shape:-1,shapeW:1,shape2:-1,shapeMix:0,tabW:1,tabH:o.tabH,bottomRound:1,bend:0,lean:0,flex:0,frontW:o.frontW});sync();draw();msg('새로 지은 외곽에 새 무늬를 넣었습니다.');return;}
   if(SH.length&&Math.random()<0.8){const i=pickShape(),wm=Math.max.apply(null,SH[i][1])/1000;                      // 보내 주신 그림의 외곽 가운데 하나
     P=Object.assign({},D,G,keep,{shape:i,shapeW:rand(0.78,1.3),shape2:pickShape(),shapeMix:Math.random()<0.45?rand(0.2,0.5):0,bend:rand(-0.09,0.09),lean:rand(-0.1,0.16),flex:0,tabW:1,tabH:SH[i][3],bottomRound:1,rim:rand(9.5,11.5),sec:rand(6.6,7.6),main:7.8,cell:rand(18,21),aspect:rand(1.1,1.35),
       frontW:Math.min(0.2,Math.max(0.07,0.036/wm)),flow:Math.random()<0.3?'A':'B',sweep:rand(0.85,1.25),stagger:rand(0,0.5),lenRand:rand(0.15,0.35),slitPos:rand(0.5,0.68),seed:Math.round(rand(1,999))});
-    sync();draw();msg('보내 주신 그림의 외곽 '+(i+1)+'번에 새 무늬를 넣었습니다.');return;}
+    Object.assign(P,style());sync();draw();msg('보내 주신 그림의 외곽 '+(i+1)+'번을 바꿔 새 무늬를 넣었습니다.');return;}
   P=Object.assign({},D,G,keep,{rim:P.rim,frontMul:P.frontMul,main:P.main,sec:P.sec,flow:Math.random()<0.3?'A':'B',width:rand(0.16,0.48),peak:rand(0.22,0.75),root:rand(0.13,0.3),belly:rand(0.8,2.8),taper:rand(0,0.7),tip:rand(0.9,1.5),tipCenter:rand(0.15,0.6),leadStart:rand(0.5,0.85),bend:rand(-0.06,0.03),lean:rand(-0.08,0.3),flex:rand(0,0.12),
     sweep:rand(0.7,1.3),stagger:rand(0,0.6),cell:Math.max(P.sec*1.9+6,rand(14,22)),aspect:rand(1.15,1.8),lenRand:rand(0.1,0.45),seed:Math.round(rand(1,999))});P.frontW=Math.min(0.18,0.034/P.width);
   sync();draw();msg('막대 값으로 새 외곽을 만들었습니다.');});
