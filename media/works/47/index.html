@@ -33,6 +33,7 @@ button[aria-pressed="true"]{border-color:var(--cut);color:var(--cut)}
 .chip{padding:5px 10px;font-size:13px}
 .stage{background:var(--paper);border:1px solid var(--line);border-radius:8px;display:flex;justify-content:center;align-items:center;padding:14px;min-height:320px}
 .stage svg{display:block;width:auto;height:min(72vh,860px);max-width:100%}
+.stage .hit path{cursor:pointer}
 .stats{font-family:var(--mono);font-size:12.5px;color:var(--mute);font-variant-numeric:tabular-nums;display:flex;flex-wrap:wrap;gap:4px 16px}
 .msg{font-size:13px;color:var(--mute);min-height:1.5em}
 details{background:var(--panel);border:1px solid var(--line);border-radius:8px}
@@ -61,7 +62,7 @@ button:disabled{opacity:.4;cursor:default}
 <div class="wrap">
 <header>
 <h1>잠자리 날개 무늬 생성기</h1>
-<p>무작위나 「여섯 가지 보기」로 모양을 넘겨 보다가 마음에 들면 ★ 보관하세요. 지나온 모양은 아래 줄에서 눌러 돌아갑니다. 검은 부분이 판, 흰 부분이 뚫리는 칸입니다. 「막힌 칸」을 켜면 흐름을 따라 뚫지 않고 남기는 칸이 다른 색으로 보입니다. 「칸 칠하기」를 켜고 그림의 칸을 누르거나 끌면 손으로 막고 뚫을 수 있습니다.</p>
+<p>무작위나 「여섯 가지 보기」로 모양을 넘겨 보다가 마음에 들면 ★ 보관하세요. 지나온 모양은 아래 줄에서 눌러 돌아갑니다. 검은 부분이 판, 흰 부분이 뚫리는 칸입니다. 「막힌 칸」을 켜면 흐름을 따라 뚫지 않고 남기는 칸이 다른 색으로 보입니다. 그림의 칸을 마우스로 누르면 막히고, 막힌 칸을 누르면 다시 뚫립니다. 누른 채 끌면 여러 칸을 한 번에 바꿉니다. 휴대폰에서는 「손가락으로 칠하기」를 켜고 하세요.</p>
 </header>
 <div class="main">
 <div class="controls">
@@ -80,7 +81,7 @@ button:disabled{opacity:.4;cursor:default}
 <button type="button" class="primary" id="btnPlate">SVG 저장 · 판</button>
 <button type="button" id="btnLines">SVG 저장 · 자름선</button>
 <button type="button" id="btnView" aria-pressed="false">자름선으로 보기</button>
-<button type="button" id="btnPaint" aria-pressed="false" title="그림의 칸을 누르거나 끌어서 막고 뚫는다">칸 칠하기</button>
+<button type="button" id="btnPaint" aria-pressed="false" title="휴대폰·태블릿에서 손가락으로 칸을 막고 뚫는다. 마우스는 켜지 않아도 된다">손가락으로 칠하기</button>
 <button type="button" id="btnPng">PNG 저장</button>
 <button type="button" id="btnSix">여섯 가지 보기</button>
 <button type="button" id="btnShare">주소로 공유</button>
@@ -582,7 +583,7 @@ function draw(fast,noCommit){if(dry)return;if(randomizing){randomizing=false;if(
     const c=document.createElementNS(ns,'path');c.setAttribute('class','cut');c.setAttribute('d',r.cPaths.join(' '));c.setAttribute('fill','none');c.setAttribute('stroke','#14171A');c.setAttribute('stroke-width','1.4');svg.appendChild(c);}
   else{const p=document.createElementNS(ns,'path');p.setAttribute('class','cut');p.setAttribute('d',r.oPath+' '+r.cPaths.join(' '));p.setAttribute('fill','#14171A');p.setAttribute('fill-rule','evenodd');svg.appendChild(p);}
   {const q=document.createElementNS(ns,'path');q.setAttribute('class','shut');q.setAttribute('d',r.sPaths.join(' '));if(lines){q.setAttribute('fill','none');q.setAttribute('stroke',r.sCol);q.setAttribute('stroke-width','1.4');}else q.setAttribute('fill',r.sCol);svg.appendChild(q);}
-  if(paint){const g=document.createElementNS(ns,'g');g.setAttribute('fill','transparent');r.aPaths.forEach((d,i)=>{const h=document.createElementNS(ns,'path');h.setAttribute('d',d);h.dataset.i=i;g.appendChild(h);});svg.appendChild(g);}   // 칠할 때 어느 칸인지 알아내는 투명한 덮개
+  {const g=document.createElementNS(ns,'g');g.setAttribute('class','hit');g.setAttribute('fill','transparent');r.aPaths.forEach((d,i)=>{const h=document.createElementNS(ns,'path');h.setAttribute('d',d);h.dataset.i=i;g.appendChild(h);});svg.appendChild(g);}   // 칠할 때 어느 칸인지 알아내는 투명한 덮개
   $('stage').replaceChildren(svg);
   if(zoom){svg.style.height='190vh';svg.style.maxHeight='none';svg.style.width='auto';$('stage').style.overflow='auto';}else $('stage').style.overflow='';
   const thin=P.sec*(1-P.thickVar)*r.mm;
@@ -624,11 +625,11 @@ let paint=false,pd=null;const stage=$('stage');
 const cellAt=(x,y)=>{const el=document.elementFromPoint(x,y);return el&&stage.contains(el)&&el.dataset&&el.dataset.i!==undefined?+el.dataset.i:-1;};
 function dab(i){if(i<0||pd.seen.has(i))return;pd.seen.add(i);if(last.shutOf[i]===pd.to)return;last.shutOf[i]=pd.to;const c=last.cen[i];P.shutMark=(P.shutMark||[]).filter(m=>m[0]!==c[0]||m[1]!==c[1]).concat([[c[0],c[1],pd.to]]);
   last.cPaths=last.aPaths.filter((_,k)=>!last.shutOf[k]);last.sPaths=last.aPaths.filter((_,k)=>last.shutOf[k]);stage.querySelector('.cut').setAttribute('d',(lines?'':last.oPath+' ')+last.cPaths.join(' '));stage.querySelector('.shut').setAttribute('d',last.sPaths.join(' '));}   // 끄는 동안에는 화면만 고치고, 손을 떼면 다시 계산한다
-stage.addEventListener('pointerdown',e=>{if(!paint||!last||e.button)return;const i=cellAt(e.clientX,e.clientY);if(i<0)return;e.preventDefault();pd={to:last.shutOf[i]?0:1,seen:new Set(),x:e.clientX,y:e.clientY};try{stage.setPointerCapture(e.pointerId);}catch(_){}dab(i);});
+stage.addEventListener('pointerdown',e=>{if(!last||e.button||(e.pointerType==='touch'&&!paint))return;/* 마우스·펜은 언제나 칸을 눌러 막고 뚫는다. 손가락은 화면을 내려야 하므로 「손가락으로 칠하기」를 켰을 때만 */const i=cellAt(e.clientX,e.clientY);if(i<0)return;e.preventDefault();pd={to:last.shutOf[i]?0:1,seen:new Set(),x:e.clientX,y:e.clientY};try{stage.setPointerCapture(e.pointerId);}catch(_){}dab(i);});
 stage.addEventListener('pointermove',e=>{if(!pd)return;const dx=e.clientX-pd.x,dy=e.clientY-pd.y,st=Math.max(1,Math.ceil(Math.hypot(dx,dy)/5));for(let k=1;k<=st;k++)dab(cellAt(pd.x+dx*k/st,pd.y+dy*k/st));pd.x=e.clientX;pd.y=e.clientY;});   // 빨리 끌어도 사이의 칸을 건너뛰지 않는다
 const stopPaint=()=>{if(!pd)return;const to=pd.to,cnt=pd.seen.size;pd=null;draw();msg(cnt+'칸을 '+(to?'막았습니다.':'뚫었습니다.')+' 「◀ 이전」으로 되돌릴 수 있습니다.');};
 stage.addEventListener('pointerup',stopPaint);stage.addEventListener('pointercancel',stopPaint);
-$('btnPaint').addEventListener('click',e=>{paint=!paint;e.currentTarget.setAttribute('aria-pressed',String(paint));stage.style.cursor=paint?'crosshair':'';stage.style.touchAction=paint?'none':'';draw(false,true);msg(paint?'칸을 누르거나 끌면 막힙니다. 막힌 칸에서 시작하면 다시 뚫립니다.':'칸 칠하기를 껐습니다.');});
+$('btnPaint').addEventListener('click',e=>{paint=!paint;e.currentTarget.setAttribute('aria-pressed',String(paint));stage.style.touchAction=paint?'none':'';msg(paint?'손가락으로 칸을 누르거나 끌면 막힙니다. 막힌 칸에서 시작하면 다시 뚫립니다.':'손가락으로 칠하기를 껐습니다. 화면을 다시 끌어 내릴 수 있습니다.');});
 $('btnCopy').addEventListener('click',async()=>{const t=JSON.stringify(P);$('cfg').value=t;try{await navigator.clipboard.writeText(t);msg('설정을 복사했습니다.');}catch(e){$('cfg').select();msg('복사가 막혀 있습니다. 아래 칸의 글을 직접 복사하세요.');}});
 $('btnApply').addEventListener('click',()=>{try{const o=JSON.parse($('cfg').value);P=Object.assign({},D,o);sync();draw();msg('설정을 넣었습니다.');}catch(e){msg('설정 글을 읽지 못했습니다. 복사한 글 전체를 그대로 붙여 넣었는지 확인하세요.');}});
 async function save(kind){if(!last)return;const data=(kind==='plate'?last.plate:last.lines).replace('</svg>','<!-- wing-params:'+JSON.stringify(P)+' -->\n</svg>'),filename='잠자리날개_'+(kind==='plate'?'판':'자름선')+'_'+Math.round(P.lengthMm)+'mm_'+P.seed+'.svg';
